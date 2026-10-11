@@ -39,7 +39,9 @@ let vitrina f =
              ("descripcion", `String p.descripcion) ])
        (Forja.Vitrina.listar (Forja.vitrina f)))
 
-(* El cristal tal cual, sin respaldo líquido: quien llama ya es un LLM. *)
+(* El cristal tal cual, sin respaldo líquido: quien llama ya es un LLM. El
+   defecto queda en la cantera, sin salida: semilla de la recristalización
+   como los que ve el proxy. *)
 let aplicar f nombre cuerpo =
   match (Forja.Tarea.explicita nombre, Yojson.Safe.from_string cuerpo) with
   | Error _, _ -> no_hay nombre
@@ -49,7 +51,9 @@ let aplicar f nombre cuerpo =
       | Some (_, c), `String e -> (
           match c.aplicar e with
           | Ok s -> json 200 (`Assoc [ ("salida", `String s) ])
-          | Error m -> json 200 (`Assoc [ ("defecto", `String m) ]))
+          | Error m ->
+              (Forja.cantera f).registrar (Forja.Cantera.defecto_directo t ~entrada:e m);
+              json 200 (`Assoc [ ("defecto", `String m) ]))
       | Some _, _ -> error 400 "forja: falta entrada (texto)")
   | exception (Yojson.Json_error _ | Yojson.Safe.Util.Type_error _) -> error 400 "forja: el cuerpo no es JSON"
 
@@ -76,7 +80,7 @@ let detalle f nombre query =
         | Some [ s ] -> Option.value ~default:5 (int_of_string_opt s) |> max 0 |> min 1000
         | _ -> 5
       in
-      let plantilla = match muestras with m :: _ -> m.Forja.Cantera.plantilla | [] -> "" in
+      let plantilla = Forja.Cantera.plantilla muestras in
       json 200
         (`Assoc
           (resumen r
@@ -86,7 +90,7 @@ let detalle f nombre query =
                   (List.map
                      (fun (m : Forja.Cantera.muestra) ->
                        `Assoc
-                         [ ("entrada", `String m.entrada); ("salida", `String m.salida);
+                         [ ("entrada", `String m.entrada); ("salida", opcion m.salida);
                            ("contraste", opcion m.contraste); ("defecto", opcion m.defecto) ])
                      (ultimas n muestras)) ) ]))
 

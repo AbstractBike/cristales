@@ -10,6 +10,11 @@ let comprueba nombre cond =
     incr fallos;
     Printf.eprintf "FALLA: %s\n%!" nombre)
 
+let contiene s sub =
+  let n = String.length sub in
+  let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+  ir 0
+
 let tarea n = Result.get_ok (Forja.Tarea.explicita n)
 let pet ?(t = "mayus") e = { Forja.tarea = tarea t; plantilla = "Pon en mayúsculas."; entrada = e }
 
@@ -104,15 +109,10 @@ let () =
 let () =
   let muestras =
     [ { Forja.Cantera.tarea = tarea "mayus"; plantilla = "Pon en mayúsculas.";
-        entrada = "hola"; salida = "HOLA"; contraste = None; defecto = None } ]
+        entrada = "hola"; salida = Some "HOLA"; contraste = None; defecto = None } ]
   in
   let prompt = Forja_http.Prompt.cristalizar in
   let n = Forja.Semilla.nucleacion ~prompt muestras in
-  let contiene s sub =
-    let ls = String.length s and lsub = String.length sub in
-    let rec ir i = i + lsub <= ls && (String.sub s i lsub = sub || ir (i + 1)) in
-    ir 0
-  in
   comprueba "la nucleación no deja huecos" (not (contiene n "{{"));
   comprueba "la nucleación lleva la plantilla" (contiene n "Pon en mayúsculas.");
   comprueba "la nucleación lleva los ejemplos" (contiene n "HOLA");
@@ -167,11 +167,6 @@ let () =
   in
   (match A.peticion ~tarea:None (j (pet "extrae")) with
   | Ok (p, A.Herramienta "extrae") ->
-      let contiene s sub =
-        let n = String.length sub in
-        let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
-        ir 0
-      in
       comprueba "la plantilla lleva system y herramienta"
         (contiene p.plantilla "Extrae." && contiene p.plantilla {|"name":"extrae"|} && not (contiene p.plantilla "otra"))
   | _ -> comprueba "herramienta forzada es tarea" false);
@@ -206,13 +201,25 @@ let () =
   let r =
     Yojson.Safe.from_string
       {|{"output":[{"records":{"schema":{},"rows":[
-          ["mayus","P","hola","HOLA",true,"HOLA",""],
-          ["mayus","P","a1","A1",false,"","dígitos"]]}}]}|}
+          ["mayus","P","hola","HOLA",true,"HOLA","",true],
+          ["mayus","P","a1","A1",false,"","dígitos",null],
+          ["mayus","","b2","",false,"","dígitos",false]]}}]}|}
   in
   match Forja_http.Cantera_greptime.filas r with
-  | [ a; b ] ->
+  | [ a; b; c ] ->
       comprueba "fila contrastada" (a.contraste = Some "HOLA" && a.defecto = None);
-      comprueba "fila con defecto" (b.contraste = None && b.defecto = Some "dígitos")
-  | _ -> comprueba "dos filas de greptime" false
+      comprueba "fila con defecto" (b.contraste = None && b.defecto = Some "dígitos");
+      comprueba "fila de antes de respondida: vino del LLM" (b.salida = Some "A1");
+      comprueba "fila de un defecto por MCP: sin salida" (c.salida = None && c.defecto = Some "dígitos")
+  | _ -> comprueba "tres filas de greptime" false
+
+(* Un defecto directo (forja-mcp): no cuenta para la madurez y la semilla lo dice. *)
+let () =
+  let m = Forja.Cantera.defecto_directo (tarea "mayus") ~entrada:"b2" "dígitos" in
+  comprueba "sin salida no suma" (Forja.Madurez.sumar Forja.Madurez.vacio m = Forja.Madurez.vacio);
+  let llm = { m with plantilla = "Pon en mayúsculas."; entrada = "a"; salida = Some "A"; defecto = None } in
+  let s = Forja.Semilla.markdown (tarea "mayus") Forja.Madurez.vacio [ m; llm ] in
+  comprueba "la semilla toma la plantilla de quien la tenga" (contiene s "Pon en mayúsculas.");
+  comprueba "la semilla dice que no hubo respuesta" (contiene s "Sin respuesta")
 
 let () = if !fallos > 0 then exit 1

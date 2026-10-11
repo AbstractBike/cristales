@@ -3,7 +3,8 @@
 
 type post = Uri.t -> tipo:string -> string -> (int * string, string) result
 
-let columnas = [ "tarea"; "plantilla"; "entrada"; "salida"; "contrastada"; "contraste"; "defecto" ]
+let columnas =
+  [ "tarea"; "plantilla"; "entrada"; "salida"; "contrastada"; "contraste"; "defecto"; "respondida" ]
 
 (* Las columnas opcionales se escriben siempre (cadena vacía si no hay) para
    que existan desde la primera fila y el SELECT no falle. *)
@@ -14,20 +15,24 @@ let json (m : Forja.Cantera.muestra) =
         [ ("tarea", s (Forja.Tarea.to_string m.tarea));
           ("plantilla", s m.plantilla);
           ("entrada", s m.entrada);
-          ("salida", s m.salida);
+          ("salida", o m.salida);
           ("contrastada", `Bool (Option.is_some m.contraste));
           ("contraste", o m.contraste);
-          ("defecto", o m.defecto) ] ]
+          ("defecto", o m.defecto);
+          ("respondida", `Bool (Option.is_some m.salida)) ] ]
 
 let fila = function
   | `List
       [ `String tarea; `String plantilla; `String entrada; `String salida;
-        `Bool contrastada; `String contraste; `String defecto ] -> (
+        `Bool contrastada; `String contraste; `String defecto; respondida ] -> (
       match Forja.Tarea.explicita tarea with
       | Error _ -> None
       | Ok tarea ->
           Some
-            { Forja.Cantera.tarea; plantilla; entrada; salida;
+            { Forja.Cantera.tarea; plantilla; entrada;
+              (* Las filas de antes de [respondida] la tienen a null: todas
+                 venían del LLM. *)
+              salida = (if respondida = `Bool false then None else Some salida);
               contraste = (if contrastada then Some contraste else None);
               defecto = (if defecto = "" then None else Some defecto) })
   | _ -> None
@@ -62,6 +67,10 @@ let crear ~post ~url ?(db = "public") ?(tabla = "forja_cantera") () =
   (* La base se crea al arrancar (desde [public], que siempre existe); la
      tabla la crea la primera ingesta. *)
   avisar (sql "public" (Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" db));
+  (* Una tabla de antes no tiene las columnas nuevas hasta la primera
+     ingesta que las traiga, y el SELECT de [muestras] fallaría. Si la tabla
+     aún no existe, falla sin más: la crea la primera ingesta. *)
+  ignore (sql db (Printf.sprintf "ALTER TABLE %s ADD COLUMN IF NOT EXISTS respondida BOOLEAN" tabla));
   let registrar m =
     avisar (post ingesta ~tipo:"application/json" (Yojson.Safe.to_string (json m)))
   in

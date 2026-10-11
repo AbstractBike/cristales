@@ -37,7 +37,7 @@ module Cantera = struct
     tarea : Tarea.t;
     plantilla : string;
     entrada : string;
-    salida : string;
+    salida : string option;
     contraste : string option;
     defecto : Cristal.motivo option;
   }
@@ -56,6 +56,15 @@ module Cantera = struct
     let registrar m = Hashtbl.replace h m.tarea (m :: al_reves m.tarea) in
     let tareas () = List.sort compare (List.of_seq (Hashtbl.to_seq_keys h)) in
     { registrar; muestras; tareas }
+
+  let defecto_directo tarea ~entrada motivo =
+    { tarea; plantilla = ""; entrada; salida = None; contraste = None; defecto = Some motivo }
+
+  (* Los defectos directos no traen plantilla: la primera que haya. *)
+  let plantilla muestras =
+    match List.find_opt (fun m -> m.plantilla <> "") muestras with
+    | Some m -> m.plantilla
+    | None -> ""
 end
 
 module Madurez = struct
@@ -74,12 +83,13 @@ module Madurez = struct
   let vacio = { muestras = 0; contrastes = 0; coincidencias = 0 }
 
   let sumar i (m : Cantera.muestra) =
-    match m.contraste with
-    | None -> { i with muestras = i.muestras + 1 }
-    | Some c ->
+    match (m.salida, m.contraste) with
+    | None, _ -> i
+    | Some _, None -> { i with muestras = i.muestras + 1 }
+    | Some s, Some c ->
         { muestras = i.muestras + 1;
           contrastes = i.contrastes + 1;
-          coincidencias = (i.coincidencias + if c = m.salida then 1 else 0) }
+          coincidencias = (i.coincidencias + if c = s then 1 else 0) }
 
   let informe = List.fold_left sumar vacio
 
@@ -99,13 +109,14 @@ module Semilla = struct
           (match m.defecto with
           | Some d -> Printf.sprintf " (defecto del cristal: %s)" d
           | None -> "")
-          (bloque m.entrada) (bloque m.salida))
+          (bloque m.entrada)
+          (match m.salida with
+          | Some s -> bloque s
+          | None -> "Sin respuesta: el cristal se llamó directamente (forja-mcp) y nadie se la pidió al LLM."))
       muestras
     |> String.concat "\n\n"
 
-  let plantilla = function
-    | [] -> ""
-    | (m : Cantera.muestra) :: _ -> m.plantilla
+  let plantilla = Cantera.plantilla
 
   let markdown tarea (i : Madurez.informe) muestras =
     String.concat "\n"
@@ -242,7 +253,7 @@ let decidir f p =
 let aprender f p ?contraste ?defecto salida =
   let m =
     { Cantera.tarea = p.tarea; plantilla = p.plantilla; entrada = p.entrada;
-      salida; contraste; defecto }
+      salida = Some salida; contraste; defecto }
   in
   let e = estado f p.tarea in
   f.cantera.registrar m;

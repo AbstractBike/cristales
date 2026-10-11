@@ -120,6 +120,10 @@ GET  /forja/tareas/{tarea}?muestras=5
        "ultimas": [{"entrada", "salida", "contraste": null, "defecto": null}]}
   404
 
+  "salida" es null en el defecto de un POST /forja/vitrina/{tarea}: queda en
+  la cantera con su motivo, pero nadie le pidió la respuesta al LLM. Esas
+  muestras no cuentan en "muestras".
+
 GET  /forja/tareas/{tarea}/semilla       200 text/markdown | 404
 GET  /forja/tareas/{tarea}/nucleacion    200 text/markdown | 404
 ```

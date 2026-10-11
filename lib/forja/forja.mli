@@ -77,11 +77,14 @@ module Cantera : sig
     tarea : Tarea.t;
     plantilla : string;
     entrada : string;
-    salida : string;
+    salida : string option;
+        (** Respuesta del LLM. [None] si nadie se la pidió: el defecto de un
+            cristal llamado directamente ({!defecto_directo}), donde quien
+            llama ya es un LLM y resuelve por su cuenta. *)
     contraste : string option;
         (** Segunda respuesta del LLM a la misma entrada, si se pidió. *)
     defecto : Cristal.motivo option;
-        (** Si vino de un defecto de un cristal mixto, su motivo. *)
+        (** Si vino de un defecto de un cristal, su motivo. *)
   }
 
   type t = {
@@ -91,6 +94,14 @@ module Cantera : sig
   }
 
   val en_memoria : unit -> t
+
+  val defecto_directo : Tarea.t -> entrada:string -> Cristal.motivo -> muestra
+  (** Lo que deja en la cantera el defecto de un cristal llamado
+      directamente, sin LLM detrás (POST /forja/vitrina/<tarea>, lo que usa
+      [forja-mcp]): la entrada y el motivo, sin plantilla ni salida. *)
+
+  val plantilla : muestra list -> string
+  (** La de la primera muestra que la tenga. *)
 end
 
 (** {1 Madurez} *)
@@ -112,6 +123,7 @@ module Madurez : sig
 
   val vacio : informe
   val sumar : informe -> Cantera.muestra -> informe
+  (** Una muestra sin salida no dice nada del LLM: no cuenta. *)
   val informe : Cantera.muestra list -> informe
 
   val madura : politica -> informe -> bool

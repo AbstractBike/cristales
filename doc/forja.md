@@ -163,6 +163,12 @@ Con `FORJA_GREPTIME` (raíz HTTP, puerto 4000) cada muestra se escribe por
 una tarea por primera vez la forja recupera su informe de la cantera, así que
 la madurez sobrevive a los reinicios.
 
+La columna `respondida` dice si la salida es del LLM (`false` en los
+defectos directos, ver abajo). Las filas de antes de que existiera la tienen
+a `null` y cuentan como respondidas; al arrancar se añade a una tabla vieja
+(`ADD COLUMN IF NOT EXISTS`) para que el `SELECT` no falle antes de la
+primera ingesta que la traiga.
+
 ### Un cristal nuevo en la vitrina
 
 ```ocaml
@@ -208,7 +214,12 @@ descripción con que se registró en `lib/vitrina/vitrina.ml`:
 No hay respaldo líquido: quien llama ya es un LLM. Un defecto vuelve como
 resultado con `isError` y su motivo (`defecto: fuera de dominio: …`), y el
 modelo decide qué hacer con él. El estado `Mixta`/`Cristalina` no cambia
-nada aquí. Es la forma de usar los cristales desde clientes que no se pueden
+nada aquí. El defecto sí queda en la cantera del proxy, que es quien
+ejecuta el cristal (`POST /forja/vitrina/<tarea>`): la entrada y el motivo,
+sin plantilla y sin salida, porque nadie le pidió la respuesta al LLM. Son
+semillas de la recristalización como las del proxy, pero no cuentan para la
+madurez: no dicen nada de si el LLM se repite. Con `--local` el cristal
+corre en el propio proceso, sin red, y el defecto no se guarda. Es la forma de usar los cristales desde clientes que no se pueden
 poner detrás del proxy, como el chat de Claude Desktop.
 
 **La forja como objeto de trabajo.** Cuatro herramientas fijas la hacen
@@ -286,7 +297,7 @@ la vez: todos leen la misma lista.
 | Quién llama | Una aplicación, como si la forja fuera el modelo | Un agente, que decide cuándo |
 | Sin cristal | Responde el LLM y se guarda la muestra | No hay herramienta: el agente lo resuelve él |
 | Defecto | Mixta: el LLM; cristalina: `422` | `isError`: el agente decide |
-| Aprende | Sí: cantera, contraste, madurez, horno | No: lee lo que aprendió el proxy |
+| Aprende | Sí: cantera, contraste, madurez, horno | Solo los defectos, en la cantera del proxy |
 | Nuclea | Deja la semilla en el horno | El agente puede escribir el cristal |
 
 Las dos se usan juntas: el proxy en el camino de las pipelines, el MCP en el

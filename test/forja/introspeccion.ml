@@ -10,6 +10,11 @@ let comprueba nombre cond =
     incr fallos;
     Printf.eprintf "FALLA: %s\n%!" nombre)
 
+let contiene s sub =
+  let n = String.length sub in
+  let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+  ir 0
+
 let tarea n = Result.get_ok (Forja.Tarea.explicita n)
 let mayus = Cristal.cristal "mayus" (fun s -> if s = "" then Error "vacía" else Ok (String.uppercase_ascii s))
 
@@ -72,6 +77,17 @@ let () =
       String.iteri (fun i c -> if c = '{' && i + 1 < String.length r.cuerpo && r.cuerpo.[i + 1] = '{' then huecos := true) r.cuerpo;
       comprueba "nucleación sin huecos" (r.estado = 200 && not !huecos)
   | None -> comprueba "nucleación responde" false);
-  comprueba "semilla de un cristal sin muestras es 404" (estado (pedir "/forja/tareas/mayus/semilla") = Some 404);
+  (* El defecto de aplicar quedó en la cantera, sin salida y sin contar. *)
+  (match Option.map json (pedir "/forja/tareas/mayus") with
+  | Some j ->
+      comprueba "el defecto directo no cuenta para la madurez" (campo "muestras" j = `Int 0);
+      comprueba "el defecto directo queda en la cantera"
+        (match campo "ultimas" j with
+        | `List [ d ] -> campo "entrada" d = `String "" && campo "salida" d = `Null && campo "defecto" d = `String "vacía"
+        | _ -> false)
+  | None -> comprueba "detalle del cristal responde" false);
+  (match pedir "/forja/tareas/mayus/semilla" with
+  | Some r -> comprueba "la semilla dice que el defecto no tuvo respuesta" (r.estado = 200 && contiene r.cuerpo "Sin respuesta")
+  | None -> comprueba "semilla del cristal responde" false);
   comprueba "ruta desconocida bajo /forja/ es 404" (estado (pedir "/forja/otra") = Some 404);
   if !fallos > 0 then exit 1
