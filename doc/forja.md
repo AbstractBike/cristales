@@ -41,11 +41,12 @@ después es código: generaliza a entradas que nunca vio, se revisa en un
 | Pieza | Qué es | Dónde |
 |---|---|---|
 | Tarea | Instrucciones fijas (la *plantilla*) aplicadas a una *entrada* que varía | `Forja.Tarea` |
-| Vitrina | Cristales ya nucleados, revisados y commiteados, por tarea | `Forja.Vitrina`, `bin/forja/vitrina.ml` |
+| Vitrina | Cristales ya nucleados, revisados y commiteados, por tarea | `Forja.Vitrina`, `lib/vitrina/vitrina.ml` |
 | Cantera | Registro de lo que resolvió el LLM: plantilla, entrada, salida, contraste, defecto | `Forja.Cantera`, `Cantera_greptime` |
 | Madurez | Política que decide cuándo una tarea está lista para nuclear | `Forja.Madurez` |
 | Horno | Directorio donde quedan la semilla y el prompt de nucleación de cada tarea madura | `Horno`, `$FORJA_HORNO` |
 | Proxy | Messages API de Anthropic por los dos lados | `Proxy`, `bin/forja` |
+| MCP | La vitrina como herramientas para Claude Desktop o Claude Code | `Forja_mcp`, `bin/forja-mcp` |
 
 El núcleo (`lib/forja`) es puro salvo la cantera, que se inyecta: decide
 (`decidir`) y aprende (`aprender`), pero no habla HTTP ni llama al LLM. La
@@ -152,7 +153,7 @@ la madurez sobrevive a los reinicios.
 ### Un cristal nuevo en la vitrina
 
 ```ocaml
-(* bin/forja/vitrina.ml *)
+(* lib/vitrina/vitrina.ml *)
 let vitrina =
   Forja.Vitrina.(vacia
     |> con (tarea "fecha-es") `Mixta fecha_es
@@ -162,6 +163,36 @@ let vitrina =
 Los cristales tipados se adaptan a texto → texto al registrarlos; el contexto
 que necesiten (la fecha de hoy para `fecha-es`) lo pone el adaptador, el
 cristal sigue puro.
+
+## La vitrina como servidor MCP
+
+El proxy pone la forja *delante* del LLM. `forja-mcp` hace lo contrario: el
+LLM llama al cristal cuando lo necesita. Cada cristal de la vitrina es una
+herramienta MCP con el nombre de su tarea, un argumento `entrada` (texto) y
+la descripción con que se registró en `lib/vitrina/vitrina.ml`:
+
+```ocaml
+|> con (tarea "fecha-es") `Mixta fecha_es ~descripcion:"Convierte una fecha …"
+```
+
+No hay respaldo líquido: quien llama ya es un LLM. Un defecto vuelve como
+resultado con `isError` y el motivo (`defecto: fuera de dominio: …`), y el
+modelo decide qué hacer con él. El estado `Mixta`/`Cristalina` no cambia
+nada aquí.
+
+Es la forma de usar los cristales desde clientes que no hablan la Messages
+API a través de una URL base propia, como el chat de Claude Desktop, que
+no se puede poner detrás del proxy. Va por stdio, una línea JSON-RPC por
+mensaje:
+
+```json
+{ "mcpServers": { "cristales": { "command": "forja-mcp" } } }
+```
+
+en `claude_desktop_config.json` (en la flota, lo declara home-manager), o
+`claude mcp add cristales -- forja-mcp` en Claude Code. Un cristal nuevo en
+la vitrina aparece en los dos sitios a la vez: el proxy y el MCP leen la
+misma lista.
 
 ## Cabeceras de respuesta
 

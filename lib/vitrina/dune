@@ -1,0 +1,7 @@
+; Los cristales de este repo, registrados una vez para el proxy (forja) y
+; para el servidor MCP (forja-mcp).
+
+(library
+ (name vitrina)
+ (public_name cristales.vitrina)
+ (libraries forja cristal fecha_es unix))

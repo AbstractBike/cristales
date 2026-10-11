@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name forja-mcp)
+ (package cristales)
+ (libraries forja_mcp vitrina eio eio_main))

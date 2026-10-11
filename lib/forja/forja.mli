@@ -48,11 +48,24 @@ type cristal = (string, string) Cristal.cristal
 
 module Vitrina : sig
   type estado = [ `Mixta | `Cristalina ]
+
+  type pieza = {
+    tarea : Tarea.t;
+    estado : estado;
+    cristal : cristal;
+    descripcion : string;
+        (** Qué hace, para quien lo llame como herramienta (ver
+            [forja-mcp]). El proxy no la usa. *)
+  }
+
   type t
 
   val vacia : t
-  val con : Tarea.t -> estado -> cristal -> t -> t
+  val con : ?descripcion:string -> Tarea.t -> estado -> cristal -> t -> t
   val buscar : t -> Tarea.t -> (estado * cristal) option
+
+  val listar : t -> pieza list
+  (** Por nombre de tarea. *)
 end
 
 (** {1 Cantera}

@@ -18,13 +18,18 @@ type cristal = (string, string) Cristal.cristal
 
 module Vitrina = struct
   type estado = [ `Mixta | `Cristalina ]
+  type pieza = { tarea : Tarea.t; estado : estado; cristal : cristal; descripcion : string }
   module M = Map.Make (String)
 
-  type t = (estado * cristal) M.t
+  type t = pieza M.t
 
   let vacia = M.empty
-  let con tarea estado c v = M.add tarea (estado, c) v
-  let buscar v tarea = M.find_opt tarea v
+
+  let con ?(descripcion = "") tarea estado cristal v =
+    M.add tarea { tarea; estado; cristal; descripcion } v
+
+  let buscar v tarea = Option.map (fun e -> (e.estado, e.cristal)) (M.find_opt tarea v)
+  let listar v = List.map snd (M.bindings v)
 end
 
 module Cantera = struct
