@@ -3,33 +3,11 @@
 
 let cabecera_tarea = "x-forja-tarea"
 let ( let* ) = Result.bind
-let campo k = function `Assoc l -> List.assoc_opt k l | _ -> None
+let campo = Comun.campo
+let cadena = Comun.cadena
+let solo_texto = Comun.solo_texto
 
 type forma = Texto | Herramienta of string
-
-(* JSON con las claves ordenadas: dos respuestas iguales del LLM dan la
-   misma cadena aunque cambie el orden de los campos. *)
-let rec canonico = function
-  | `Assoc l ->
-      `Assoc (List.sort (fun (a, _) (b, _) -> compare a b) (List.map (fun (k, v) -> (k, canonico v)) l))
-  | `List l -> `List (List.map canonico l)
-  | j -> j
-
-let cadena j = Yojson.Safe.to_string (canonico j)
-
-(* El contenido es una cadena o una lista de bloques; solo vale si todos
-   son de texto. *)
-let solo_texto = function
-  | `String s -> Some s
-  | `List bloques ->
-      List.fold_right
-        (fun b acc ->
-          match (acc, campo "type" b, campo "text" b) with
-          | Some ts, Some (`String "text"), Some (`String t) -> Some (t :: ts)
-          | _ -> None)
-        bloques (Some [])
-      |> Option.map (String.concat "\n")
-  | _ -> None
 
 (* Sin herramientas, la salida es texto. Con herramientas, solo vale una
    forzada: la definición de la herramienta pasa a la plantilla. *)
@@ -101,18 +79,16 @@ let respuesta ~modelo forma s =
   match forma with
   | Texto ->
       Ok (mensaje ~modelo ~parada:"end_turn" (`Assoc [ ("type", `String "text"); ("text", `String s) ]))
-  | Herramienta n -> (
-      match Yojson.Safe.from_string s with
-      | `Assoc _ as input ->
-          Ok
-            (mensaje ~modelo ~parada:"tool_use"
-               (`Assoc
-                 [ ("type", `String "tool_use");
-                   ("id", `String ("toolu_forja_" ^ String.sub (Digest.to_hex (Digest.string s)) 0 16));
-                   ("name", `String n);
-                   ("input", input) ]))
-      | _ -> Error "la salida del cristal no es un objeto JSON"
-      | exception Yojson.Json_error e -> Error ("la salida del cristal no es JSON: " ^ e))
+  | Herramienta n ->
+      Result.map
+        (fun input ->
+          mensaje ~modelo ~parada:"tool_use"
+            (`Assoc
+              [ ("type", `String "tool_use");
+                ("id", `String ("toolu_forja_" ^ String.sub (Digest.to_hex (Digest.string s)) 0 16));
+                ("name", `String n);
+                ("input", input) ]))
+        (Comun.objeto_json s)
 
 let error ~tipo mensaje =
   `Assoc

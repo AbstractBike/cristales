@@ -4,7 +4,8 @@
 (** El proxy: habla la Messages API de Anthropic por los dos lados, así que
     cualquier cliente se enchufa cambiando solo la URL base.
 
-    [POST /v1/messages] pasa por la forja; [/forja/…] es su introspección
+    [POST /v1/messages] pasa por la forja, y [POST /v1/chat/completions]
+    (la API de OpenAI) si hay [openai]; [/forja/…] es su introspección
     ([Introspeccion], para [forja-mcp]); lo demás se reenvía tal cual.
     Cada respuesta lleva [x-forja-fuente]: [cristal], [liquido], [defecto]
     (un cristal mixto no supo y respondió el LLM) o [paso] (la petición no es
@@ -13,6 +14,9 @@
 type t = {
   cliente : Cohttp_eio.Client.t;
   upstream : Uri.t;  (** Raíz de la API real, p. ej. [https://api.anthropic.com]. *)
+  openai : Uri.t option;
+      (** Raíz de un servidor Chat Completions (llama-server…): con él,
+          [POST /v1/chat/completions] también pasa por la forja. *)
   forja : Forja.t;
   madura : Forja.Tarea.t -> Forja.Madurez.informe -> unit;
       (** Se llama una vez cuando una tarea madura. *)

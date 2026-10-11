@@ -15,12 +15,14 @@ let comprueba nombre cond =
 let puerto_llm = 18_391
 let puerto_forja = 18_392
 let llamadas = ref 0
+let llamadas_openai = ref 0
 let leer b = Eio.Buf_read.(parse_exn take_all) b ~max_size:max_int
 
 (* El LLM falso: pone en mayúsculas el texto del usuario; con herramienta
    forzada, lo devuelve como su entrada: {"mayus": …}. *)
-let llm _ _req cuerpo =
-  incr llamadas;
+let rec llm _ req cuerpo =
+  if Http.Request.resource req = "/v1/chat/completions" then llm_openai (leer cuerpo) else
+  let () = incr llamadas in
   let open Yojson.Safe.Util in
   let j = Yojson.Safe.from_string (leer cuerpo) in
   let texto = String.uppercase_ascii (j |> member "messages" |> index 0 |> member "content" |> to_string) in
@@ -32,13 +34,28 @@ let llm _ _req cuerpo =
   let r = Result.get_ok (Forja_http.Anthropic.respuesta ~modelo:"falso" forma salida) in
   Cohttp_eio.Server.respond_string ~status:`OK ~body:(Yojson.Safe.to_string r) ()
 
+(* Por Chat Completions: lo mismo sobre el último mensaje; con json_schema,
+   el objeto {"mayus": …} en el contenido. *)
+and llm_openai cuerpo =
+  incr llamadas_openai;
+  let open Yojson.Safe.Util in
+  let j = Yojson.Safe.from_string cuerpo in
+  let texto = String.uppercase_ascii (j |> member "messages" |> to_list |> List.rev |> List.hd |> member "content" |> to_string) in
+  let forma, salida =
+    match j |> member "response_format" with
+    | `Assoc _ -> (Forja_http.Openai.Esquema, Yojson.Safe.to_string (`Assoc [ ("mayus", `String texto) ]))
+    | _ -> (Forja_http.Openai.Texto, texto)
+  in
+  let r = Result.get_ok (Forja_http.Openai.respuesta ~modelo:"falso" forma salida) in
+  Cohttp_eio.Server.respond_string ~status:`OK ~body:(Yojson.Safe.to_string r) ()
+
 let escuchar ~sw net puerto =
   Eio.Net.listen net ~sw ~backlog:16 ~reuse_addr:true
     (`Tcp (Eio.Net.Ipaddr.V4.loopback, puerto))
 
-let pedir cliente ?(cabeceras = []) ?(forma = Forja_http.Anthropic.Texto) cuerpo =
+let enviar cliente ?(cabeceras = []) ~ruta ~salida cuerpo =
   Eio.Switch.run @@ fun sw ->
-  let uri = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d/v1/messages" puerto_forja) in
+  let uri = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d%s" puerto_forja ruta) in
   let headers =
     Http.Header.of_list
       (("content-type", "application/json")
@@ -49,8 +66,14 @@ let pedir cliente ?(cabeceras = []) ?(forma = Forja_http.Anthropic.Texto) cuerpo
     Cohttp_eio.Client.post cliente ~sw ~headers ~body:(Cohttp_eio.Body.of_string cuerpo) uri
   in
   let fuente = Option.value ~default:"" (Http.Header.get (Http.Response.headers r) "x-forja-fuente") in
-  let texto = Forja_http.Anthropic.salida forma (Yojson.Safe.from_string (leer b)) in
+  let texto = salida (Yojson.Safe.from_string (leer b)) in
   (Http.Status.to_int (Http.Response.status r), fuente, texto)
+
+let pedir cliente ?cabeceras ?(forma = Forja_http.Anthropic.Texto) cuerpo =
+  enviar cliente ?cabeceras ~ruta:"/v1/messages" ~salida:(Forja_http.Anthropic.salida forma) cuerpo
+
+let pedir_openai cliente ?(forma = Forja_http.Openai.Esquema) cuerpo =
+  enviar cliente ~ruta:"/v1/chat/completions" ~salida:(Forja_http.Openai.salida forma) cuerpo
 
 let mensaje ?(extra = "") t =
   Printf.sprintf
@@ -73,9 +96,11 @@ let () =
   let horno = Eio.Path.(Eio.Stdenv.cwd env / "horno-prueba") in
   let tarea = Forja.Tarea.de_plantilla "Pon en mayúsculas." in
   let maduras = ref [] in
-  let proxy vitrina cantera =
+  let llm_uri = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d" puerto_llm) in
+  let proxy ?(openai = true) vitrina cantera =
     { Forja_http.Proxy.cliente;
-      upstream = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d" puerto_llm);
+      upstream = llm_uri;
+      openai = (if openai then Some llm_uri else None);
       forja = Forja.crear ~politica ~vitrina ~cantera ();
       madura =
         (fun t i ->
@@ -162,4 +187,39 @@ let () =
       comprueba "sin LLM" (!llamadas = antes);
       comprueba "cristal que no da JSON: defecto, responde el LLM"
         (pedir cliente ~forma (herramienta "roto") = (200, "defecto", Some (json "ROTO"))));
+  (* Chat Completions con json_schema: la forma de buzon-kt sobre llama-server. *)
+  let completions ?(extra = "") t =
+    Printf.sprintf
+      {|{"model":"gemma","temperature":0,%s"messages":[{"role":"system","content":"Extrae en mayúsculas."},{"role":"user","content":%S}],"response_format":{"type":"json_schema","json_schema":{"name":"mayus","strict":true,"schema":{"type":"object"}}}}|}
+      extra t
+  in
+  let cantera = Forja.Cantera.en_memoria () in
+  maduras := [];
+  con_forja (proxy Forja.Vitrina.vacia cantera) (fun () ->
+      let r = List.map (fun t -> pedir_openai cliente (completions t)) [ "uno"; "dos"; "tres" ] in
+      comprueba "openai líquido: sale el objeto del LLM"
+        (r = [ (200, "liquido", Some (json "UNO")); (200, "liquido", Some (json "DOS")); (200, "liquido", Some (json "TRES")) ]);
+      comprueba "openai: una contrastada, 4 llamadas" (!llamadas_openai = 4);
+      comprueba "la tarea de openai madura" (List.length !maduras = 1);
+      comprueba "openai: otra tarea que la de Anthropic con el mismo system"
+        (List.hd !maduras <> tarea_h);
+      let antes = !llamadas_openai in
+      comprueba "openai: streaming pasa"
+        (match pedir_openai cliente (completions ~extra:{|"stream":true,|} "x") with
+        | 200, "paso", _ -> true
+        | _ -> false);
+      comprueba "openai: el paso llega al LLM de openai" (!llamadas_openai = antes + 1));
+  let tarea_o = List.hd !maduras in
+  con_forja (proxy Forja.Vitrina.(vacia |> con tarea_o `Mixta cristal_h) cantera) (fun () ->
+      let antes = !llamadas_openai in
+      comprueba "openai: responde el cristal"
+        (pedir_openai cliente (completions "cuatro") = (200, "cristal", Some (json "CUATRO")));
+      comprueba "openai: sin LLM" (!llamadas_openai = antes);
+      comprueba "openai: el defecto cae al LLM"
+        (pedir_openai cliente (completions "a1") = (200, "defecto", Some (json "A1"))));
+  con_forja (proxy ~openai:false Forja.Vitrina.vacia cantera) (fun () ->
+      let antes = !llamadas_openai in
+      comprueba "sin upstream openai: pasa sin tocar"
+        (match pedir_openai cliente (completions "uno") with _, "paso", _ -> true | _ -> false);
+      comprueba "sin upstream openai: va al upstream de siempre" (!llamadas_openai = antes + 1));
   if !fallos > 0 then exit 1

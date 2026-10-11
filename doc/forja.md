@@ -57,7 +57,7 @@ después es código: generaliza a entradas que nunca vio, se revisa en un
 | Cantera | Registro de lo que resolvió el LLM: plantilla, entrada, salida, contraste, defecto | `Forja.Cantera`, `Cantera_greptime` |
 | Madurez | Política que decide cuándo una tarea está lista para nuclear | `Forja.Madurez` |
 | Horno | Directorio donde quedan la semilla y el prompt de nucleación de cada tarea madura | `Horno`, `$FORJA_HORNO` |
-| Proxy | Messages API de Anthropic por los dos lados | `Proxy`, `bin/forja` |
+| Proxy | Messages API de Anthropic por los dos lados, y Chat Completions de OpenAI | `Proxy`, `Anthropic`, `Openai`, `bin/forja` |
 | Introspección | La API de solo lectura `/forja/…`: vitrina, tareas, semillas, nucleación | `Introspeccion` |
 | MCP | La forja como herramientas para un agente, en seis lenguajes | `mcp/`, `bin/forja-mcp` |
 
@@ -88,6 +88,18 @@ canónica (claves ordenadas) al contrastar.
 La tarea se identifica por la cabecera `x-forja-tarea` si el cliente la pone
 (`[a-z0-9-]+`, el nombre que tendrá el cristal), o si no por el digest del
 system prompt: misma plantilla, misma tarea (`t-712d41d0978b`).
+
+### También por Chat Completions
+
+Las mismas tareas llegan por la API de OpenAI (`POST /v1/chat/completions`)
+si la forja tiene `FORJA_UPSTREAM_OPENAI`: es como habla buzon-kt con un
+modelo local (llama-server), y por ahí va el grueso de lo que se repite, la
+extracción de trabajo. Una tarea es un mensaje `system` (o `developer`) y un
+turno de usuario, sin streaming, sin herramientas y con `n` 1; la salida es
+el texto del mensaje o, con `response_format: {type: json_schema}`, el
+objeto que impone el esquema, que pasa a la plantilla como la herramienta en
+Anthropic. Mismo prompt por las dos APIs es otra tarea: el contrato es otro.
+Sin `FORJA_UPSTREAM_OPENAI`, la ruta pasa a `FORJA_UPSTREAM` sin tocar.
 
 Lo demás (conversaciones, agentes con herramientas libres, streaming) pasa al LLM
 sin tocar, con `x-forja-fuente: paso`. Es lo que [`concepto.md`](concepto.md)
@@ -140,11 +152,13 @@ Se configura por entorno (lo fija el módulo NixOS que lo despliegue):
 | `FORJA_IP` | `127.0.0.1` |
 | `FORJA_PUERTO` | `8090` |
 | `FORJA_UPSTREAM` | `https://api.anthropic.com` |
+| `FORJA_UPSTREAM_OPENAI` | sin ella, `/v1/chat/completions` no pasa por la forja |
 | `FORJA_HORNO` | `./horno` |
 | `FORJA_GREPTIME` | sin ella, cantera en memoria |
 | `FORJA_GREPTIME_DB` | `public` |
 
-Los clientes solo cambian la URL base (`ANTHROPIC_BASE_URL=http://…:8090`).
+Los clientes solo cambian la URL base (`ANTHROPIC_BASE_URL=http://…:8090`,
+o la del cliente OpenAI).
 Las cabeceras de autenticación pasan tal cual: la forja no guarda claves.
 
 ### En la flota
@@ -152,7 +166,9 @@ Las cabeceras de autenticación pasan tal cual: la forja no guarda claves.
 `fleet.forja` (`nixos-config/modules/services/forja.nix`) la despliega con
 el overlay de este flake (`overlays.default`). Corre en a2 para toda la malla:
 `ANTHROPIC_BASE_URL=http://[b1c1:a2::1]:8090`, cantera en la GreptimeDB de
-la flota (DB `forja`) y horno en `/var/lib/forja/horno`. Un cristal nuevo
+la flota (DB `forja`) y horno en `/var/lib/forja/horno`. Por Chat
+Completions tiene detrás el llama-server de a1 (`fleet.llmLocal`), y
+trabajo-kt le manda la extracción (`fleet.trabajo.localLlm.url`). Un cristal nuevo
 llega a la flota con `nix flake update cristales` y un apply.
 
 ### Cantera en GreptimeDB

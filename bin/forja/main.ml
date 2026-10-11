@@ -7,6 +7,8 @@
    FORJA_IP           dirección de escucha        (127.0.0.1)
    FORJA_PUERTO       puerto                      (8090)
    FORJA_UPSTREAM     API real                    (https://api.anthropic.com)
+   FORJA_UPSTREAM_OPENAI  servidor Chat Completions (sin él, /v1/chat/completions
+                      pasa a FORJA_UPSTREAM sin tocar)
    FORJA_HORNO        dónde dejar tareas maduras  (./horno)
    FORJA_GREPTIME     raíz HTTP de GreptimeDB     (sin ella, cantera en memoria)
    FORJA_GREPTIME_DB  base de datos               (public) *)
@@ -49,4 +51,5 @@ let () =
   Printf.eprintf "forja: escuchando en %s:%d\n%!" (entorno "FORJA_IP" "127.0.0.1") puerto;
   Forja_http.Proxy.servir ~sw ~net ~ip ~puerto
     { cliente; upstream = Uri.of_string (entorno "FORJA_UPSTREAM" "https://api.anthropic.com");
+      openai = Option.map Uri.of_string (Sys.getenv_opt "FORJA_UPSTREAM_OPENAI");
       forja; madura }

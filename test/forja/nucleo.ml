@@ -222,4 +222,46 @@ let () =
   comprueba "la semilla toma la plantilla de quien la tenga" (contiene s "Pon en mayúsculas.");
   comprueba "la semilla dice que no hubo respuesta" (contiene s "Sin respuesta")
 
+(* Chat Completions: la forma de buzon-kt sobre llama-server. *)
+let () =
+  let module O = Forja_http.Openai in
+  let j = Yojson.Safe.from_string in
+  let p ?tarea s = Result.map fst (O.peticion ~tarea (j s)) in
+  let esquema = {|"response_format":{"type":"json_schema","json_schema":{"name":"x","schema":{"type":"object"}}}|} in
+  (match
+     p (Printf.sprintf {|{"messages":[{"role":"system","content":"Extrae."},{"role":"user","content":"hola"}],%s}|} esquema)
+   with
+  | Ok { entrada; plantilla; _ } ->
+      comprueba "openai: entrada" (entrada = "hola");
+      comprueba "openai: el esquema entra en la plantilla"
+        (plantilla = {|Extrae.
+
+## Esquema
+
+{"name":"x","schema":{"type":"object"}}|})
+  | Error e -> comprueba ("openai: petición con esquema: " ^ e) false);
+  comprueba "openai: texto sin response_format"
+    (match p {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"}]}|} with
+    | Ok { plantilla = "S"; _ } -> true
+    | _ -> false);
+  let paso s = Result.is_error (p s) in
+  comprueba "openai: sin system ni tarea es paso" (paso {|{"messages":[{"role":"user","content":"x"}]}|});
+  comprueba "openai: varios turnos es paso"
+    (paso {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|});
+  comprueba "openai: herramientas es paso"
+    (paso {|{"tools":[{}],"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"}]}|});
+  comprueba "openai: json_object sin esquema es paso"
+    (paso {|{"response_format":{"type":"json_object"},"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"}]}|});
+  let respuesta fin c =
+    j (Printf.sprintf {|{"choices":[{"finish_reason":"%s","message":{"role":"assistant","content":%S}}]}|} fin c)
+  in
+  comprueba "openai: el objeto en forma canónica"
+    (O.salida Esquema (respuesta "stop" {|{"b":1,"a":2}|}) = Some {|{"a":2,"b":1}|});
+  comprueba "openai: length no es una salida" (O.salida Texto (respuesta "length" "HO") = None);
+  comprueba "openai: un contenido que no es objeto no es salida estructurada"
+    (O.salida Esquema (respuesta "stop" "hola") = None);
+  comprueba "openai: el cristal sale legible"
+    (O.salida Esquema (Result.get_ok (O.respuesta ~modelo:"m" Esquema {|{"a":1}|})) = Some {|{"a":1}|});
+  comprueba "openai: cristal sin JSON es error" (Result.is_error (O.respuesta ~modelo:"m" Esquema "no"))
+
 let () = if !fallos > 0 then exit 1
