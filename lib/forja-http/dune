@@ -1,0 +1,25 @@
+(library
+ (name forja_http)
+ (public_name cristales.forja-http)
+ (libraries
+  forja
+  cristal
+  eio
+  cohttp-eio
+  http
+  tls
+  tls-eio
+  ca-certs
+  domain-name
+  yojson
+  uri))
+
+; El prompt de nucleación va dentro del binario: el horno lo rellena.
+
+(rule
+ (with-stdout-to
+  prompt.ml
+  (progn
+   (echo "let cristalizar = {forja|")
+   (cat %{project_root}/prompts/cristalizar.md)
+   (echo "|forja}\n"))))

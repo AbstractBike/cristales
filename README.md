@@ -45,6 +45,10 @@ como pesos ni como contexto.
 El LLM deja de ser un intérprete y pasa a ser un **compilador**: no ejecuta tu
 problema, te escribe el programa que lo ejecuta.
 
+Y si no sabes cuáles son las etapas, la [forja](doc/forja.md) las descubre:
+un proxy delante del LLM que ve pasar las tareas, avisa cuando una está madura
+para cristalizar y, una vez cristalizada, la atiende sin llamar al modelo.
+
 ## Por qué
 
 - **Pureza.** Un cristal es una función pura del input. Igual que un flake sin
@@ -62,8 +66,11 @@ problema, te escribe el programa que lo ejecuta.
 | [`doc/concepto.md`](doc/concepto.md) | Vocabulario: semilla, nucleación, cristal, defecto, fusión… |
 | [`doc/pipelines.md`](doc/pipelines.md) | Protocolo para cristalizar una pipeline de IA, etapa a etapa |
 | [`doc/anatomia.md`](doc/anatomia.md) | Cómo se guarda un cristal en un repositorio |
+| [`doc/forja.md`](doc/forja.md) | La forja: proxy de LLM que cristaliza las tareas que atiende |
 | [`prompts/cristalizar.md`](prompts/cristalizar.md) | El prompt de nucleación: pedir el método, no el resultado |
 | [`lib/`](lib/) | `cristal`, librería OCaml 5: etapas líquida/mixta/cristalina y su composición |
+| [`lib/forja/`](lib/forja/), [`lib/forja-http/`](lib/forja-http/) | Núcleo de la forja y su proxy HTTP (Messages API, GreptimeDB) |
+| [`bin/forja/`](bin/forja/) | El binario `forja` y su vitrina de cristales |
 | [`cristales/fecha-es/`](cristales/fecha-es/) | Cristal de ejemplo: fechas en español a ISO 8601 |
 
 ## Construir

@@ -1,0 +1,16 @@
+(executable
+ (name main)
+ (public_name forja)
+ (package cristales)
+ (libraries
+  forja
+  forja_http
+  fecha_es
+  cristal
+  eio_main
+  eio.unix
+  mirage-crypto-rng.unix
+  ipaddr
+  ipaddr.unix
+  unix
+  uri))

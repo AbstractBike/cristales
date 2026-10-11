@@ -1,0 +1,3 @@
+(tests
+ (names nucleo extremo)
+ (libraries forja forja_http cristal eio eio_main cohttp-eio http yojson uri))
