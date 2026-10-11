@@ -8,7 +8,7 @@
       sistemas = [ "x86_64-linux" "aarch64-linux" ];
       # Los forja-mcp de cada lenguaje (mcp/<lenguaje>, mcp/CONTRATO.md); el
       # de OCaml va dentro de cristales (bin/forja-mcp).
-      lenguajes = [ "typescript" "go" "rust" "kotlin" ];
+      lenguajes = [ "typescript" "go" "rust" "kotlin" "python" ];
       mcp = l: "forja-mcp-${l}";
       # Todo es privativo (COPYRIGHT.md): solo esto se admite como unfree.
       propios = [ "cristales" ] ++ map mcp lenguajes;
