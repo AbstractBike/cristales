@@ -1,0 +1,20 @@
+# © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
+# Libre para investigación; uso comercial: ver COPYRIGHT.md.
+
+[package]
+name = "forja-mcp"
+version = "0.2.0"
+edition = "2024"
+publish = false
+description = "La forja como servidor MCP por stdio (implementación en Rust de mcp/CONTRATO.md)"
+
+[[bin]]
+name = "forja-mcp"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+ureq = { version = "3", default-features = false }
+
+[profile.release]
+strip = true

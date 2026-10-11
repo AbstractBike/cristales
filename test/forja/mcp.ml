@@ -19,7 +19,7 @@ let mayus =
 let vitrina = Forja.Vitrina.(vacia |> con (tarea "mayus") `Mixta mayus ~descripcion:"Mayúsculas.")
 
 let pide l =
-  Option.map Yojson.Safe.from_string (Forja_mcp.linea vitrina l)
+  Option.map Yojson.Safe.from_string (Forja_mcp.linea (Forja_mcp.local vitrina) l)
 
 let campo ruta j =
   List.fold_left (fun j k -> Yojson.Safe.Util.member k j) j ruta

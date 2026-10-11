@@ -245,7 +245,8 @@ let con_forja s =
 
   print_endline "\n# Cristales";
   let r = snd (llamar s "mayus" [ ("entrada", `String "hola, ñandú") ]) in
-  comprueba "salida del cristal" (contenido r = Some ("HOLA, ñandú", false)) (lazy (ver r));
+  (* La forja falsa solo sube el ASCII: lo demás tiene que llegar intacto. *)
+  comprueba "salida del cristal, UTF-8 intacto" (contenido r = Some (String.uppercase_ascii "hola, ñandú", false)) (lazy (ver r));
   let r = snd (llamar s "mayus" [ ("entrada", `String "a1") ]) in
   comprueba "defecto → isError, «defecto: …»" (contenido r = Some ("defecto: dígitos", true)) (lazy (ver r));
   let r = snd (llamar s "fecha-es" [ ("entrada", `String "3 de marzo de 2024") ]) in

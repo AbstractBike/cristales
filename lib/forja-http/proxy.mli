@@ -4,7 +4,8 @@
 (** El proxy: habla la Messages API de Anthropic por los dos lados, así que
     cualquier cliente se enchufa cambiando solo la URL base.
 
-    [POST /v1/messages] pasa por la forja; lo demás se reenvía tal cual.
+    [POST /v1/messages] pasa por la forja; [/forja/…] es su introspección
+    ([Introspeccion], para [forja-mcp]); lo demás se reenvía tal cual.
     Cada respuesta lleva [x-forja-fuente]: [cristal], [liquido], [defecto]
     (un cristal mixto no supo y respondió el LLM) o [paso] (la petición no es
     una tarea cristalizable: varios turnos, herramientas, streaming…). *)
@@ -20,6 +21,10 @@ type t = {
 val cliente : _ Eio.Net.t -> Cohttp_eio.Client.t
 (** Cliente HTTP y HTTPS. Requiere un RNG instalado
     ([Mirage_crypto_rng_unix.use_default]). *)
+
+val http : Cohttp_eio.Client.t -> Http.Method.t -> Uri.t -> string -> int * string
+(** Una petición con cuerpo JSON: estado y cuerpo de la respuesta. Lanza si
+    no hay conexión. *)
 
 val post : Cohttp_eio.Client.t -> Cantera_greptime.post
 (** Un POST con ese cliente, para [Cantera_greptime.crear]. *)

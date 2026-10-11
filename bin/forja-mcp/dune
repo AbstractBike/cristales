@@ -2,4 +2,4 @@
  (name main)
  (public_name forja-mcp)
  (package cristales)
- (libraries forja_mcp vitrina eio eio_main))
+ (libraries forja_mcp forja_http vitrina eio eio_main mirage-crypto-rng.unix yojson uri))

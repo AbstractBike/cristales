@@ -45,6 +45,7 @@ module Cantera = struct
   type t = {
     registrar : muestra -> unit;
     muestras : Tarea.t -> muestra list;
+    tareas : unit -> Tarea.t list;
   }
 
   let en_memoria () =
@@ -53,7 +54,8 @@ module Cantera = struct
     let al_reves t = Option.value ~default:[] (Hashtbl.find_opt h t) in
     let muestras t = List.rev (al_reves t) in
     let registrar m = Hashtbl.replace h m.tarea (m :: al_reves m.tarea) in
-    { registrar; muestras }
+    let tareas () = List.sort compare (List.of_seq (Hashtbl.to_seq_keys h)) in
+    { registrar; muestras; tareas }
 end
 
 module Madurez = struct
@@ -254,3 +256,25 @@ let aprender f p ?contraste ?defecto salida =
 
 let informe f tarea = (estado f tarea).informe
 let cantera f = f.cantera
+
+type fase = [ `Liquida | `Mixta | `Cristalina ]
+
+type resumen = {
+  tarea : Tarea.t;
+  fase : fase;
+  informe : Madurez.informe;
+  madura : bool;
+}
+
+let resumen f tarea =
+  let informe = informe f tarea in
+  { tarea;
+    fase = (match Vitrina.buscar f.vitrina tarea with Some (e, _) -> (e :> fase) | None -> `Liquida);
+    informe;
+    madura = Madurez.madura f.politica informe }
+
+let tareas f =
+  let de_vitrina = List.map (fun (p : Vitrina.pieza) -> p.tarea) (Vitrina.listar f.vitrina) in
+  List.sort_uniq compare (f.cantera.tareas () @ de_vitrina) |> List.map (resumen f)
+
+let vitrina f = f.vitrina

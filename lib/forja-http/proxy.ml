@@ -4,24 +4,27 @@
 type respuesta = { estado : Http.Status.t; cabeceras : Http.Header.t; cuerpo : string }
 
 (* Cliente HTTP(S) sobre Eio. Necesita un RNG instalado para TLS
-   (Mirage_crypto_rng_unix.use_default). *)
+   (Mirage_crypto_rng_unix.use_default). TLS se configura en la primera
+   conexión HTTPS: quien solo habla HTTP (la malla, el loopback) no necesita
+   certificados raíz. *)
 let cliente net =
-  let authenticator =
-    match Ca_certs.authenticator () with
-    | Ok a -> a
-    | Error (`Msg m) -> failwith ("forja: sin certificados raíz: " ^ m)
-  in
   let tls =
-    match Tls.Config.client ~authenticator () with
-    | Ok c -> c
-    | Error (`Msg m) -> failwith ("forja: TLS: " ^ m)
+    lazy
+      (let authenticator =
+         match Ca_certs.authenticator () with
+         | Ok a -> a
+         | Error (`Msg m) -> failwith ("forja: sin certificados raíz: " ^ m)
+       in
+       match Tls.Config.client ~authenticator () with
+       | Ok c -> c
+       | Error (`Msg m) -> failwith ("forja: TLS: " ^ m))
   in
   let https uri flujo =
     let host =
       Option.bind (Uri.host uri) (fun h ->
           Result.to_option (Result.bind (Domain_name.of_string h) Domain_name.host))
     in
-    Tls_eio.client_of_flow tls ?host flujo
+    Tls_eio.client_of_flow (Lazy.force tls) ?host flujo
   in
   Cohttp_eio.Client.make ~https:(Some https) net
 
@@ -37,6 +40,10 @@ let llamar cliente meth uri ~cabeceras cuerpo =
       ~body:(Cohttp_eio.Body.of_string cuerpo) meth uri
   in
   { estado = Http.Response.status r; cabeceras = Http.Response.headers r; cuerpo = leer b }
+
+let http cliente meth uri cuerpo =
+  let r = llamar cliente meth uri cuerpo ~cabeceras:(Http.Header.of_list [ ("content-type", "application/json") ]) in
+  (Http.Status.to_int r.estado, r.cuerpo)
 
 (* Para la cantera de GreptimeDB. *)
 let post cliente uri ~tipo cuerpo =
@@ -136,9 +143,16 @@ let mensajes p req cuerpo =
           liquido p req cuerpo pet forma ~contrastar ~defecto)
 
 let atender p req cuerpo =
-  match (Http.Request.meth req, Uri.path (Uri.of_string (Http.Request.resource req))) with
-  | `POST, "/v1/messages" -> mensajes p req cuerpo
-  | _ -> con_fuente "paso" (reenviar p req cuerpo)
+  let uri = Uri.of_string (Http.Request.resource req) and meth = Http.Request.meth req in
+  match Introspeccion.atender p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
+  | Some r ->
+      { estado = Http.Status.of_int r.estado;
+        cabeceras = Http.Header.of_list [ ("content-type", r.tipo) ];
+        cuerpo = r.cuerpo }
+  | None -> (
+      match (meth, Uri.path uri) with
+      | `POST, "/v1/messages" -> mensajes p req cuerpo
+      | _ -> con_fuente "paso" (reenviar p req cuerpo))
 
 let servir ~sw ~net ~ip ~puerto p =
   let callback _ req cuerpo =

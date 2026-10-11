@@ -32,14 +32,15 @@ let fila = function
               defecto = (if defecto = "" then None else Some defecto) })
   | _ -> None
 
-let filas j =
+(* Las filas de la respuesta de /v1/sql. *)
+let crudas j =
   let open Yojson.Safe.Util in
   try
     j |> member "output" |> to_list
-    |> List.concat_map (fun o ->
-           o |> member "records" |> member "rows" |> to_list)
-    |> List.filter_map fila
+    |> List.concat_map (fun o -> o |> member "records" |> member "rows" |> to_list)
   with Type_error _ -> []
+
+let filas j = List.filter_map fila (crudas j)
 
 (* GreptimeDB caído o con error: se cuenta y se sigue. *)
 let avisar = function
@@ -64,16 +65,24 @@ let crear ~post ~url ?(db = "public") ?(tabla = "forja_cantera") () =
   let registrar m =
     avisar (post ingesta ~tipo:"application/json" (Yojson.Safe.to_string (json m)))
   in
+  (* Lo que se pueda leer; nada si la tabla aún no existe. *)
+  let leer consulta =
+    match sql db consulta with
+    | Ok (c, b) when c < 300 -> ( try crudas (Yojson.Safe.from_string b) with Yojson.Json_error _ -> [])
+    | Ok _ | Error _ -> []
+  in
   (* La tarea es un nombre validado ([a-z0-9-]): se puede citar sin
      escapar. *)
   let muestras tarea =
-    let consulta =
-      Printf.sprintf "SELECT %s FROM %s WHERE tarea = '%s' ORDER BY greptime_timestamp"
-        (String.concat ", " columnas) tabla (Forja.Tarea.to_string tarea)
-    in
-    match sql db consulta with
-    | Ok (c, b) when c < 300 -> (
-        try filas (Yojson.Safe.from_string b) with Yojson.Json_error _ -> [])
-    | Ok _ | Error _ -> []
+    leer
+      (Printf.sprintf "SELECT %s FROM %s WHERE tarea = '%s' ORDER BY greptime_timestamp"
+         (String.concat ", " columnas) tabla (Forja.Tarea.to_string tarea))
+    |> List.filter_map fila
   in
-  { Forja.Cantera.registrar; muestras }
+  let tareas () =
+    leer (Printf.sprintf "SELECT DISTINCT tarea FROM %s ORDER BY tarea" tabla)
+    |> List.filter_map (function
+         | `List [ `String t ] -> Result.to_option (Forja.Tarea.explicita t)
+         | _ -> None)
+  in
+  { Forja.Cantera.registrar; muestras; tareas }

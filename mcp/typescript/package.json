@@ -1,0 +1,11 @@
+{
+  "name": "forja-mcp",
+  "version": "0.2.0",
+  "description": "Servidor MCP de la forja de cristales (cliente fino de su API de introspección).",
+  "private": true,
+  "license": "SEE LICENSE IN COPYRIGHT.md",
+  "type": "module",
+  "bin": { "forja-mcp": "dist/forja-mcp.js" },
+  "engines": { "node": ">=22" },
+  "scripts": { "build": "tsc -p ." }
+}

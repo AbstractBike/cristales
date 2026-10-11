@@ -87,6 +87,7 @@ module Cantera : sig
   type t = {
     registrar : muestra -> unit;
     muestras : Tarea.t -> muestra list;  (** En orden de llegada. *)
+    tareas : unit -> Tarea.t list;  (** Las que tienen alguna muestra. *)
   }
 
   val en_memoria : unit -> t
@@ -164,5 +165,25 @@ val aprender :
 (** Registra en la cantera la salida del LLM. Devuelve [Some informe] la
     primera vez que la tarea madura; quien llama prepara la semilla. *)
 
+(** {1 Introspección}
+
+    Lo que la forja sabe de cada tarea, para quien la observa (la API
+    [/forja/…] del proxy y, a través de ella, [forja-mcp]). *)
+
+type fase = [ `Liquida | `Mixta | `Cristalina ]
+
+type resumen = {
+  tarea : Tarea.t;
+  fase : fase;  (** [`Liquida] si no está en la vitrina. *)
+  informe : Madurez.informe;
+  madura : bool;  (** Según la política de la forja. *)
+}
+
+val resumen : t -> Tarea.t -> resumen
+
+val tareas : t -> resumen list
+(** Las de la cantera y las de la vitrina, por nombre. *)
+
+val vitrina : t -> Vitrina.t
 val informe : t -> Tarea.t -> Madurez.informe
 val cantera : t -> Cantera.t
