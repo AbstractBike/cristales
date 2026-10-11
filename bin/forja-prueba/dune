@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name forja-prueba)
+ (package cristales)
+ (libraries forja_http eio_main cohttp-eio http yojson uri unix mirage-crypto-rng.unix))
