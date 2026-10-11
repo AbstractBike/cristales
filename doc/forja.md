@@ -8,6 +8,18 @@ son las etapas**: se pone delante del LLM, ve pasar el tráfico, descubre qué
 tareas se repiten, avisa cuando una está madura para cristalizar y, una vez
 cristalizada, la atiende sin llamar al modelo.
 
+El patrón tiene dos variantes, sobre el mismo núcleo y la misma vitrina:
+
+- **Proxy: la forja delante del LLM.** Las aplicaciones le hablan a la forja
+  como si fuera el modelo; ella decide si responde un cristal o el LLM, y
+  aprende de lo que responde el LLM. Es la que cristaliza: el resto del
+  documento hasta [la variante MCP](#variante-mcp-el-llm-delante-de-la-forja).
+- **MCP: el LLM delante de la forja.** Un agente (Claude Code, Claude
+  Desktop) tiene la forja como herramientas: llama a los cristales cuando le
+  hacen falta y la observa (qué tareas pasan, cuáles están maduras, sus
+  semillas y su prompt de nucleación). Es la que cierra el ciclo: el agente
+  que la consulta puede nuclear el cristal que la forja le señala.
+
 ```
                       ┌──────────────────── forja ─────────────────────┐
  cliente ──/v1/messages──► ¿tarea? ──► vitrina ──► cristal ──► respuesta (x-forja-fuente: cristal)
@@ -46,7 +58,8 @@ después es código: generaliza a entradas que nunca vio, se revisa en un
 | Madurez | Política que decide cuándo una tarea está lista para nuclear | `Forja.Madurez` |
 | Horno | Directorio donde quedan la semilla y el prompt de nucleación de cada tarea madura | `Horno`, `$FORJA_HORNO` |
 | Proxy | Messages API de Anthropic por los dos lados | `Proxy`, `bin/forja` |
-| MCP | La vitrina como herramientas para Claude Desktop o Claude Code | `Forja_mcp`, `bin/forja-mcp` |
+| Introspección | La API de solo lectura `/forja/…`: vitrina, tareas, semillas, nucleación | `Introspeccion` |
+| MCP | La forja como herramientas para un agente, en seis lenguajes | `mcp/`, `bin/forja-mcp` |
 
 El núcleo (`lib/forja`) es puro salvo la cantera, que se inyecta: decide
 (`decidir`) y aprende (`aprender`), pero no habla HTTP ni llama al LLM. La
@@ -164,35 +177,114 @@ Los cristales tipados se adaptan a texto → texto al registrarlos; el contexto
 que necesiten (la fecha de hoy para `fecha-es`) lo pone el adaptador, el
 cristal sigue puro.
 
-## La vitrina como servidor MCP
+## Variante MCP: el LLM delante de la forja
 
-El proxy pone la forja *delante* del LLM. `forja-mcp` hace lo contrario: el
-LLM llama al cristal cuando lo necesita. Cada cristal de la vitrina es una
-herramienta MCP con el nombre de su tarea, un argumento `entrada` (texto) y
-la descripción con que se registró en `lib/vitrina/vitrina.ml`:
+El proxy pone la forja *delante* del LLM: el modelo es el respaldo de los
+cristales. `forja-mcp` le da la vuelta: el LLM es un agente que tiene la
+forja entre sus herramientas, y la usa de dos maneras.
+
+```
+                    ┌──────────── agente (Claude Code, Claude Desktop…) ────────────┐
+                    │                                                              │
+   usa los cristales│  fecha-es("pasado mañana") ──► "2026-10-13"                  │
+                    │                    defecto ──► isError: el agente decide     │
+                    │                                                              │
+   observa la forja │  forja_tareas ──► t-712d… líquida, 23 muestras, madura        │
+                    │  forja_semilla / forja_nucleacion ──► escribe el cristal ─┐   │
+                    └───────────────────────────────────────────────────────────┼───┘
+                         │ stdio (MCP)                                          │ commit + revisión
+                         ▼                                                      ▼
+                    forja-mcp ──HTTP──► forja (/forja/…) ◄──────── vitrina ◄── cristales/<tarea>/
+```
+
+**Los cristales como herramientas.** Cada cristal de la vitrina es una
+herramienta con el nombre de su tarea, un argumento `entrada` (texto) y la
+descripción con que se registró en `lib/vitrina/vitrina.ml`:
 
 ```ocaml
 |> con (tarea "fecha-es") `Mixta fecha_es ~descripcion:"Convierte una fecha …"
 ```
 
 No hay respaldo líquido: quien llama ya es un LLM. Un defecto vuelve como
-resultado con `isError` y el motivo (`defecto: fuera de dominio: …`), y el
+resultado con `isError` y su motivo (`defecto: fuera de dominio: …`), y el
 modelo decide qué hacer con él. El estado `Mixta`/`Cristalina` no cambia
-nada aquí.
+nada aquí. Es la forma de usar los cristales desde clientes que no se pueden
+poner detrás del proxy, como el chat de Claude Desktop.
 
-Es la forma de usar los cristales desde clientes que no hablan la Messages
-API a través de una URL base propia, como el chat de Claude Desktop, que
-no se puede poner detrás del proxy. Va por stdio, una línea JSON-RPC por
-mensaje:
+**La forja como objeto de trabajo.** Cuatro herramientas fijas la hacen
+observable:
+
+| Herramienta | Qué da |
+|---|---|
+| `forja_tareas` | Cada tarea con su fase, muestras, contrastes, coincidencias y si está madura |
+| `forja_tarea` | El detalle de una: informe, plantilla y últimas muestras |
+| `forja_semilla` | Su `SEMILLA.md`, como la deja el horno |
+| `forja_nucleacion` | El prompt de nucleación relleno: lo que se le pide al LLM para que escriba el cristal |
+
+Con ellas el ciclo se cierra sin salir del agente. La forja (variante proxy)
+recoge muestras de lo que pasa por ella; el agente (variante MCP) ve qué
+tarea ha madurado, lee su prompt de nucleación, escribe el cristal y su red
+según [`anatomia.md`](anatomia.md) y propone el commit. La revisión y el
+commit siguen siendo la frontera: la forja no carga código generado en
+caliente, y el cristal aparece como herramienta (y en el proxy) cuando entra
+en la vitrina y se despliega.
+
+### Cómo está hecho
+
+- **Una sola lógica.** Los servidores no reimplementan la forja: son clientes
+  finos de su API de introspección, que sirve el proxy junto a
+  `/v1/messages` (`Introspeccion`, de solo lectura salvo la ejecución directa
+  de un cristal):
+
+  ```
+  GET  /forja/vitrina                       los cristales y su descripción
+  POST /forja/vitrina/{tarea}               {"entrada"} → {"salida"} | {"defecto"}
+  GET  /forja/tareas                        fase, muestras, contrastes, madura
+  GET  /forja/tareas/{tarea}?muestras=5     detalle y últimas muestras
+  GET  /forja/tareas/{tarea}/semilla        SEMILLA.md
+  GET  /forja/tareas/{tarea}/nucleacion     prompt de nucleación
+  ```
+
+- **Un contrato, seis lenguajes.** [`mcp/CONTRATO.md`](../mcp/CONTRATO.md)
+  fija el transporte (stdio, una línea JSON-RPC por mensaje), las
+  herramientas, la validación (`tarea` es `^[a-z0-9-]{1,64}$`, así no hay
+  forma de colarse en otra ruta) y los errores. Lo implementan OCaml
+  (`bin/forja-mcp`), TypeScript, Go, Rust, Kotlin y Python (`mcp/<lenguaje>/`),
+  sin dependencias salvo `serde_json` y `ureq` en Rust.
+- **Una prueba para todos.** [`mcp/conformidad`](../mcp/conformidad/) levanta
+  una forja falsa, lanza el servidor y le hace 41 comprobaciones por stdio;
+  `nix flake check` la pasa contra los seis (`checks.conformidad-<lenguaje>`).
+
+### Uso
 
 ```json
-{ "mcpServers": { "cristales": { "command": "forja-mcp" } } }
+{ "mcpServers": { "forja": { "command": "forja-mcp",
+                             "env": { "FORJA_URL": "http://[b1c1:a2::1]:8090" } } } }
 ```
 
-en `claude_desktop_config.json` (en la flota, lo declara home-manager), o
-`claude mcp add cristales -- forja-mcp` en Claude Code. Un cristal nuevo en
-la vitrina aparece en los dos sitios a la vez: el proxy y el MCP leen la
-misma lista.
+en `claude_desktop_config.json`, o
+`claude mcp add forja -e FORJA_URL=http://[b1c1:a2::1]:8090 -- forja-mcp` en
+Claude Code. Cada lenguaje es un paquete del flake
+(`nix build .#forja-mcp-go`, `.#forja-mcp-python`…); el de OCaml viene con
+`.#default`.
+
+`forja-mcp --local` (solo el de OCaml) sirve los cristales compilados en el
+propio proceso, sin red ni herramientas fijas: para un Claude Desktop fuera
+de la malla. Un cristal nuevo en la vitrina aparece en el proxy y en los MCP a
+la vez: todos leen la misma lista.
+
+### Cuándo cada variante
+
+| | Proxy | MCP |
+|---|---|---|
+| Quién llama | Una aplicación, como si la forja fuera el modelo | Un agente, que decide cuándo |
+| Sin cristal | Responde el LLM y se guarda la muestra | No hay herramienta: el agente lo resuelve él |
+| Defecto | Mixta: el LLM; cristalina: `422` | `isError`: el agente decide |
+| Aprende | Sí: cantera, contraste, madurez, horno | No: lee lo que aprendió el proxy |
+| Nuclea | Deja la semilla en el horno | El agente puede escribir el cristal |
+
+Las dos se usan juntas: el proxy en el camino de las pipelines, el MCP en el
+agente que las cuida.
 
 ## Cabeceras de respuesta
 
@@ -214,8 +306,12 @@ cristal.
 - **Una sola fibra de estado.** El estado en memoria de la forja (contadores,
   avisos) no está protegido para varios dominios: el proxy corre en uno, con
   fibras de Eio.
-- **Salida textual.** La forja ve la respuesta como texto. Si la tarea pide
-  JSON, el cristal devuelve el JSON como texto; validarlo es trabajo de su red.
+- **Salida estructurada, sin esquema.** Con herramienta forzada, la forja
+  comprueba que el cristal da un objeto JSON, pero no lo valida contra el
+  `input_schema` de la herramienta: eso es trabajo de la red del cristal.
+- **Introspección sin autenticación.** `/forja/…` enseña las muestras de la
+  cantera (las entradas de las pipelines) a quien llegue al puerto: en la
+  flota, solo la malla.
 
 
 ---
