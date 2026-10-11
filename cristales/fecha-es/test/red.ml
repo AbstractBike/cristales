@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (* Red cristalina de fecha-es: los ejemplos y el fuera de dominio de
    SEMILLA.md, más las invariantes sobre un barrido del calendario. *)

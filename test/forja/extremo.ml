@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (* De extremo a extremo por HTTP: cliente → forja → LLM falso. La tarea
    empieza líquida, madura y deja su semilla en el horno; con su cristal en

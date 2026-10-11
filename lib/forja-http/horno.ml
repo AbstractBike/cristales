@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (* El horno es el directorio donde la forja deja las tareas maduras, listas
    para nuclear: horno/<tarea>/SEMILLA.md y horno/<tarea>/nucleacion.md.

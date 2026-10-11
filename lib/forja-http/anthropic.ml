@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 let cabecera_tarea = "x-forja-tarea"
 let ( let* ) = Result.bind

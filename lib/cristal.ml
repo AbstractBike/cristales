@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 type motivo = string
 type ('i, 'o) cristal = { nombre : string; aplicar : 'i -> ('o, motivo) result }

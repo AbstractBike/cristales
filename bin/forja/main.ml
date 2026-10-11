@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (* forja: proxy de LLM que cristaliza las tareas que atiende. Ver
    doc/forja.md. Se configura por entorno (lo fija el módulo NixOS):

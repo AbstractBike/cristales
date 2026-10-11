@@ -1,5 +1,5 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
-   Sin licencia. Ver COPYRIGHT.md. *)
+   Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (* Los cristales que atiende el proxy. Añadir uno es un commit: se nuclea
    desde el horno, se revisa, se mete en cristales/<tarea>/ y se registra
