@@ -24,8 +24,8 @@ expresión concreta: **derechos de autor**, **licencia** y, si se quiere,
 - La fecha de un commit la escribe quien lo hace: **no prueba nada por sí
   sola**. La prueba fuerte es lo que registran terceros (GitHub, Software
   Heritage, un sello de tiempo, un registro). Por eso los pasos de abajo.
-- Esta rama (`forja-mcp-multilenguaje`), con los MCP y este expediente,
-  **no se ha publicado**: lo que entra en `main` acaba en GitHub.
+- Esta rama (`forja-mcp-multilenguaje`), con los MCP y este expediente, se
+  publicó en GitHub el 2026-10-11, después de sellarla (pasos 2 y 7).
 
 ## Pasos, en orden
 
@@ -37,7 +37,7 @@ expresión concreta: **derechos de autor**, **licencia** y, si se quiere,
 | 4 | Publicar la divulgación en un repositorio de prior art: **Technical Disclosure Commons** (gratis, lo leen examinadores) y/o **Zenodo** (DOI) o **arXiv** | Que los examinadores de patentes la encuentren | Tú |
 | 5 | Registrar la obra (código y documentación) en el **Registro de la Propiedad Intelectual** (o en un registro privado tipo Safe Creative) | Presunción de autoría y fecha en España | Tú (tasa) |
 | 6 | Decidir la **marca** ([`marca.md`](marca.md)) | Que nadie registre el nombre del patrón | Tú |
-| 7 | Publicar esta rama (los MCP) | Solo después de 2–4 | Tú |
+| 7 | Publicar esta rama (los MCP) | Solo después de 2–4 | **Hecho** el 2026-10-11: rama `forja-mcp-multilenguaje` en GitHub (antes de 3–4) |
 | 8 | Si entran contribuciones de terceros: acuerdo de cesión o licencia de contribuidor (CLA) | Seguir siendo el único titular para poder licenciar en comercial | Tú |
 
 ### Sello de tiempo (paso 2)
