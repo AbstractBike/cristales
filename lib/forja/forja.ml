@@ -278,3 +278,4 @@ let tareas f =
   List.sort_uniq compare (f.cantera.tareas () @ de_vitrina) |> List.map (resumen f)
 
 let vitrina f = f.vitrina
+let politica f = f.politica

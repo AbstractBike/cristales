@@ -43,6 +43,9 @@ let () =
     (Option.map (fun r -> r.Forja_http.Introspeccion.estado) (pedir ~meth:`POST ~cuerpo:"x" "/forja/vitrina/mayus") = Some 400);
   comprueba "aplicar: cristal que no está es 404"
     (Option.map (fun r -> r.Forja_http.Introspeccion.estado) (pedir ~meth:`POST ~cuerpo:{|{"entrada":"x"}|} "/forja/vitrina/otro") = Some 404);
+  comprueba "política"
+    (Option.map json (pedir "/forja/politica")
+    = Some (Yojson.Safe.from_string {|{"minimo":2,"contrastar_cada":1,"contrastes":1,"estabilidad":1.0}|}));
   (match Option.map json (pedir "/forja/tareas") with
   | Some (`List [ m; r ]) ->
       comprueba "tareas: la de la vitrina, cristalina" (campo "tarea" m = `String "mayus" && campo "fase" m = `String "cristalina");

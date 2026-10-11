@@ -185,5 +185,6 @@ val tareas : t -> resumen list
 (** Las de la cantera y las de la vitrina, por nombre. *)
 
 val vitrina : t -> Vitrina.t
+val politica : t -> Madurez.politica
 val informe : t -> Tarea.t -> Madurez.informe
 val cantera : t -> Cantera.t

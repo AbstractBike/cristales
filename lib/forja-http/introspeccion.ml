@@ -19,6 +19,16 @@ let resumen (r : Forja.resumen) =
     ("coincidencias", `Int r.informe.coincidencias);
     ("madura", `Bool r.madura) ]
 
+(* Con qué se juzga la madurez: para pintar cuánto le falta a cada tarea
+   (vitrina.pin). *)
+let politica f =
+  let p = Forja.politica f in
+  `Assoc
+    [ ("minimo", `Int p.minimo);
+      ("contrastar_cada", `Int p.contrastar_cada);
+      ("contrastes", `Int p.contrastes);
+      ("estabilidad", `Float p.estabilidad) ]
+
 let vitrina f =
   `List
     (List.map
@@ -89,6 +99,7 @@ let atender f ~meth ~ruta ~query cuerpo =
   match (meth, String.split_on_char '/' ruta) with
   | `GET, [ ""; "forja"; "vitrina" ] -> Some (json 200 (vitrina f))
   | `POST, [ ""; "forja"; "vitrina"; t ] -> Some (aplicar f t cuerpo)
+  | `GET, [ ""; "forja"; "politica" ] -> Some (json 200 (politica f))
   | `GET, [ ""; "forja"; "tareas" ] ->
       Some (json 200 (`List (List.map (fun r -> `Assoc (resumen r)) (Forja.tareas f))))
   | `GET, [ ""; "forja"; "tareas"; t ] -> Some (detalle f t query)

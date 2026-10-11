@@ -107,6 +107,9 @@ GET  /forja/vitrina
 POST /forja/vitrina/{tarea}        {"entrada": "3 de marzo de 2024"}
   200 {"salida": "2024-03-03"}  |  200 {"defecto": "…"}  |  404  |  400
 
+GET  /forja/politica
+  200 {"minimo": 20, "contrastar_cada": 10, "contrastes": 2, "estabilidad": 0.9}
+
 GET  /forja/tareas
   200 [{"tarea": "t-712d41d0978b", "fase": "liquida", "muestras": 23,
         "contrastes": 2, "coincidencias": 2, "madura": true}]

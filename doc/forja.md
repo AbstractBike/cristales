@@ -239,6 +239,7 @@ en la vitrina y se despliega.
   ```
   GET  /forja/vitrina                       los cristales y su descripción
   POST /forja/vitrina/{tarea}               {"entrada"} → {"salida"} | {"defecto"}
+  GET  /forja/politica                      con qué se juzga la madurez
   GET  /forja/tareas                        fase, muestras, contrastes, madura
   GET  /forja/tareas/{tarea}?muestras=5     detalle y últimas muestras
   GET  /forja/tareas/{tarea}/semilla        SEMILLA.md
@@ -254,6 +255,11 @@ en la vitrina y se despliega.
 - **Una prueba para todos.** [`mcp/conformidad`](../mcp/conformidad/) levanta
   una forja falsa, lanza el servidor y le hace 41 comprobaciones por stdio;
   `nix flake check` la pasa contra los seis (`checks.conformidad-<lenguaje>`).
+
+- **A la vista.** La misma API es la que pinta `vitrina.pin` en la flota
+  (`modules/services/vitrina-ui.nix` de nixos-config): los cristales, las
+  tareas camino de la madurez (con `/forja/politica` para saber cuánto les
+  falta) y un campo para probar cada cristal.
 
 ### Uso
 
