@@ -6,19 +6,35 @@
 
 val cabecera_tarea : string
 (** [x-forja-tarea]: nombre explícito de la tarea. Sin ella, la tarea se
-    deriva del system prompt. *)
+    deriva de la plantilla. *)
+
+(** Qué devuelve la tarea. *)
+type forma =
+  | Texto  (** El texto de la respuesta ([end_turn]). *)
+  | Herramienta of string
+      (** La entrada de una herramienta forzada con
+          [tool_choice = {type: tool, name}]: la salida es su JSON. Es la
+          forma de las pipelines con salida estructurada. *)
 
 val peticion :
-  tarea:string option -> Yojson.Safe.t -> (Forja.peticion, string) result
+  tarea:string option -> Yojson.Safe.t -> (Forja.peticion * forma, string) result
 (** [Ok] si la petición es una tarea cristalizable: un solo turno de usuario
-    con texto, instrucciones en [system] (o tarea explícita), sin
-    herramientas y sin streaming. [Error motivo] en otro caso: la petición
-    pasa al LLM sin que la forja la toque. *)
+    con texto, instrucciones en [system] (o tarea explícita), sin streaming,
+    y sin herramientas o con una sola forzada. La plantilla es el [system]
+    y, con herramienta, su definición: otra herramienta, otra tarea.
+    [Error motivo] en otro caso: la petición pasa al LLM sin que la forja la
+    toque. *)
+
+val salida : forma -> Yojson.Safe.t -> string option
+(** La salida de una respuesta del LLM: el texto si terminó en [end_turn], o
+    el JSON (canónico: claves ordenadas) de la herramienta si terminó en
+    [tool_use]. *)
 
 val texto : Yojson.Safe.t -> string option
-(** Texto de una respuesta del LLM que terminó en [end_turn]. *)
+(** [salida Texto]. *)
 
-val respuesta : modelo:string -> string -> Yojson.Safe.t
-(** Respuesta en formato Messages con el texto que dio el cristal. *)
+val respuesta : modelo:string -> forma -> string -> (Yojson.Safe.t, string) result
+(** Respuesta en formato Messages con la salida de un cristal. [Error] si la
+    forma es [Herramienta] y la salida no es un objeto JSON. *)
 
 val error : tipo:string -> string -> Yojson.Safe.t

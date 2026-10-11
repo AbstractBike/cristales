@@ -84,22 +84,22 @@ let json estado j =
     cabeceras = Http.Header.of_list [ ("content-type", "application/json") ];
     cuerpo = Yojson.Safe.to_string j }
 
-let liquido p req cuerpo (pet : Forja.peticion) ~contrastar ~defecto =
+let liquido p req cuerpo (pet : Forja.peticion) forma ~contrastar ~defecto =
   let r, contraste =
     if contrastar then
       Eio.Fiber.pair (fun () -> reenviar p req cuerpo) (fun () -> Some (reenviar p req cuerpo))
     else (reenviar p req cuerpo, None)
   in
-  let texto r =
+  let salida r =
     if Http.Status.to_int r.estado = 200 then
-      try Anthropic.texto (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
+      try Anthropic.salida forma (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
     else None
   in
-  (match texto r with
+  (match salida r with
   | None -> ()
-  | Some salida -> (
-      let contraste = Option.bind contraste texto in
-      match Forja.aprender p.forja pet ?contraste ?defecto salida with
+  | Some s -> (
+      let contraste = Option.bind contraste salida in
+      match Forja.aprender p.forja pet ?contraste ?defecto s with
       | Some informe -> p.madura pet.tarea informe
       | None -> ()));
   con_fuente ~tarea:pet.tarea (if defecto = None then "liquido" else "defecto") r
@@ -109,19 +109,23 @@ let mensajes p req cuerpo =
     match Yojson.Safe.from_string cuerpo with
     | j ->
         let tarea = Http.Header.get (Http.Request.headers req) Anthropic.cabecera_tarea in
-        Result.map (fun pet -> (pet, j)) (Anthropic.peticion ~tarea j)
+        Result.map (fun (pet, forma) -> (pet, forma, j)) (Anthropic.peticion ~tarea j)
     | exception Yojson.Json_error e -> Error e
   in
   match peticion with
   | Error _ -> con_fuente "paso" (reenviar p req cuerpo)
-  | Ok (pet, j) -> (
+  | Ok (pet, forma, j) -> (
       match Forja.decidir p.forja pet with
-      | Por_cristal salida ->
+      | Por_cristal salida -> (
           let modelo =
             match Yojson.Safe.Util.member "model" j with `String m -> m | _ -> "forja"
           in
-          con_fuente ~tarea:pet.tarea "cristal"
-            (json `OK (Anthropic.respuesta ~modelo salida))
+          match Anthropic.respuesta ~modelo forma salida with
+          | Ok r -> con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
+          (* Un cristal de herramienta que no da JSON tiene una impureza: se
+             trata como defecto y responde el LLM. *)
+          | Error motivo ->
+              liquido p req cuerpo pet forma ~contrastar:false ~defecto:(Some motivo))
       | Fallo { etapa; motivo } ->
           con_fuente ~tarea:pet.tarea "defecto"
             (json `Unprocessable_entity
@@ -129,7 +133,7 @@ let mensajes p req cuerpo =
                   (Printf.sprintf "forja: la tarea %s es cristalina y su cristal no sabe: %s"
                      etapa motivo)))
       | Al_liquido { contrastar; defecto } ->
-          liquido p req cuerpo pet ~contrastar ~defecto)
+          liquido p req cuerpo pet forma ~contrastar ~defecto)
 
 let atender p req cuerpo =
   match (Http.Request.meth req, Uri.path (Uri.of_string (Http.Request.resource req))) with

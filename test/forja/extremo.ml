@@ -17,20 +17,26 @@ let puerto_forja = 18_392
 let llamadas = ref 0
 let leer b = Eio.Buf_read.(parse_exn take_all) b ~max_size:max_int
 
-(* El LLM falso: pone en mayúsculas el texto del usuario. *)
+(* El LLM falso: pone en mayúsculas el texto del usuario; con herramienta
+   forzada, lo devuelve como su entrada: {"mayus": …}. *)
 let llm _ _req cuerpo =
   incr llamadas;
   let open Yojson.Safe.Util in
   let j = Yojson.Safe.from_string (leer cuerpo) in
-  let texto = j |> member "messages" |> index 0 |> member "content" |> to_string in
-  let r = Forja_http.Anthropic.respuesta ~modelo:"falso" (String.uppercase_ascii texto) in
+  let texto = String.uppercase_ascii (j |> member "messages" |> index 0 |> member "content" |> to_string) in
+  let forma, salida =
+    match j |> member "tool_choice" with
+    | `Assoc _ as tc -> let n = tc |> member "name" |> to_string in (Forja_http.Anthropic.Herramienta n, Yojson.Safe.to_string (`Assoc [ ("mayus", `String texto) ]))
+    | _ -> (Forja_http.Anthropic.Texto, texto)
+  in
+  let r = Result.get_ok (Forja_http.Anthropic.respuesta ~modelo:"falso" forma salida) in
   Cohttp_eio.Server.respond_string ~status:`OK ~body:(Yojson.Safe.to_string r) ()
 
 let escuchar ~sw net puerto =
   Eio.Net.listen net ~sw ~backlog:16 ~reuse_addr:true
     (`Tcp (Eio.Net.Ipaddr.V4.loopback, puerto))
 
-let pedir cliente ?(cabeceras = []) cuerpo =
+let pedir cliente ?(cabeceras = []) ?(forma = Forja_http.Anthropic.Texto) cuerpo =
   Eio.Switch.run @@ fun sw ->
   let uri = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d/v1/messages" puerto_forja) in
   let headers =
@@ -43,7 +49,7 @@ let pedir cliente ?(cabeceras = []) cuerpo =
     Cohttp_eio.Client.post cliente ~sw ~headers ~body:(Cohttp_eio.Body.of_string cuerpo) uri
   in
   let fuente = Option.value ~default:"" (Http.Header.get (Http.Response.headers r) "x-forja-fuente") in
-  let texto = Forja_http.Anthropic.texto (Yojson.Safe.from_string (leer b)) in
+  let texto = Forja_http.Anthropic.salida forma (Yojson.Safe.from_string (leer b)) in
   (Http.Status.to_int (Http.Response.status r), fuente, texto)
 
 let mensaje ?(extra = "") t =
@@ -126,4 +132,34 @@ let () =
       comprueba "defecto cristalino es 422"
         (match pedir cliente (mensaje "b2") with 422, "defecto", None -> true | _ -> false);
       comprueba "sin LLM" (!llamadas = antes));
+  (* Herramienta forzada: la forma de las pipelines con salida estructurada. *)
+  let herramienta t =
+    Printf.sprintf
+      {|{"model":"m","max_tokens":10,"system":"Extrae en mayúsculas.","tools":[{"name":"mayus","input_schema":{"type":"object"}}],"tool_choice":{"type":"tool","name":"mayus"},"messages":[{"role":"user","content":%S}]}|}
+      t
+  in
+  let forma = Forja_http.Anthropic.Herramienta "mayus" in
+  let json t = Printf.sprintf {|{"mayus":"%s"}|} t in
+  let cantera = Forja.Cantera.en_memoria () in
+  maduras := [];
+  con_forja (proxy Forja.Vitrina.vacia cantera) (fun () ->
+      let r = List.map (fun t -> pedir cliente ~forma (herramienta t)) [ "uno"; "dos"; "tres" ] in
+      comprueba "herramienta líquida: sale el JSON del LLM"
+        (List.map (fun (c, f, _) -> (c, f)) r = List.init 3 (fun _ -> (200, "liquido"))
+        && List.map (fun (_, _, s) -> s) r = [ Some (json "UNO"); Some (json "DOS"); Some (json "TRES") ]);
+      comprueba "la tarea de herramienta madura" (List.length !maduras = 1));
+  let tarea_h = List.hd !maduras in
+  let cristal_h =
+    Cristal.cristal "mayus-h" (fun s ->
+        if s = "roto" then Ok "esto no es json"
+        else if String.exists (function '0' .. '9' -> true | _ -> false) s then Error "dígitos"
+        else Ok (json (String.uppercase_ascii s)))
+  in
+  con_forja (proxy Forja.Vitrina.(vacia |> con tarea_h `Mixta cristal_h) cantera) (fun () ->
+      let antes = !llamadas in
+      comprueba "el cristal responde tool_use"
+        (pedir cliente ~forma (herramienta "cuatro") = (200, "cristal", Some (json "CUATRO")));
+      comprueba "sin LLM" (!llamadas = antes);
+      comprueba "cristal que no da JSON: defecto, responde el LLM"
+        (pedir cliente ~forma (herramienta "roto") = (200, "defecto", Some (json "ROTO"))));
   if !fallos > 0 then exit 1

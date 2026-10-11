@@ -122,7 +122,7 @@ let () =
 (* Messages API. *)
 let () =
   let j = Yojson.Safe.from_string in
-  let p ?tarea s = Forja_http.Anthropic.peticion ~tarea (j s) in
+  let p ?tarea s = Result.map fst (Forja_http.Anthropic.peticion ~tarea (j s)) in
   (match p {|{"model":"m","system":"Pon en mayúsculas.","messages":[{"role":"user","content":"hola"}]}|} with
   | Ok { tarea; entrada; plantilla } ->
       comprueba "tarea de la plantilla" (tarea = Forja.Tarea.de_plantilla "Pon en mayúsculas.");
@@ -143,7 +143,7 @@ let () =
   comprueba "varios turnos es paso"
     (paso {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|});
   comprueba "streaming es paso" (paso {|{"system":"S","stream":true,"messages":[{"role":"user","content":"x"}]}|});
-  comprueba "herramientas es paso"
+  comprueba "herramientas sin tool_choice forzado es paso"
     (paso {|{"system":"S","tools":[{"name":"t"}],"messages":[{"role":"user","content":"x"}]}|});
   comprueba "imagen es paso"
     (paso {|{"system":"S","messages":[{"role":"user","content":[{"type":"image","source":{}}]}]}|});
@@ -154,7 +154,52 @@ let () =
     (Forja_http.Anthropic.texto (j {|{"stop_reason":"max_tokens","content":[{"type":"text","text":"HO"}]}|})
     = None);
   comprueba "respuesta del cristal es legible como respuesta"
-    (Forja_http.Anthropic.texto (Forja_http.Anthropic.respuesta ~modelo:"m" "HOLA") = Some "HOLA")
+    (Forja_http.Anthropic.texto (Result.get_ok (Forja_http.Anthropic.respuesta ~modelo:"m" Texto "HOLA")) = Some "HOLA")
+
+(* Herramienta forzada: la forma de las pipelines con salida estructurada. *)
+let () =
+  let module A = Forja_http.Anthropic in
+  let j = Yojson.Safe.from_string in
+  let pet herr =
+    Printf.sprintf
+      {|{"model":"m","system":"Extrae.","tools":[{"name":"otra","input_schema":{}},{"name":"extrae","input_schema":{"type":"object"}}],"tool_choice":{"type":"tool","name":"%s"},"messages":[{"role":"user","content":"x"}]}|}
+      herr
+  in
+  (match A.peticion ~tarea:None (j (pet "extrae")) with
+  | Ok (p, A.Herramienta "extrae") ->
+      let contiene s sub =
+        let n = String.length sub in
+        let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+        ir 0
+      in
+      comprueba "la plantilla lleva system y herramienta"
+        (contiene p.plantilla "Extrae." && contiene p.plantilla {|"name":"extrae"|} && not (contiene p.plantilla "otra"))
+  | _ -> comprueba "herramienta forzada es tarea" false);
+  comprueba "otra herramienta, otra tarea"
+    (match (A.peticion ~tarea:None (j (pet "extrae")), A.peticion ~tarea:None (j (pet "otra"))) with
+    | Ok (a, _), Ok (b, _) -> a.tarea <> b.tarea
+    | _ -> false);
+  comprueba "tool_choice a una herramienta que no está es paso"
+    (Result.is_error (A.peticion ~tarea:None (j (pet "nada"))));
+  comprueba "tool_choice auto es paso"
+    (Result.is_error
+       (A.peticion ~tarea:None
+          (j {|{"system":"S","tools":[{"name":"t"}],"tool_choice":{"type":"auto"},"messages":[{"role":"user","content":"x"}]}|})));
+  let resp orden =
+    j (Printf.sprintf {|{"stop_reason":"tool_use","content":[{"type":"text","text":"va"},{"type":"tool_use","id":"t1","name":"extrae","input":%s}]}|} orden)
+  in
+  let a = A.salida (A.Herramienta "extrae") (resp {|{"b":1,"a":{"d":2,"c":3}}|}) in
+  let b = A.salida (A.Herramienta "extrae") (resp {|{"a":{"c":3,"d":2},"b":1}|}) in
+  comprueba "salida de herramienta canónica" (a = Some {|{"a":{"c":3,"d":2},"b":1}|} && a = b);
+  comprueba "otra herramienta no es salida" (A.salida (A.Herramienta "otra") (resp "{}") = None);
+  comprueba "end_turn no es salida de herramienta"
+    (A.salida (A.Herramienta "extrae") (j {|{"stop_reason":"end_turn","content":[{"type":"text","text":"x"}]}|}) = None);
+  (match A.respuesta ~modelo:"m" (A.Herramienta "extrae") {|{"b":1}|} with
+  | Ok r -> comprueba "respuesta del cristal es tool_use legible" (A.salida (A.Herramienta "extrae") r = Some {|{"b":1}|})
+  | Error e -> comprueba ("respuesta de herramienta: " ^ e) false);
+  comprueba "cristal que no da JSON es error"
+    (Result.is_error (A.respuesta ~modelo:"m" (A.Herramienta "extrae") "no es json")
+    && Result.is_error (A.respuesta ~modelo:"m" (A.Herramienta "extrae") "[1]"))
 
 (* Filas de GreptimeDB. *)
 let () =

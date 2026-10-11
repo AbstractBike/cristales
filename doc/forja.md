@@ -53,18 +53,29 @@ capa `lib/forja-http` pone el transporte (Eio, cohttp, TLS).
 
 ## Qué es una tarea
 
-Una petición es una **tarea cristalizable** si es una función de texto a
-texto con instrucciones fijas:
+Una petición es una **tarea cristalizable** si es una función del texto de
+entrada con instrucciones fijas:
 
 - un único turno de usuario, solo texto;
-- las instrucciones en `system` (la plantilla);
-- sin herramientas y sin streaming.
+- las instrucciones en `system`;
+- sin streaming;
+- sin herramientas, y la salida es el texto; o con **una herramienta
+  forzada** (`tool_choice: {type: tool, name}`), y la salida es el JSON de su
+  `input`. Es la forma de las pipelines con salida estructurada (las de
+  buzon-kt: trabajo, buscarcasa, coches) y la que mejor cristaliza: el
+  esquema de la herramienta ya es medio contrato. El cristal devuelve el JSON
+  y la forja lo envuelve en un bloque `tool_use`; si lo que devuelve no es un
+  objeto JSON, cuenta como defecto.
+
+La plantilla es el `system` más, si la hay, la definición de la herramienta:
+mismo prompt con otra herramienta es otra tarea. El JSON se compara en forma
+canónica (claves ordenadas) al contrastar.
 
 La tarea se identifica por la cabecera `x-forja-tarea` si el cliente la pone
 (`[a-z0-9-]+`, el nombre que tendrá el cristal), o si no por el digest del
 system prompt: misma plantilla, misma tarea (`t-712d41d0978b`).
 
-Lo demás (conversaciones, agentes con herramientas, streaming) pasa al LLM
+Lo demás (conversaciones, agentes con herramientas libres, streaming) pasa al LLM
 sin tocar, con `x-forja-fuente: paso`. Es lo que [`concepto.md`](concepto.md)
 llama abierto por naturaleza: la forja no intenta cristalizarlo.
 
