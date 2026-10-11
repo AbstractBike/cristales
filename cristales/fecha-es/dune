@@ -1,0 +1,4 @@
+(library
+ (name fecha_es)
+ (public_name cristales.fecha-es)
+ (libraries cristal))
