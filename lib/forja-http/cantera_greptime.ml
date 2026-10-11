@@ -41,18 +41,28 @@ let filas j =
     |> List.filter_map fila
   with Type_error _ -> []
 
+(* GreptimeDB caído o con error: se cuenta y se sigue. *)
+let avisar = function
+  | Ok (c, _) when c < 300 -> ()
+  | Ok (c, b) -> Printf.eprintf "forja: cantera greptime %d: %s\n%!" c b
+  | Error e -> Printf.eprintf "forja: cantera greptime: %s\n%!" e
+
 let crear ~post ~url ?(db = "public") ?(tabla = "forja_cantera") () =
   let con_ruta ruta query = Uri.with_query' (Uri.with_path url ruta) query in
   let ingesta =
     con_ruta "/v1/ingest"
       [ ("db", db); ("table", tabla); ("pipeline_name", "greptime_identity") ]
   in
-  let sql = con_ruta "/v1/sql" [ ("db", db) ] in
+  let sql en consulta =
+    post (con_ruta "/v1/sql" [ ("db", en) ])
+      ~tipo:"application/x-www-form-urlencoded"
+      (Uri.encoded_of_query [ ("sql", [ consulta ]) ])
+  in
+  (* La base se crea al arrancar (desde [public], que siempre existe); la
+     tabla la crea la primera ingesta. *)
+  avisar (sql "public" (Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" db));
   let registrar m =
-    match post ingesta ~tipo:"application/json" (Yojson.Safe.to_string (json m)) with
-    | Ok (c, _) when c < 300 -> ()
-    | Ok (c, b) -> Printf.eprintf "forja: cantera greptime %d: %s\n%!" c b
-    | Error e -> Printf.eprintf "forja: cantera greptime: %s\n%!" e
+    avisar (post ingesta ~tipo:"application/json" (Yojson.Safe.to_string (json m)))
   in
   (* La tarea es un nombre validado ([a-z0-9-]): se puede citar sin
      escapar. *)
@@ -61,8 +71,7 @@ let crear ~post ~url ?(db = "public") ?(tabla = "forja_cantera") () =
       Printf.sprintf "SELECT %s FROM %s WHERE tarea = '%s' ORDER BY greptime_timestamp"
         (String.concat ", " columnas) tabla (Forja.Tarea.to_string tarea)
     in
-    let cuerpo = Uri.encoded_of_query [ ("sql", [ consulta ]) ] in
-    match post sql ~tipo:"application/x-www-form-urlencoded" cuerpo with
+    match sql db consulta with
     | Ok (c, b) when c < 300 -> (
         try filas (Yojson.Safe.from_string b) with Yojson.Json_error _ -> [])
     | Ok _ | Error _ -> []

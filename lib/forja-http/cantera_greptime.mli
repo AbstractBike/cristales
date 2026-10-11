@@ -11,7 +11,8 @@ type post = Uri.t -> tipo:string -> string -> (int * string, string) result
 
 val crear : post:post -> url:Uri.t -> ?db:string -> ?tabla:string -> unit -> Forja.Cantera.t
 (** [url] es la raíz HTTP de GreptimeDB (puerto 4000). [db] por defecto
-    [public], [tabla] por defecto [forja_cantera].
+    [public] (se crea al arrancar si no existe), [tabla] por defecto
+    [forja_cantera].
 
     Si GreptimeDB no responde, [registrar] lo cuenta por stderr y sigue: la
     respuesta al cliente no depende de la cantera. [muestras] devuelve lo
