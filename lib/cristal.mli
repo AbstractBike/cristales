@@ -1,3 +1,6 @@
+(* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
+   Sin licencia. Ver COPYRIGHT.md. *)
+
 (** Cristalización de pipelines de IA.
 
     Una etapa es {e líquida} (un LLM en cada llamada), {e cristalina} (código

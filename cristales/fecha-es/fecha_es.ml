@@ -1,3 +1,6 @@
+(* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
+   Sin licencia. Ver COPYRIGHT.md. *)
+
 type fecha = { anyo : int; mes : int; dia : int }
 
 let bisiesto a = (a mod 4 = 0 && a mod 100 <> 0) || a mod 400 = 0

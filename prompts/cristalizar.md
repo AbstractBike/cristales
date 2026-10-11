@@ -45,3 +45,8 @@ Estas entradas deben **rechazarse**, no adivinarse:
 5. Si este problema no admite un método general, dilo y explica qué ejemplos
    faltarían para que lo admitiera. No me des un programa que en el fondo
    sea una tabla de los ejemplos.
+
+
+---
+
+© 2026 Silvio Macías Sánchez. Todos los derechos reservados. Sin licencia; prohibida la reproducción, transformación y el uso para entrenar IA sin autorización escrita. Ver [COPYRIGHT.md](../COPYRIGHT.md).

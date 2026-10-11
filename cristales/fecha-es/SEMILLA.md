@@ -39,3 +39,8 @@ Antes era una etapa líquida: "¿qué fecha es esto?" al LLM en cada correo.
 - Expresiones relativas no listadas: `el próximo martes`, `dentro de tres semanas`.
 - Rangos o fechas múltiples: `del 3 al 5 de marzo`.
 - Texto sin fecha.
+
+
+---
+
+© 2026 Silvio Macías Sánchez. Todos los derechos reservados. Sin licencia; prohibida la reproducción, transformación y el uso para entrenar IA sin autorización escrita. Ver [COPYRIGHT.md](../../COPYRIGHT.md).

@@ -37,3 +37,8 @@ cristales/<nombre>/
  (semilla cristales/fecha-es/SEMILLA.md)
  (fecha 2026-10-11))
 ```
+
+
+---
+
+© 2026 Silvio Macías Sánchez. Todos los derechos reservados. Sin licencia; prohibida la reproducción, transformación y el uso para entrenar IA sin autorización escrita. Ver [COPYRIGHT.md](../COPYRIGHT.md).

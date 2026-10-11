@@ -80,3 +80,8 @@ respuesta, esa etapa debería ser un cristal.
 | "¿Esta config es válida?" | "Escribe el validador de esta config" |
 | "Traduce este JSON al esquema nuevo" | "Escribe la migración del esquema viejo al nuevo" |
 | "Resume este log de error" | "Escribe el extractor de causas de estos logs" |
+
+
+---
+
+© 2026 Silvio Macías Sánchez. Todos los derechos reservados. Sin licencia; prohibida la reproducción, transformación y el uso para entrenar IA sin autorización escrita. Ver [COPYRIGHT.md](../COPYRIGHT.md).

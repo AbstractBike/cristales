@@ -90,3 +90,8 @@ posible. En OCaml, con [`lib/cristal.mli`](../lib/cristal.mli):
 let pipeline =
   Cristal.(idioma >>> tipo >>> extraer >>> responder)
 ```
+
+
+---
+
+© 2026 Silvio Macías Sánchez. Todos los derechos reservados. Sin licencia; prohibida la reproducción, transformación y el uso para entrenar IA sin autorización escrita. Ver [COPYRIGHT.md](../COPYRIGHT.md).

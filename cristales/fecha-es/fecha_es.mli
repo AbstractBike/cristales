@@ -1,3 +1,6 @@
+(* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
+   Sin licencia. Ver COPYRIGHT.md. *)
+
 (** Cristal: fechas en español a ISO 8601. Ver [SEMILLA.md]. *)
 
 type fecha = { anyo : int; mes : int; dia : int }
