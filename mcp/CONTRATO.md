@@ -27,7 +27,7 @@ vez, en OCaml.
 
 | Método | Respuesta |
 |---|---|
-| `initialize` | `{protocolVersion, capabilities: {tools: {}}, serverInfo: {name: "forja-mcp", version: "0.2.0"}}` |
+| `initialize` | `{protocolVersion, capabilities: {tools: {}}, serverInfo: {name: "forja-mcp", version: "0.2.0"}, instructions?}` |
 | `ping` | `{}` |
 | `tools/list` | `{tools: [...]}` (abajo) |
 | `tools/call` | `{content: [{type: "text", text}], isError}` (abajo) |
@@ -35,6 +35,13 @@ vez, en OCaml.
 
 `protocolVersion`: si el cliente pide una de `2025-11-25`, `2025-06-18`,
 `2025-03-26`, `2024-11-05`, se le devuelve esa; si no, `2025-11-25`.
+
+`instructions` (opcional; hoy solo lo da el de OCaml, el que despliega la
+flota): texto que el cliente pone en el prompt de sistema del agente. Dice
+que use los cristales antes que resolverlo él y, con forja, cómo nuclear y
+qué tareas están maduras (`GET /forja/tareas` al recibir `initialize`; si
+no contesta, solo lo fijo). Las llamadas a la forja no deben esperar más de
+unos segundos: `initialize` no puede quedarse colgado por ella.
 
 El `id` de la respuesta es el de la petición, tal cual (número o cadena).
 

@@ -10,12 +10,20 @@
 
 let url_por_defecto = "http://[b1c1:a2::1]:8090"
 
-(* La forja por su API de introspección (/forja/…). *)
-let remota cliente base =
+(* La forja por su API de introspección (/forja/…). Cada llamada, con
+   [espera] segundos como mucho: initialize ya pregunta por las tareas
+   maduras, y una forja que no contesta no puede dejar al agente sin
+   arrancar. *)
+let espera = 5.0
+
+let remota clock cliente base =
   let base = Uri.to_string base in
   let base = if String.ends_with ~suffix:"/" base then String.sub base 0 (String.length base - 1) else base in
   let llamar meth ruta cuerpo =
-    match Forja_http.Proxy.http cliente meth (Uri.of_string (base ^ ruta)) cuerpo with
+    match
+      Eio.Time.with_timeout_exn clock espera (fun () ->
+          Forja_http.Proxy.http cliente meth (Uri.of_string (base ^ ruta)) cuerpo)
+    with
     | r -> Ok r
     | exception e -> Error ("forja: " ^ Printexc.to_string e)
   in
@@ -64,7 +72,7 @@ let () =
     else
       let url = Option.value ~default:url_por_defecto (Sys.getenv_opt "FORJA_URL") in
       prerr_endline ("forja-mcp: forja en " ^ url);
-      remota (Forja_http.Proxy.cliente (Eio.Stdenv.net env)) (Uri.of_string url)
+      remota (Eio.Stdenv.clock env) (Forja_http.Proxy.cliente (Eio.Stdenv.net env)) (Uri.of_string url)
   in
   let entrada = Eio.Buf_read.of_flow ~max_size:(64 * 1024 * 1024) (Eio.Stdenv.stdin env) in
   let salida = Eio.Stdenv.stdout env in

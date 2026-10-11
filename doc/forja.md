@@ -232,6 +232,12 @@ observable:
 | `forja_semilla` | Su `SEMILLA.md`, como la deja el horno |
 | `forja_nucleacion` | El prompt de nucleación relleno: lo que se le pide al LLM para que escriba el cristal |
 
+Y para que el agente las use sin que nadie se lo pida, `initialize` trae
+`instructions`, que Claude Code pone en el prompt de sistema de cada sesión:
+usar un cristal antes que resolver él lo que cubre, cómo se nuclea y qué
+tareas están maduras ahora mismo (se le pregunta a la forja al arrancar, con
+5 s como mucho).
+
 Con ellas el ciclo se cierra sin salir del agente. La forja (variante proxy)
 recoge muestras de lo que pasa por ella; el agente (variante MCP) ve qué
 tarea ha madurado, lee su prompt de nucleación, escribe el cristal y su red

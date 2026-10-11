@@ -43,3 +43,9 @@ val responder : fuente -> Yojson.Safe.t -> Yojson.Safe.t option
 val linea : fuente -> string -> string option
 (** Lo mismo sobre una línea de texto, como viaja por stdio. Una línea que
     no es JSON da el error de análisis de JSON-RPC. *)
+
+val instrucciones : fuente -> string
+(** Las [instructions] de [initialize], que el cliente pone en el prompt de
+    sistema del agente: usar los cristales antes que resolverlo él y, con
+    forja, cómo nuclear y qué tareas están maduras ahora mismo (se le
+    pregunta a la forja al arrancar; si no contesta, no se dice nada). *)

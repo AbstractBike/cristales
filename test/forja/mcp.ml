@@ -78,4 +78,32 @@ let () =
   (match pide "no es json" with
   | Some r -> comprueba "error de análisis" (campo [ "error"; "code" ] r = `Int (-32700))
   | None -> comprueba "responde al JSON roto" false);
+  (* Las instrucciones: sin forja, solo el uso; con ella, las maduras. *)
+  let contiene s sub =
+    let n = String.length sub in
+    let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+    ir 0
+  in
+  (match pide {|{"jsonrpc":"2.0","id":9,"method":"initialize","params":{}}|} with
+  | Some r -> (
+      match campo [ "result"; "instructions" ] r with
+      | `String s -> comprueba "sin forja: no habla de nuclear" (not (contiene s "forja_nucleacion"))
+      | _ -> comprueba "initialize da instrucciones" false)
+  | None -> ());
+  let con_forja tareas =
+    { (Forja_mcp.local vitrina) with
+      consultar = Some (fun ruta -> if ruta = "/forja/tareas" then tareas else Error "forja: 404") }
+  in
+  let i =
+    Forja_mcp.instrucciones
+      (con_forja
+         (Ok {|[{"tarea":"t-1","fase":"liquida","muestras":23,"madura":true},{"tarea":"t-2","madura":false}]|}))
+  in
+  comprueba "con forja: cómo nuclear" (contiene i "forja_nucleacion");
+  comprueba "nombra las maduras" (contiene i "t-1 (23 muestras)");
+  comprueba "no nombra las que no lo están" (not (contiene i "t-2"));
+  comprueba "ninguna madura: lo dice"
+    (contiene (Forja_mcp.instrucciones (con_forja (Ok "[]"))) "ninguna tarea");
+  comprueba "forja caída: no inventa nada"
+    (not (contiene (Forja_mcp.instrucciones (con_forja (Error "forja: caída"))) "Ahora mismo"));
   if !fallos > 0 then exit 1

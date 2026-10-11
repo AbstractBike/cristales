@@ -151,19 +151,69 @@ let llamar fuente params =
   | _ -> invalido "falta name"
   | exception Type_error _ -> invalido "params no es un objeto"
 
+(* {1 Instrucciones}
+
+   Lo que el cliente pone en el prompt de sistema del agente (Claude Code
+   las lleva a cada sesión): para que use los cristales en vez de
+   resolverlo él y para que nuclee lo que la forja tiene maduro. *)
+
+let uso =
+  "Cada herramienta de este servidor que no empieza por forja_ es un cristal: una función \
+   determinista, revisada y versionada, que no gasta tokens. Si la tarea que tienes delante \
+   la cubre un cristal (lee su descripción), llámalo en vez de resolverla tú. Un defecto \
+   (isError) no es un fallo: resuélvelo tú y sigue; queda en la cantera como semilla de la \
+   siguiente versión del cristal."
+
+let nuclear =
+  "Los cristales se crean desde la forja. forja_tareas dice qué tareas han pasado por ella y \
+   cuáles están maduras (el LLM se repite: tiene un método que dar). Para nuclear una \
+   madura: forja_nucleacion da el prompt y forja_semilla las muestras; escribe el cristal en \
+   el repo cristales (/logical-node/repositories/logical-license/cristales, en un \
+   workbench) según doc/anatomia.md, con su SEMILLA.md, procedencia.sexp y su red, \
+   regístralo en lib/vitrina/vitrina.ml y commitéalo. Si en tu trabajo resuelves razonando \
+   una transformación de texto con instrucciones fijas que darías igual dos veces, es \
+   candidata a cristal: díselo al usuario."
+
+let maduras cuerpo =
+  let open Yojson.Safe.Util in
+  try
+    Yojson.Safe.from_string cuerpo |> to_list
+    |> List.filter_map (fun t ->
+           match (t |> member "madura", t |> member "tarea", t |> member "muestras") with
+           | `Bool true, `String n, `Int m -> Some (Printf.sprintf "%s (%d muestras)" n m)
+           | `Bool true, `String n, _ -> Some n
+           | _ -> None)
+    |> Option.some
+  with _ -> None
+
+let instrucciones fuente =
+  match fuente.consultar with
+  | None -> uso
+  | Some consultar ->
+      let ahora =
+        match Option.bind (Result.to_option (consultar "/forja/tareas")) maduras with
+        | None -> []
+        | Some [] -> [ "Ahora mismo ninguna tarea de la forja está madura." ]
+        | Some ts ->
+            [ "Ahora mismo están maduras para nuclear: " ^ String.concat ", " ts
+              ^ ". Díselo al usuario al empezar y ofrécete a nuclearlas." ]
+      in
+      String.concat "\n\n" ([ uso; nuclear ] @ ahora)
+
 (* {1 JSON-RPC} *)
 
-let inicializar params =
+let inicializar fuente params =
   let pedida = try Yojson.Safe.Util.(params |> member "protocolVersion" |> to_string_option) with _ -> None in
   `Assoc
     [ ( "protocolVersion",
         `String (match pedida with Some v when List.mem v versiones -> v | _ -> version) );
       ("capabilities", `Assoc [ ("tools", `Assoc []) ]);
-      ("serverInfo", `Assoc [ ("name", `String "forja-mcp"); ("version", `String "0.2.0") ]) ]
+      ("serverInfo", `Assoc [ ("name", `String "forja-mcp"); ("version", `String "0.2.0") ]);
+      ("instructions", `String (instrucciones fuente)) ]
 
 let resultado fuente metodo params =
   match metodo with
-  | "initialize" -> Ok (inicializar params)
+  | "initialize" -> Ok (inicializar fuente params)
   | "ping" -> Ok (`Assoc [])
   | "tools/list" -> Ok (listar fuente)
   | "tools/call" -> llamar fuente params
