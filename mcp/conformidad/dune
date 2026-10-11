@@ -1,0 +1,5 @@
+(executable
+ (name conformidad)
+ (public_name forja-mcp-conformidad)
+ (package cristales)
+ (libraries eio eio_main eio.unix cohttp-eio http yojson uri unix))
