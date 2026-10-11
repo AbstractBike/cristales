@@ -11,30 +11,22 @@
       paraCada = f: nixpkgs.lib.genAttrs sistemas (s: f (import nixpkgs {
         system = s;
         config.allowUnfreePredicate = p: nixpkgs.lib.getName p == "cristales";
+        overlays = [ self.overlays.default ];
       }));
-      # Lo que necesita la forja (proxy HTTP con Eio).
-      dependencias = o: with o; [
-        eio_main cohttp-eio tls-eio ca-certs mirage-crypto-rng yojson uri
-      ];
     in {
-      packages = paraCada (pkgs: {
-        default = pkgs.ocamlPackages.buildDunePackage {
-          pname = "cristales";
-          version = "0.1.0";
-          src = self;
-          propagatedBuildInputs = dependencias pkgs.ocamlPackages;
-          doCheck = true;
-          meta = {
-            license = pkgs.lib.licenses.unfree;
-            mainProgram = "forja";
-          };
-        };
-      });
+      # Para quien quiera construirlo con su propio nixpkgs (la flota): el
+      # paquete toma el ocamlPackages final, con los overlays de quien lo use.
+      # Hay que admitir "cristales" como unfree en ese nixpkgs.
+      overlays.default = final: _prev: {
+        cristales = final.callPackage ./nix/paquete.nix { };
+      };
+
+      packages = paraCada (pkgs: { default = pkgs.cristales; });
 
       devShells = paraCada (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs.ocamlPackages;
-            [ ocaml dune_3 findlib ocaml-lsp ] ++ dependencias pkgs.ocamlPackages;
+          inputsFrom = [ pkgs.cristales ];
+          packages = with pkgs.ocamlPackages; [ findlib ocaml-lsp ];
         };
       });
     };
