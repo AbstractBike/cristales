@@ -31,7 +31,7 @@ expresión concreta: **derechos de autor**, **licencia** y, si se quiere,
 
 | # | Qué | Para qué | Quién |
 |---|---|---|---|
-| 1 | Revisar [`divulgacion-tecnica.md`](divulgacion-tecnica.md) con un profesional y ampliar las variantes (§4) | Cuanto más amplio lo divulgado, menos espacio para patentes de terceros | Tú + profesional |
+| 1 | Revisar [`divulgacion-tecnica-v2.md`](divulgacion-tecnica-v2.md) (la vigente; la v1 se conserva por su sello) con un profesional y ampliar las variantes (§4) | Cuanto más amplio lo divulgado, menos espacio para patentes de terceros | Tú + profesional |
 | 2 | Sello de tiempo del commit y del documento (abajo) | Fecha cierta independiente de GitHub | **Hecho** el 2026-10-11 (pendiente de anclar en Bitcoin: `ots upgrade`) |
 | 3 | Archivar el repositorio en **Software Heritage** («Save code now») | Copia y fecha en un archivo público e independiente | Tú (gratis) |
 | 4 | Publicar la divulgación en un repositorio de prior art: **Technical Disclosure Commons** (gratis, lo leen examinadores) y/o **Zenodo** (DOI) o **arXiv** | Que los examinadores de patentes la encuentren | Tú |
@@ -52,12 +52,23 @@ etiqueta, porque subir las etiquetas a GitHub lo publicaría. Para completar
 los sellos cuando Bitcoin los confirme (unas horas) y comprobarlos:
 
 ```bash
-nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-11.txt.ots legal/divulgacion-tecnica.md.ots
+nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-11.txt.ots legal/divulgacion-tecnica.md.ots legal/sellos/huellas-2026-10-11-v2.txt.ots legal/divulgacion-tecnica-v2.md.ots
 ```
 
 ```bash
 nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-11.txt.ots
 ```
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-11-v2.txt.ots
+```
+
+**Versión 2 (2026-10-11T06:55Z).** [`divulgacion-tecnica-v2.md`](divulgacion-tecnica-v2.md)
+añade Python a la implementación de referencia. Su manifiesto,
+[`sellos/huellas-2026-10-11-v2.txt`](sellos/huellas-2026-10-11-v2.txt), recoge el
+commit de la rama con el MCP en Python (`222b9bd`) y el SHA-256 de la v2;
+los dos están sellados. Los sellos de la v1 siguen valiendo para la v1, que
+no se toca.
 
 Cómo se hizo, por si hay que repetirlo con otra versión:
 
