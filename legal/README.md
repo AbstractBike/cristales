@@ -32,7 +32,7 @@ expresión concreta: **derechos de autor**, **licencia** y, si se quiere,
 | # | Qué | Para qué | Quién |
 |---|---|---|---|
 | 1 | Revisar [`divulgacion-tecnica.md`](divulgacion-tecnica.md) con un profesional y ampliar las variantes (§4) | Cuanto más amplio lo divulgado, menos espacio para patentes de terceros | Tú + profesional |
-| 2 | Sello de tiempo del commit y del documento (abajo) | Fecha cierta independiente de GitHub | Tú (gratis) |
+| 2 | Sello de tiempo del commit y del documento (abajo) | Fecha cierta independiente de GitHub | **Hecho** el 2026-10-11 (pendiente de anclar en Bitcoin: `ots upgrade`) |
 | 3 | Archivar el repositorio en **Software Heritage** («Save code now») | Copia y fecha en un archivo público e independiente | Tú (gratis) |
 | 4 | Publicar la divulgación en un repositorio de prior art: **Technical Disclosure Commons** (gratis, lo leen examinadores) y/o **Zenodo** (DOI) o **arXiv** | Que los examinadores de patentes la encuentren | Tú |
 | 5 | Registrar la obra (código y documentación) en el **Registro de la Propiedad Intelectual** (o en un registro privado tipo Safe Creative) | Presunción de autoría y fecha en España | Tú (tasa) |
@@ -41,6 +41,25 @@ expresión concreta: **derechos de autor**, **licencia** y, si se quiere,
 | 8 | Si entran contribuciones de terceros: acuerdo de cesión o licencia de contribuidor (CLA) | Seguir siendo el único titular para poder licenciar en comercial | Tú |
 
 ### Sello de tiempo (paso 2)
+
+**Hecho el 2026-10-11T06:46Z.** [`sellos/huellas-2026-10-11.txt`](sellos/huellas-2026-10-11.txt)
+recoge el commit de `main` ya público (`662aeda`), el de esta rama sin
+publicar (`af5955d`), cada uno con el SHA-256 de su contenido, y el de
+[`divulgacion-tecnica.md`](divulgacion-tecnica.md). Ese manifiesto y la
+divulgación están sellados (`.ots` al lado). La etiqueta
+`divulgacion-2026-10-11` marca el commit público; el de la rama no se
+etiqueta, porque subir las etiquetas a GitHub lo publicaría. Para completar
+los sellos cuando Bitcoin los confirme (unas horas) y comprobarlos:
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-11.txt.ots legal/divulgacion-tecnica.md.ots
+```
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-11.txt.ots
+```
+
+Cómo se hizo, por si hay que repetirlo con otra versión:
 
 Sin enviar el contenido a nadie: solo su huella.
 

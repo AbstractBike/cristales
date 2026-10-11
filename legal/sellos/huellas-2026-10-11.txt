@@ -1,0 +1,21 @@
+cristales — huellas selladas con OpenTimestamps
+Autor: Silvio Macías Sánchez
+Generado: 2026-10-11T06:46:48Z
+
+Cada commit se identifica por su id de git (SHA-1) y por el SHA-256 de
+'git archive --format=tar <commit>' (el contenido de su árbol).
+
+main (público en GitHub)
+  commit  662aeda38da6f38746e0d5a02ea6dd76788a730e
+  fecha   2026-10-11T07:27:44+02:00
+  árbol   adaa877a9feb65d8b6d462c8c102b24bc11a28b4
+  sha256  34a3b9a5a18b05ee9c42d9f87d15f3d3cc229cb8244fbfb188d34d3f43f2dee9
+
+forja-mcp-multilenguaje (sin publicar)
+  commit  af5955da41fce9452530889c06fcf2cb49356762
+  fecha   2026-10-11T08:45:48+02:00
+  árbol   47841675d819f07823d9cff24cc4bc8373f2dc72
+  sha256  ee5f8fe0a89210893bd39397ee467a373de45a81d2bcf77ec156b157b04fc2d0
+
+legal/divulgacion-tecnica.md (versión 1)
+  sha256  c0188d5b2de8f4dcf0be17b17add83c5795f6dab012280791e84ecf9cf09a585
