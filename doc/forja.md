@@ -122,6 +122,14 @@ Se configura por entorno (lo fija el módulo NixOS que lo despliegue):
 Los clientes solo cambian la URL base (`ANTHROPIC_BASE_URL=http://…:8090`).
 Las cabeceras de autenticación pasan tal cual: la forja no guarda claves.
 
+### En la flota
+
+`fleet.forja` (`nixos-config/modules/services/forja.nix`) la despliega con
+el overlay de este flake (`overlays.default`). Corre en a2 para toda la malla:
+`ANTHROPIC_BASE_URL=http://[b1c1:a2::1]:8090`, cantera en la GreptimeDB de
+la flota (DB `forja`) y horno en `/var/lib/forja/horno`. Un cristal nuevo
+llega a la flota con `nix flake update cristales` y un apply.
+
 ### Cantera en GreptimeDB
 
 Con `FORJA_GREPTIME` (raíz HTTP, puerto 4000) cada muestra se escribe por
