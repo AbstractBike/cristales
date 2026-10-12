@@ -1,0 +1,7 @@
+; Qué se vende en un anuncio de discos: el modelo es de nvme-modelo; la
+; entrada, el estado y el plegado, de grafica-anuncio y grafica-modelo.
+
+(library
+ (name nvme_anuncio)
+ (public_name cristales.nvme-anuncio)
+ (libraries cristal nvme_modelo grafica_modelo grafica_anuncio yojson))

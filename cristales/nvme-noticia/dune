@@ -1,0 +1,4 @@
+(library
+ (name nvme_noticia)
+ (public_name cristales.nvme-noticia)
+ (libraries cristal nvme_modelo grafica_modelo grafica_noticia yojson))

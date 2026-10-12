@@ -46,6 +46,27 @@ let vitrina =
             las gráficas de sobremesa: si va de ellas, su tipo (drivers, análisis, rumor, precio, \
             mercado, lanzamiento, anuncio), fabricantes, modelos y las gráficas que aún no estaban en \
             el catálogo."
+    (* nvme.email (2026-10-12): como graficas.email, en cada anuncio de discos y cada titular. *)
+    |> con (tarea "nvme-modelo") `Mixta Nvme_modelo.cristal
+         ~descripcion:
+           "Los SSD que nombra un texto (\"WD_BLACK SN850X 2TB\", \"Samsung PM9A3 7,68TB U.2\", \"una 990 Pro\"), \
+            con su clave, marca, segmento (consumo o enterprise), interfaz (PCIe 3/4/5, SATA, SAS), \
+            formato (M.2 2280/22110, U.2, U.3), DRAM o HMB, NAND (TLC, QLC…), PLP, la capacidad que dice \
+            y su TBW. No confunde velocidades (7300 MB/s), memoria de PC (16GB RAM) ni resistencia \
+            (600TBW). Defecto si no nombra ninguno del catálogo o solo desconocidos."
+    |> con (tarea "nvme-anuncio") `Mixta Nvme_anuncio.cristal
+         ~descripcion:
+           "Qué se vende en un anuncio de segunda mano de discos (líneas Título:, Categoría:, \
+            Descripción:; o solo el título): un SSD NVMe suelto y cuál, o un SATA, un disco duro, un \
+            externo, una caja sin disco, un adaptador, un PC, un portátil, una consola, un componente, \
+            un lote o alguien que busca; su estado, su salud (horas, TB escritos, % de vida, SMART) y \
+            lo que dice de garantía, factura, caja y cambio. Defecto si no sabe qué disco es."
+    |> con (tarea "nvme-noticia") `Mixta Nvme_noticia.cristal
+         ~descripcion:
+           "De qué va una noticia de hardware (Título:, Resumen:; o solo el titular) para quien sigue \
+            los SSD: si va de SSD y flash, de almacenamiento (discos duros, NAS, cabinas) o de otra \
+            cosa; su tipo (análisis, rumor, precio, mercado, lanzamiento, anuncio, firmware), su \
+            segmento, fabricantes, modelos y los SSD que aún no estaban en el catálogo."
     (* La extracción de trabajo.email (2026-10-12), la tarea de su prompt: un
        cristal parcial, da los campos que sabe y la forja le pide a gemma el resto. *)
     |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal

@@ -4,4 +4,5 @@
 (library
  (name vitrina)
  (public_name cristales.vitrina)
- (libraries forja cristal fecha_es grafica_modelo grafica_anuncio grafica_noticia oferta_trabajo unix))
+ (libraries forja cristal fecha_es grafica_modelo grafica_anuncio grafica_noticia nvme_modelo nvme_anuncio nvme_noticia
+  oferta_trabajo unix))

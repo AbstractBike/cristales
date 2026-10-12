@@ -1,0 +1,8 @@
+; Los SSD que nombra un texto: el catálogo (Catalogo), la lectura (Texto)
+; y el cristal. Lo usan nvme-anuncio y nvme-noticia. El plegado y las
+; listas de palabras son los de grafica-modelo.
+
+(library
+ (name nvme_modelo)
+ (public_name cristales.nvme-modelo)
+ (libraries cristal grafica_modelo yojson))

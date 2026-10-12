@@ -86,6 +86,9 @@ bien.
 | [`cristales/grafica-modelo/`](cristales/grafica-modelo/) | Las gráficas de sobremesa que nombra un texto, con su catálogo (GTX 750 Ti a RTX 5090, RX 9070 XT, Arc) |
 | [`cristales/grafica-anuncio/`](cristales/grafica-anuncio/) | Qué se vende en un anuncio de segunda mano de informática y en qué estado |
 | [`cristales/grafica-noticia/`](cristales/grafica-noticia/) | De qué va una noticia de hardware para quien sigue las gráficas |
+| [`cristales/nvme-modelo/`](cristales/nvme-modelo/) | Los SSD que nombra un texto, con su catálogo (NVMe de consumo y enterprise: 990 Pro, SN850X, PM9A3, Micron 7450, P4510, Optane; y los SATA/SAS para descartarlos) |
+| [`cristales/nvme-anuncio/`](cristales/nvme-anuncio/) | Qué se vende en un anuncio de discos: un NVMe suelto (cuál, su capacidad y su salud) o un SATA, un disco duro, un PC, una caja, un adaptador, un lote |
+| [`cristales/nvme-noticia/`](cristales/nvme-noticia/) | De qué va una noticia de hardware para quien sigue los SSD y el almacenamiento |
 
 ## Construir
 

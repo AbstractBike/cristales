@@ -1,0 +1,3 @@
+(test
+ (name red)
+ (libraries nvme_noticia cristal yojson))
