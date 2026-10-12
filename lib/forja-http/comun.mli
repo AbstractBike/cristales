@@ -13,3 +13,14 @@ val solo_texto : Yojson.Safe.t -> string option
 
 val objeto_json : string -> (Yojson.Safe.t, string) result
 (** La salida de un cristal estructurado, si es un objeto JSON. *)
+
+(** {1 Esquemas: cristales parciales} *)
+
+val cambiar : string -> (Yojson.Safe.t -> Yojson.Safe.t) -> Yojson.Safe.t -> Yojson.Safe.t
+(** El objeto con el campo [k] cambiado, si lo tiene. *)
+
+val propiedades : Yojson.Safe.t -> string list
+(** Las propiedades de un JSON Schema de objeto. *)
+
+val restringir_esquema : string list -> Yojson.Safe.t -> Yojson.Safe.t
+(** El esquema con solo esas propiedades (y obligatorias). *)

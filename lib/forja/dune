@@ -1,4 +1,4 @@
 (library
  (name forja)
  (public_name cristales.forja)
- (libraries cristal))
+ (libraries cristal yojson))

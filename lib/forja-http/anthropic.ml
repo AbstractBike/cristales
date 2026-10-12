@@ -94,3 +94,35 @@ let error ~tipo mensaje =
   `Assoc
     [ ("type", `String "error");
       ("error", `Assoc [ ("type", `String tipo); ("message", `String mensaje) ]) ]
+
+(* {1 Cristales parciales} *)
+
+let forzada j =
+  match campo "tool_choice" j with
+  | Some tc when campo "type" tc = Some (`String "tool") -> (
+      match campo "name" tc with Some (`String n) -> Some n | _ -> None)
+  | _ -> None
+
+let es n t = campo "name" t = Some (`String n)
+
+let campos j =
+  match (forzada j, campo "tools" j) with
+  | Some n, Some (`List tools) -> (
+      match List.find_opt (es n) tools with
+      | Some t -> Option.fold ~none:[] ~some:Comun.propiedades (campo "input_schema" t)
+      | None -> [])
+  | _ -> []
+
+let restringir j ks =
+  match forzada j with
+  | None -> j
+  | Some n ->
+      Comun.cambiar "tools"
+        (function
+          | `List tools ->
+              `List
+                (List.map
+                   (fun t -> if es n t then Comun.cambiar "input_schema" (Comun.restringir_esquema ks) t else t)
+                   tools)
+          | x -> x)
+        j

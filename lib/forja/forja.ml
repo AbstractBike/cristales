@@ -67,6 +67,20 @@ module Cantera = struct
     | None -> ""
 end
 
+module Campos = struct
+  (* Las salidas estructuradas (herramienta forzada, json_schema) son objetos
+     JSON. Cada campo se juzga por separado: un modelo que no repite la lista
+     de habilidades sí puede repetir el salario, y ese campo ya tiene un
+     método que dar aunque el objeto entero no. *)
+  let de s =
+    match Yojson.Safe.from_string s with
+    | `Assoc l -> Some l
+    | _ -> None
+    | exception Yojson.Json_error _ -> None
+
+
+end
+
 module Madurez = struct
   type politica = {
     minimo : int;
@@ -78,25 +92,58 @@ module Madurez = struct
   let por_defecto =
     { minimo = 20; contrastar_cada = 10; contrastes = 2; estabilidad = 0.9 }
 
-  type informe = { muestras : int; contrastes : int; coincidencias : int }
+  type informe = {
+    muestras : int;
+    contrastes : int;
+    coincidencias : int;
+    estructurados : int;
+    campos : (string * int) list;
+  }
 
-  let vacio = { muestras = 0; contrastes = 0; coincidencias = 0 }
+  let vacio = { muestras = 0; contrastes = 0; coincidencias = 0; estructurados = 0; campos = [] }
+
+  (* Suma 1 (o 0) a cada campo de la salida, en orden de nombre. *)
+  let por_campo campos s c =
+    List.fold_left
+      (fun acc (k, v) ->
+        let d = match List.assoc_opt k c with Some w when Yojson.Safe.equal v w -> 1 | _ -> 0 in
+        let n = Option.value ~default:0 (List.assoc_opt k acc) in
+        (k, n + d) :: List.remove_assoc k acc)
+      campos s
+    |> List.sort compare
 
   let sumar i (m : Cantera.muestra) =
     match (m.salida, m.contraste) with
     | None, _ -> i
     | Some _, None -> { i with muestras = i.muestras + 1 }
     | Some s, Some c ->
-        { muestras = i.muestras + 1;
-          contrastes = i.contrastes + 1;
-          coincidencias = (i.coincidencias + if c = s then 1 else 0) }
+        let i =
+          { i with
+            muestras = i.muestras + 1;
+            contrastes = i.contrastes + 1;
+            coincidencias = (i.coincidencias + if c = s then 1 else 0) }
+        in
+        (match (Campos.de s, Campos.de c) with
+        | Some s, Some c ->
+            { i with estructurados = i.estructurados + 1; campos = por_campo i.campos s c }
+        | _ -> i)
 
   let informe = List.fold_left sumar vacio
 
-  let madura p i =
-    i.muestras >= p.minimo
-    && i.contrastes >= p.contrastes
-    && float i.coincidencias >= p.estabilidad *. float i.contrastes
+  let estable (p : politica) ~contrastes ~coincidencias =
+    contrastes >= p.contrastes && float coincidencias >= p.estabilidad *. float contrastes
+
+  let entera (p : politica) i =
+    i.muestras >= p.minimo && estable p ~contrastes:i.contrastes ~coincidencias:i.coincidencias
+
+  let campos_maduros (p : politica) i =
+    if i.muestras < p.minimo then []
+    else
+      List.filter_map
+        (fun (k, n) -> if estable p ~contrastes:i.estructurados ~coincidencias:n then Some k else None)
+        i.campos
+
+  let madura p i = entera p i || campos_maduros p i <> []
 end
 
 module Semilla = struct
@@ -118,8 +165,26 @@ module Semilla = struct
 
   let plantilla = Cantera.plantilla
 
+  (* Con salida estructurada, cuánto repite el LLM cada campo, y que un
+     cristal puede quedarse con los que sepa. *)
+  let campos (i : Madurez.informe) =
+    if i.estructurados = 0 then ""
+    else
+      String.concat "\n"
+        ([ "La salida es un objeto JSON. Veces que el LLM repitió cada campo al \
+            preguntarle dos veces:";
+           "" ]
+        @ List.map
+            (fun (k, n) -> Printf.sprintf "- `%s`: %d de %d" k n i.estructurados)
+            (List.sort (fun (_, a) (_, b) -> compare b a) i.campos)
+        @ [ "";
+            "El cristal no tiene que darlos todos: puede devolver un objeto con \
+             solo los campos que sabe sacar, y la forja le pide al LLM el resto \
+             (x-forja-fuente: parcial). Empieza por los que el LLM repite: esos \
+             tienen un método que dar. Los que no repite, déjaselos." ])
+
   let markdown tarea (i : Madurez.informe) muestras =
-    String.concat "\n"
+    String.concat "\n" @@
       [ Printf.sprintf "# Semilla: %s" (Tarea.to_string tarea);
         "";
         "Tarea que atendía el LLM a través de la forja. Sus instrucciones \
@@ -128,13 +193,17 @@ module Semilla = struct
         bloque (plantilla muestras);
         "";
         "- Entrada: texto (lo que variaba en cada llamada).";
-        "- Salida: texto (la respuesta del LLM).";
+        (if i.estructurados = 0 then "- Salida: texto (la respuesta del LLM)."
+         else "- Salida: un objeto JSON (ver Campos).");
         "";
         Printf.sprintf
           "Cantera: %d muestras; el LLM repitió la respuesta en %d de %d \
            contrastes."
           i.muestras i.coincidencias i.contrastes;
         "";
+      ]
+    @ (if i.estructurados = 0 then [] else [ "## Campos"; ""; campos i; "" ])
+    @ [
         "## Ejemplos";
         "";
         ejemplos muestras;
@@ -177,6 +246,8 @@ module Semilla = struct
     | _ -> prompt
 
   let nucleacion ~prompt muestras =
+    let i = Madurez.informe muestras in
+    let estructurada = i.estructurados > 0 in
     let por_declarar =
       "No las conozco: dedúcelas de la plantilla y los ejemplos y \
        decláralas explícitamente en tu respuesta."
@@ -186,9 +257,10 @@ module Semilla = struct
       (cuerpo prompt)
       [ ("{{descripción en una frase}}",
           "Lo que hacía el LLM con estas instrucciones:\n\n"
-          ^ bloque (plantilla muestras));
+          ^ bloque (plantilla muestras)
+          ^ (if estructurada then "\n\n" ^ campos i else ""));
         ("{{tipo de entrada}}", "texto");
-        ("{{tipo de salida}}", "texto");
+        ("{{tipo de salida}}", if estructurada then "un objeto JSON, con todos sus campos o solo los que sepas" else "texto");
         ("{{pares entrada → salida, incluidos los raros}}", ejemplos muestras);
         ("{{lista de invariantes}}", por_declarar);
         ("{{lista o descripción}}", por_declarar);
@@ -275,6 +347,7 @@ type resumen = {
   fase : fase;
   informe : Madurez.informe;
   madura : bool;
+  campos_maduros : string list;
 }
 
 let resumen f tarea =
@@ -282,7 +355,8 @@ let resumen f tarea =
   { tarea;
     fase = (match Vitrina.buscar f.vitrina tarea with Some (e, _) -> (e :> fase) | None -> `Liquida);
     informe;
-    madura = Madurez.madura f.politica informe }
+    madura = Madurez.madura f.politica informe;
+    campos_maduros = Madurez.campos_maduros f.politica informe }
 
 let tareas f =
   let de_vitrina = List.map (fun (p : Vitrina.pieza) -> p.tarea) (Vitrina.listar f.vitrina) in

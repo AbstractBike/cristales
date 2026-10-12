@@ -130,6 +130,36 @@ llama abierto por naturaleza: la forja no intenta cristalizarlo.
    `` `Cristalina ``. Un defecto ya no llama al LLM: es un `422` con el
    motivo. El LLM ha salido del camino.
 
+## Campo a campo
+
+Con salida estructurada (herramienta forzada o `json_schema`) el objeto
+entero es una medida demasiado gruesa. La extracción de trabajo lo enseñó:
+gemma repetía el objeto en 54 de 80 contrastes (67 %), pero 13 de sus 14
+campos en más del 95 %; la lista de habilidades técnicas, sola, hundía al
+resto. Así que la forja juzga también **cada campo**:
+
+- **Madurez por campo.** En cada contraste en que las dos salidas son
+  objetos se compara campo a campo (`estructurados` y `campos` en el
+  informe). Un campo es maduro con las mismas reglas que la tarea entera:
+  `minimo` muestras, `contrastes` contrastes y `estabilidad`. Una tarea con
+  algún campo maduro ya está madura (`campos_maduros` en `/forja/tareas`), y
+  su semilla y su prompt de nucleación dicen cuánto repitió el LLM cada
+  campo.
+- **Cristal parcial.** El cristal de una tarea estructurada puede devolver
+  un objeto con **solo los campos que sabe sacar**, y cada vez los que sepa:
+  el salario si lo encuentra, y si no, nada. La forja le pide al LLM los que
+  faltan con el esquema reducido a ellos (genera menos, que es lo que cuesta
+  en un modelo local), junta las dos partes y responde con
+  `x-forja-fuente: parcial`. La muestra queda en la cantera con el objeto
+  entero y, como defecto, `parcial: faltan …`: es lo que falta por
+  cristalizar. En `` `Cristalina `` un objeto incompleto es un `422`, como
+  cualquier defecto.
+
+Un objeto completo responde sin LLM (`cristal`); uno vacío (`{}`) equivale a
+un defecto sin motivo. Así una tarea que nunca cristalizaría entera va
+saliendo del LLM campo a campo, y lo que se queda en él (las habilidades) es
+justo lo que pide criterio.
+
 ## Política por defecto
 
 | Parámetro | Valor | Por qué |
@@ -332,6 +362,7 @@ agente que las cuida.
 | `cristal` | Respondió el cristal. `usage` a cero: no hubo tokens. |
 | `liquido` | Tarea sin cristal; respondió el LLM y se guardó la muestra |
 | `defecto` | El cristal no supo. Mixta: respondió el LLM. Cristalina: `422` |
+| `parcial` | El cristal dio unos campos y el LLM, pedido solo por los que faltaban, el resto |
 | `paso` | No es una tarea cristalizable; la forja no la tocó |
 
 `x-forja-tarea` dice qué tarea vio la forja: es el nombre a usar para el

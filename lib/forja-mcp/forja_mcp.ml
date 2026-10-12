@@ -140,7 +140,7 @@ let uso =
 let nuclear =
   "Los cristales se crean desde la forja. forja_tareas dice qué tareas han pasado por ella y \
    cuáles están maduras (el LLM se repite: tiene un método que dar). Para nuclear una \
-   madura: forja_nucleacion da el prompt y forja_semilla las muestras; escribe el cristal en \
+   madura: forja_nucleacion da el prompt y forja_semilla las muestras. Con salida estructurada el cristal puede ser parcial: da los campos maduros (los que el LLM repite) y la forja le pide al LLM el resto. Escribe el cristal en \
    el repo cristales (/logical-node/repositories/logical-license/cristales, en un \
    workbench) según doc/anatomia.md, con su SEMILLA.md, procedencia.sexp y su red, \
    regístralo en lib/vitrina/vitrina.ml y commitéalo. Si en tu trabajo resuelves razonando \
@@ -152,8 +152,14 @@ let maduras cuerpo =
   try
     Yojson.Safe.from_string cuerpo |> to_list
     |> List.filter_map (fun t ->
+           let campos =
+             match t |> member "campos_maduros" with
+             | `List (_ :: _ as l) ->
+                 "; campos maduros: " ^ String.concat ", " (List.filter_map to_string_option l)
+             | _ -> ""
+           in
            match (t |> member "madura", t |> member "tarea", t |> member "muestras") with
-           | `Bool true, `String n, `Int m -> Some (Printf.sprintf "%s (%d muestras)" n m)
+           | `Bool true, `String n, `Int m -> Some (Printf.sprintf "%s (%d muestras%s)" n m campos)
            | `Bool true, `String n, _ -> Some n
            | _ -> None)
     |> Option.some

@@ -97,11 +97,12 @@ let () =
   let i =
     Forja_mcp.instrucciones
       (con_forja
-         (Ok {|[{"tarea":"t-1","fase":"liquida","muestras":23,"madura":true},{"tarea":"t-2","madura":false}]|}))
+         (Ok {|[{"tarea":"t-1","fase":"liquida","muestras":23,"madura":true},{"tarea":"t-2","madura":false},{"tarea":"t-3","muestras":9,"madura":true,"campos_maduros":["salario","modo"]}]|}))
   in
   comprueba "con forja: cómo nuclear" (contiene i "forja_nucleacion");
   comprueba "nombra las maduras" (contiene i "t-1 (23 muestras)");
   comprueba "no nombra las que no lo están" (not (contiene i "t-2"));
+  comprueba "y los campos maduros" (contiene i "t-3 (9 muestras; campos maduros: salario, modo)");
   comprueba "ninguna madura: lo dice"
     (contiene (Forja_mcp.instrucciones (con_forja (Ok "[]"))) "ninguna tarea");
   comprueba "forja caída: no inventa nada"

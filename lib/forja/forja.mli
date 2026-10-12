@@ -104,6 +104,14 @@ module Cantera : sig
   (** La de la primera muestra que la tenga. *)
 end
 
+(** {1 Campos} *)
+
+module Campos : sig
+  val de : string -> (string * Yojson.Safe.t) list option
+  (** Los campos de una salida estructurada (un objeto JSON); [None] si es
+      texto. *)
+end
+
 (** {1 Madurez} *)
 
 module Madurez : sig
@@ -119,16 +127,33 @@ module Madurez : sig
   val por_defecto : politica
   (** 20 muestras, contraste 1 de cada 10, 2 contrastes, estabilidad 0,9. *)
 
-  type informe = { muestras : int; contrastes : int; coincidencias : int }
+  type informe = {
+    muestras : int;
+    contrastes : int;
+    coincidencias : int;  (** Contrastes en que repitió la salida entera. *)
+    estructurados : int;
+        (** Contrastes en que las dos salidas eran objetos JSON (herramienta
+            forzada, json_schema): los que cuentan para los campos. *)
+    campos : (string * int) list;
+        (** Por campo de la salida, en cuántos de esos repitió su valor. *)
+  }
 
   val vacio : informe
   val sumar : informe -> Cantera.muestra -> informe
   (** Una muestra sin salida no dice nada del LLM: no cuenta. *)
   val informe : Cantera.muestra list -> informe
 
-  val madura : politica -> informe -> bool
+  val entera : politica -> informe -> bool
   (** Si al pedirle dos veces lo mismo al LLM contesta lo mismo, la tarea
       debería ser un cristal. *)
+
+  val campos_maduros : politica -> informe -> string list
+  (** Los campos de una salida estructurada que el LLM repite con la
+      estabilidad de la política, aunque el objeto entero no: un cristal
+      parcial puede quedarse con ellos y dejarle el resto al LLM. *)
+
+  val madura : politica -> informe -> bool
+  (** [entera] o con algún campo maduro: hay algo que cristalizar. *)
 end
 
 (** {1 Semilla} *)
@@ -189,6 +214,7 @@ type resumen = {
   fase : fase;  (** [`Liquida] si no está en la vitrina. *)
   informe : Madurez.informe;
   madura : bool;  (** Según la política de la forja. *)
+  campos_maduros : string list;  (** Ídem, por campo (ver {!Madurez.campos_maduros}). *)
 }
 
 val resumen : t -> Tarea.t -> resumen

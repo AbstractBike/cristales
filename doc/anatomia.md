@@ -20,6 +20,8 @@ cristales/<nombre>/
   necesita contexto (la fecha de hoy, una tabla), lo recibe como argumento.
 - **El defecto es parte del tipo.** `aplicar : entrada -> (salida, defecto) result`.
   Nada de excepciones para "no sé".
+  Con salida estructurada (un objeto JSON) también vale un objeto con solo
+  los campos que sabe: la forja pide al LLM el resto ([forja.md](forja.md), campo a campo).
 - **La semilla y la procedencia se commitean.** Sin ellas el cristal no se
   puede recristalizar; sería código huérfano.
 - **La red solo crece.** Un caso que entró en la red no se borra; si el

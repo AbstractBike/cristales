@@ -79,6 +79,8 @@ module type API = sig
   val salida : forma -> Yojson.Safe.t -> string option
   val respuesta : modelo:string -> forma -> string -> (Yojson.Safe.t, string) result
   val error : tipo:string -> string -> Yojson.Safe.t
+  val campos : Yojson.Safe.t -> string list
+  val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
 end
 
 let reenviar p upstream req cuerpo =
@@ -131,25 +133,60 @@ let json estado j =
 
 (* Una tarea por la API [A], con el LLM de [upstream] detrás. *)
 let mensajes (module A : API) upstream p req cuerpo =
-  let reenviar () = reenviar p upstream req cuerpo in
+  let reenviar ?(cuerpo = cuerpo) () = reenviar p upstream req cuerpo in
+  let salida forma r =
+    if Http.Status.to_int r.estado = 200 then
+      try A.salida forma (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
+    else None
+  in
+  let aprender (pet : Forja.peticion) ?contraste ?defecto s =
+    match Forja.aprender p.forja pet ?contraste ?defecto s with
+    | Some informe -> p.madura pet.tarea informe
+    | None -> ()
+  in
   let liquido (pet : Forja.peticion) forma ~contrastar ~defecto =
     let r, contraste =
       if contrastar then Eio.Fiber.pair reenviar (fun () -> Some (reenviar ()))
       else (reenviar (), None)
     in
-    let salida r =
-      if Http.Status.to_int r.estado = 200 then
-        try A.salida forma (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
-      else None
-    in
-    (match salida r with
-    | None -> ()
-    | Some s -> (
-        let contraste = Option.bind contraste salida in
-        match Forja.aprender p.forja pet ?contraste ?defecto s with
-        | Some informe -> p.madura pet.tarea informe
-        | None -> ()));
+    Option.iter
+      (fun s -> aprender pet ?contraste:(Option.bind contraste (salida forma)) ?defecto s)
+      (salida forma r);
     con_fuente ~tarea:pet.tarea (if defecto = None then "liquido" else "defecto") r
+  in
+  (* Los campos del esquema que el cristal no dio. Con todos (o sin esquema,
+     o si no dio un objeto), ninguno: el resto es cosa de [A.respuesta]. *)
+  let faltan j salida =
+    match (A.campos j, Forja.Campos.de salida) with
+    | [], _ | _, None -> []
+    | ks, Some dados -> List.filter (fun k -> not (List.mem_assoc k dados)) ks
+  in
+  (* Un cristal parcial: dio unos campos y el LLM pone solo los que faltan,
+     con el esquema reducido a ellos (menos que generar). La muestra lleva
+     el objeto entero y, como defecto, qué faltaba: sin los campos del LLM
+     no habría respuesta, y con ellos la semilla sabe qué aprender. *)
+  let parcial (pet : Forja.peticion) forma j ~modelo dada ks =
+    let motivo = "parcial: faltan " ^ String.concat ", " ks in
+    match Forja.Vitrina.buscar (Forja.vitrina p.forja) pet.tarea with
+    | Some (`Cristalina, _) ->
+        con_fuente ~tarea:pet.tarea "defecto"
+          (json `Unprocessable_entity
+             (A.error ~tipo:"invalid_request_error"
+                (Printf.sprintf "forja: la tarea %s es cristalina y su cristal no da todo: %s"
+                   (Forja.Tarea.to_string pet.tarea) motivo)))
+    | _ -> (
+        let r = reenviar ~cuerpo:(Yojson.Safe.to_string (A.restringir j ks)) () in
+        let entera =
+          match (Option.bind (salida forma r) Forja.Campos.de, Forja.Campos.de dada) with
+          | Some llm, Some dados ->
+              Some (Comun.cadena (`Assoc (dados @ List.filter (fun (k, _) -> List.mem k ks) llm)))
+          | _ -> None
+        in
+        match Option.map (fun s -> (s, A.respuesta ~modelo forma s)) entera with
+        | Some (s, Ok resp) ->
+            aprender pet ~defecto:motivo s;
+            con_fuente ~tarea:pet.tarea "parcial" (json `OK resp)
+        | Some (_, Error _) | None -> con_fuente ~tarea:pet.tarea "defecto" r)
   in
   let j = try Some (Yojson.Safe.from_string cuerpo) with Yojson.Json_error _ -> None in
   let peticion =
@@ -169,11 +206,14 @@ let mensajes (module A : API) upstream p req cuerpo =
           let modelo =
             match Yojson.Safe.Util.member "model" j with `String m -> m | _ -> "forja"
           in
-          match A.respuesta ~modelo forma salida with
-          | Ok r -> con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
-          (* Un cristal estructurado que no da JSON tiene una impureza: se
-             trata como defecto y responde el LLM. *)
-          | Error motivo -> liquido pet forma ~contrastar:false ~defecto:(Some motivo))
+          match faltan j salida with
+          | [] -> (
+              match A.respuesta ~modelo forma salida with
+              | Ok r -> con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
+              (* Un cristal estructurado que no da JSON tiene una impureza: se
+                 trata como defecto y responde el LLM. *)
+              | Error motivo -> liquido pet forma ~contrastar:false ~defecto:(Some motivo))
+          | ks -> parcial pet forma j ~modelo salida ks)
       | Fallo { etapa; motivo } ->
           con_fuente ~tarea:pet.tarea "defecto"
             (json `Unprocessable_entity

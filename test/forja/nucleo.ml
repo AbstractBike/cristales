@@ -222,6 +222,55 @@ let () =
   comprueba "la semilla toma la plantilla de quien la tenga" (contiene s "Pon en mayúsculas.");
   comprueba "la semilla dice que no hubo respuesta" (contiene s "Sin respuesta")
 
+(* Campo a campo: el LLM repite el salario y no las habilidades. *)
+let () =
+  let muestra i =
+    let s = Printf.sprintf {|{"salario":%d,"skills":["a"]}|} i
+    and c = Printf.sprintf {|{"salario":%d,"skills":["b"]}|} i in
+    { Forja.Cantera.tarea = tarea "oferta"; plantilla = "Extrae."; entrada = string_of_int i;
+      salida = Some s; contraste = Some c; defecto = None }
+  in
+  let ms = List.init 4 muestra in
+  let i = Forja.Madurez.informe ms in
+  comprueba "estructurados cuenta los contrastes de objetos" (i.estructurados = 4);
+  comprueba "el objeto entero no coincide nunca" (i.coincidencias = 0);
+  comprueba "por campo" (i.campos = [ ("salario", 4); ("skills", 0) ]);
+  comprueba "no madura entera" (not (Forja.Madurez.entera politica i));
+  comprueba "el salario está maduro" (Forja.Madurez.campos_maduros politica i = [ "salario" ]);
+  comprueba "con un campo maduro, madura" (Forja.Madurez.madura politica i);
+  comprueba "sin muestras bastantes, ningún campo"
+    (Forja.Madurez.campos_maduros politica (Forja.Madurez.informe [ muestra 1 ]) = []);
+  let texto = Forja.Madurez.informe [ { (muestra 1) with salida = Some "hola"; contraste = Some "hola" } ] in
+  comprueba "el texto no tiene campos" (texto.estructurados = 0 && texto.campos = []);
+  let s = Forja.Semilla.markdown (tarea "oferta") i ms in
+  comprueba "la semilla trae los campos" (contiene s "## Campos" && contiene s "`salario`: 4 de 4");
+  comprueba "y dice que el cristal puede ser parcial" (contiene s "parcial");
+  let n = Forja.Semilla.nucleacion ~prompt:"{{descripción en una frase}} / {{tipo de salida}}" ms in
+  comprueba "la nucleación también" (contiene n "`skills`: 0 de 4" && contiene n "solo los que sepas")
+
+(* El esquema reducido a lo que falta, por las dos APIs. *)
+let () =
+  let j = Yojson.Safe.from_string in
+  let a =
+    j {|{"tools":[{"name":"otra","input_schema":{"properties":{"z":{}}}},{"name":"x","input_schema":{"type":"object","properties":{"a":{},"b":{}},"required":["a","b"]}}],"tool_choice":{"type":"tool","name":"x"}}|}
+  in
+  comprueba "anthropic: campos de la forzada" (Forja_http.Anthropic.campos a = [ "a"; "b" ]);
+  comprueba "anthropic: sin forzada, ninguno"
+    (Forja_http.Anthropic.campos (j {|{"tools":[{"name":"x"}]}|}) = []);
+  let r = Forja_http.Anthropic.restringir a [ "b" ] in
+  comprueba "anthropic: solo b"
+    (Yojson.Safe.Util.(r |> member "tools" |> index 1 |> member "input_schema")
+    = j {|{"type":"object","properties":{"b":{}},"required":["b"]}|});
+  comprueba "anthropic: la otra herramienta no cambia"
+    (Yojson.Safe.Util.(r |> member "tools" |> index 0) = Yojson.Safe.Util.(a |> member "tools" |> index 0));
+  let o =
+    j {|{"response_format":{"type":"json_schema","json_schema":{"name":"x","strict":true,"schema":{"type":"object","properties":{"a":{},"b":{}},"required":["a","b"],"additionalProperties":false}}}}|}
+  in
+  comprueba "openai: campos" (Forja_http.Openai.campos o = [ "a"; "b" ]);
+  comprueba "openai: solo a"
+    (Forja_http.Openai.restringir o [ "a" ]
+    = j {|{"response_format":{"type":"json_schema","json_schema":{"name":"x","strict":true,"schema":{"type":"object","properties":{"a":{}},"required":["a"],"additionalProperties":false}}}}|})
+
 (* Chat Completions: la forma de buzon-kt sobre llama-server. *)
 let () =
   let module O = Forja_http.Openai in

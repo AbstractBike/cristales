@@ -38,3 +38,12 @@ val respuesta : modelo:string -> forma -> string -> (Yojson.Safe.t, string) resu
     forma es [Herramienta] y la salida no es un objeto JSON. *)
 
 val error : tipo:string -> string -> Yojson.Safe.t
+
+(** {1 Cristales parciales} *)
+
+val campos : Yojson.Safe.t -> string list
+(** Las propiedades de la herramienta forzada de una petición; [[]] sin ella. *)
+
+val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
+(** La petición con la herramienta forzada reducida a esos campos: lo que se
+    le pide al LLM cuando el cristal ya dio el resto. *)

@@ -16,6 +16,7 @@ let puerto_llm = 18_391
 let puerto_forja = 18_392
 let llamadas = ref 0
 let llamadas_openai = ref 0
+let pedidos_openai : string list ref = ref []
 let leer b = Eio.Buf_read.(parse_exn take_all) b ~max_size:max_int
 
 (* El LLM falso: pone en mayúsculas el texto del usuario; con herramienta
@@ -43,7 +44,12 @@ and llm_openai cuerpo =
   let texto = String.uppercase_ascii (j |> member "messages" |> to_list |> List.rev |> List.hd |> member "content" |> to_string) in
   let forma, salida =
     match j |> member "response_format" with
-    | `Assoc _ -> (Forja_http.Openai.Esquema, Yojson.Safe.to_string (`Assoc [ ("mayus", `String texto) ]))
+    | `Assoc _ as rf -> (
+        (* Con propiedades, cada una "<campo>:<TEXTO>"; sin ellas, {"mayus": …}. *)
+        let ks = Forja_http.Openai.campos (`Assoc [ ("response_format", rf) ]) in
+        pedidos_openai := ks;
+        let obj = if ks = [] then [ ("mayus", `String texto) ] else List.map (fun k -> (k, `String (k ^ ":" ^ texto))) ks in
+        (Forja_http.Openai.Esquema, Yojson.Safe.to_string (`Assoc obj)))
     | _ -> (Forja_http.Openai.Texto, texto)
   in
   let r = Result.get_ok (Forja_http.Openai.respuesta ~modelo:"falso" forma salida) in
@@ -222,4 +228,43 @@ let () =
       comprueba "sin upstream openai: pasa sin tocar"
         (match pedir_openai cliente (completions "uno") with _, "paso", _ -> true | _ -> false);
       comprueba "sin upstream openai: va al upstream de siempre" (!llamadas_openai = antes + 1));
+  (* Cristal parcial: da "a" y el LLM pone "b", pidiéndole solo "b". *)
+  let dos t =
+    Printf.sprintf
+      {|{"model":"gemma","messages":[{"role":"system","content":"Dos campos."},{"role":"user","content":%S}],"response_format":{"type":"json_schema","json_schema":{"name":"dos","strict":true,"schema":{"type":"object","properties":{"a":{"type":"string"},"b":{"type":"string"}},"required":["a","b"],"additionalProperties":false}}}}|}
+      t
+  in
+  let ab t = Printf.sprintf {|{"a":"a:%s","b":"b:%s"}|} t t in
+  let solo_a =
+    Cristal.cristal "solo-a" (fun s ->
+        if s = "todo" then Ok (ab "TODO")
+        else Ok (Printf.sprintf {|{"a":"a:%s"}|} (String.uppercase_ascii s)))
+  in
+  let cantera = Forja.Cantera.en_memoria () in
+  maduras := [];
+  con_forja (proxy Forja.Vitrina.vacia cantera) (fun () ->
+      ignore (List.map (fun t -> pedir_openai cliente (dos t)) [ "uno"; "dos"; "tres" ]));
+  let tarea_d = List.hd !maduras in
+  comprueba "dos campos: por campo en el informe"
+    ((Forja.informe (Forja.crear ~politica ~vitrina:Forja.Vitrina.vacia ~cantera ()) tarea_d).campos
+    = [ ("a", 1); ("b", 1) ]);
+  con_forja (proxy Forja.Vitrina.(vacia |> con tarea_d `Mixta solo_a) cantera) (fun () ->
+      let antes = !llamadas_openai in
+      comprueba "parcial: el objeto entero, con fuente parcial"
+        (pedir_openai cliente (dos "cuatro") = (200, "parcial", Some (ab "CUATRO")));
+      comprueba "parcial: una llamada al LLM" (!llamadas_openai = antes + 1);
+      comprueba "parcial: al LLM solo se le pide b" (!pedidos_openai = [ "b" ]);
+      comprueba "parcial: queda en la cantera, con qué faltaba"
+        (List.exists
+           (fun (m : Forja.Cantera.muestra) ->
+             m.defecto = Some "parcial: faltan b" && m.salida = Some (ab "CUATRO"))
+           (cantera.muestras tarea_d));
+      comprueba "con todos los campos, responde el cristal solo"
+        (pedir_openai cliente (dos "todo") = (200, "cristal", Some (ab "TODO")));
+      comprueba "y sin LLM" (!llamadas_openai = antes + 1));
+  con_forja (proxy Forja.Vitrina.(vacia |> con tarea_d `Cristalina solo_a) cantera) (fun () ->
+      let antes = !llamadas_openai in
+      comprueba "parcial cristalino es 422"
+        (match pedir_openai cliente (dos "cinco") with 422, "defecto", None -> true | _ -> false);
+      comprueba "parcial cristalino, sin LLM" (!llamadas_openai = antes));
   if !fallos > 0 then exit 1

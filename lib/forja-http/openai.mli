@@ -29,3 +29,11 @@ val respuesta : modelo:string -> forma -> string -> (Yojson.Safe.t, string) resu
     es [Esquema] y la salida no es un objeto JSON. *)
 
 val error : tipo:string -> string -> Yojson.Safe.t
+
+(** {1 Cristales parciales} *)
+
+val campos : Yojson.Safe.t -> string list
+(** Las propiedades del [json_schema] de una petición; [[]] sin él. *)
+
+val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
+(** La petición con el esquema reducido a esos campos. *)

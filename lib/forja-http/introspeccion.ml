@@ -17,7 +17,10 @@ let resumen (r : Forja.resumen) =
     ("muestras", `Int r.informe.muestras);
     ("contrastes", `Int r.informe.contrastes);
     ("coincidencias", `Int r.informe.coincidencias);
-    ("madura", `Bool r.madura) ]
+    ("madura", `Bool r.madura);
+    ("estructurados", `Int r.informe.estructurados);
+    ("campos", `Assoc (List.map (fun (k, n) -> (k, `Int n)) r.informe.campos));
+    ("campos_maduros", `List (List.map (fun k -> `String k) r.campos_maduros)) ]
 
 (* Con qué se juzga la madurez: para pintar cuánto le falta a cada tarea
    (vitrina.pin). *)

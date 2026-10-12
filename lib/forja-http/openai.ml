@@ -97,3 +97,17 @@ let respuesta ~modelo forma s =
 
 let error ~tipo mensaje =
   `Assoc [ ("error", `Assoc [ ("message", `String mensaje); ("type", `String tipo); ("code", `Null) ]) ]
+
+(* {1 Cristales parciales} *)
+
+let esquema j = Option.bind (campo "response_format" j) (campo "json_schema")
+
+let campos j =
+  match Option.bind (esquema j) (campo "schema") with
+  | Some s -> Comun.propiedades s
+  | None -> []
+
+let restringir j ks =
+  Comun.cambiar "response_format"
+    (Comun.cambiar "json_schema" (Comun.cambiar "schema" (Comun.restringir_esquema ks)))
+    j

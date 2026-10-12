@@ -32,3 +32,26 @@ let objeto_json s =
   | `Assoc _ as j -> Ok j
   | _ -> Error "la salida del cristal no es un objeto JSON"
   | exception Yojson.Json_error e -> Error ("la salida del cristal no es JSON: " ^ e)
+
+(* {1 Esquemas: cristales parciales} *)
+
+let cambiar k f = function
+  | `Assoc l -> `Assoc (List.map (fun (k', v) -> if k' = k then (k', f v) else (k', v)) l)
+  | j -> j
+
+let propiedades esquema =
+  match campo "properties" esquema with
+  | Some (`Assoc l) -> List.map fst l
+  | _ -> []
+
+(* El esquema con solo [ks]: sus propiedades y, de las obligatorias, esas. *)
+let restringir_esquema ks esquema =
+  let solo = function
+    | `Assoc l -> `Assoc (List.filter (fun (k, _) -> List.mem k ks) l)
+    | j -> j
+  in
+  esquema
+  |> cambiar "properties" solo
+  |> cambiar "required" (function
+       | `List l -> `List (List.filter (function `String k -> List.mem k ks | _ -> false) l)
+       | j -> j)
