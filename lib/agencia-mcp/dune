@@ -1,0 +1,4 @@
+(library
+ (name agencia_mcp)
+ (public_name cristales.agencia-mcp)
+ (libraries agencia forja mcp_rpc yojson))

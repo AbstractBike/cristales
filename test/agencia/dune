@@ -1,0 +1,3 @@
+(tests
+ (names agencia)
+ (libraries agencia agencia_mcp agencia_http forja mcp_rpc yojson))

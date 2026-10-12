@@ -1,0 +1,4 @@
+(library
+ (name agencia_http)
+ (public_name cristales.agencia-http)
+ (libraries agencia forja forja_http eio cohttp-eio http yojson uri))

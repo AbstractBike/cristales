@@ -51,6 +51,10 @@ para cristalizar y, una vez cristalizada, la atiende sin llamar al modelo. Y
 al revés, como servidor MCP: un agente usa los cristales como herramientas y
 observa la forja hasta nuclear él mismo los que ella le señala.
 
+Y mientras una tarea siga siendo líquida, la [agencia](doc/agencia.md)
+elige a qué modelo pedírsela: el más barato que, según su histórico, la hace
+bien.
+
 ## Por qué
 
 - **Pureza.** Un cristal es una función pura del input. Igual que un flake sin
@@ -69,11 +73,13 @@ observa la forja hasta nuclear él mismo los que ella le señala.
 | [`doc/pipelines.md`](doc/pipelines.md) | Protocolo para cristalizar una pipeline de IA, etapa a etapa |
 | [`doc/anatomia.md`](doc/anatomia.md) | Cómo se guarda un cristal en un repositorio |
 | [`doc/forja.md`](doc/forja.md) | La forja: proxy de LLM que cristaliza las tareas que atiende, y su variante MCP |
+| [`doc/agencia.md`](doc/agencia.md) | La agencia: agentes que saben a qué modelo pedir cada cosa, con el histórico de cada encargo (MCP) |
 | [`prompts/cristalizar.md`](prompts/cristalizar.md) | El prompt de nucleación: pedir el método, no el resultado |
 | [`lib/`](lib/) | `cristal`, librería OCaml 5: etapas líquida/mixta/cristalina y su composición |
 | [`lib/forja/`](lib/forja/), [`lib/forja-http/`](lib/forja-http/) | Núcleo de la forja y su proxy HTTP (Messages API, GreptimeDB) |
 | [`bin/forja/`](bin/forja/) | El binario `forja` y su vitrina de cristales |
 | [`mcp/`](mcp/) | `forja-mcp` en OCaml, TypeScript, Go, Rust, Kotlin y Python: contrato y prueba de conformidad |
+| [`lib/agencia/`](lib/agencia/), [`bin/agencia-mcp/`](bin/agencia-mcp/) | La agencia y su servidor MCP |
 | [`legal/`](legal/) | Divulgación técnica defensiva, sellos de tiempo y expediente |
 | [`cristales/fecha-es/`](cristales/fecha-es/) | Cristal de ejemplo: fechas en español a ISO 8601 |
 | [`cristales/grafica-modelo/`](cristales/grafica-modelo/) | Las gráficas de sobremesa que nombra un texto, con su catálogo (GTX 750 Ti a RTX 5090, RX 9070 XT, Arc) |

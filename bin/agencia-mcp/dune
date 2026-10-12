@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name agencia-mcp)
+ (package cristales)
+ (libraries agencia agencia_mcp agencia_http forja_http mcp_rpc eio eio_main mirage-crypto-rng.unix uri))
