@@ -1,0 +1,3 @@
+(test
+ (name red)
+ (libraries grafica_anuncio grafica_modelo cristal yojson))

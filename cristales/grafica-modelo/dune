@@ -1,0 +1,7 @@
+; La gráfica que nombra un texto: el catálogo (Catalogo), la lectura (Texto)
+; y el cristal. Lo usan grafica-anuncio y grafica-noticia.
+
+(library
+ (name grafica_modelo)
+ (public_name cristales.grafica-modelo)
+ (libraries cristal yojson))

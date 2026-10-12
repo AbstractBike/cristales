@@ -76,6 +76,9 @@ observa la forja hasta nuclear él mismo los que ella le señala.
 | [`mcp/`](mcp/) | `forja-mcp` en OCaml, TypeScript, Go, Rust, Kotlin y Python: contrato y prueba de conformidad |
 | [`legal/`](legal/) | Divulgación técnica defensiva, sellos de tiempo y expediente |
 | [`cristales/fecha-es/`](cristales/fecha-es/) | Cristal de ejemplo: fechas en español a ISO 8601 |
+| [`cristales/grafica-modelo/`](cristales/grafica-modelo/) | Las gráficas de sobremesa que nombra un texto, con su catálogo (GTX 750 Ti a RTX 5090, RX 9070 XT, Arc) |
+| [`cristales/grafica-anuncio/`](cristales/grafica-anuncio/) | Qué se vende en un anuncio de segunda mano de informática y en qué estado |
+| [`cristales/grafica-noticia/`](cristales/grafica-noticia/) | De qué va una noticia de hardware para quien sigue las gráficas |
 
 ## Construir
 

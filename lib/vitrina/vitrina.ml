@@ -26,4 +26,23 @@ let vitrina =
            "Convierte una fecha escrita en español (\"3 de marzo de 2024\", \"03/03/24\", \"15 de \
             agosto\", \"mañana\") a ISO 8601 (AAAA-MM-DD), relativa a hoy. Lee las fechas \
             numéricas como día/mes/año. Da un defecto con fechas imposibles, rangos o \
-            expresiones relativas como \"el próximo martes\".")
+            expresiones relativas como \"el próximo martes\"."
+    (* graficas.email (2026-10-12): las llama como herramientas en cada anuncio y cada titular. *)
+    |> con (tarea "grafica-modelo") `Mixta Grafica_modelo.cristal
+         ~descripcion:
+           "Las gráficas de sobremesa que nombra un texto (\"MSI RTX 3080 Ti 12GB\", \"una 6800 XT\", \"Arc \
+            A770\"), con su clave, fabricante, memoria, año, precio de lanzamiento y un índice \
+            orientativo de rendimiento (RTX 4090 = 100). No confunde procesadores (5800X3D, i5 10400F), \
+            resoluciones (1080p) ni fuentes (650W). Defecto si no nombra ninguna o solo desconocidas."
+    |> con (tarea "grafica-anuncio") `Mixta Grafica_anuncio.cristal
+         ~descripcion:
+           "Qué se vende en un anuncio de segunda mano de informática (líneas Título:, Categoría:, \
+            Descripción:; o solo el título): una gráfica suelta y cuál, o un PC, un portátil, una pieza, \
+            un componente, un lote o alguien que busca; y su estado (nueva, usada, averiada), minería, \
+            garantía, factura, caja y cambio. Defecto si no sabe qué gráfica es."
+    |> con (tarea "grafica-noticia") `Mixta Grafica_noticia.cristal
+         ~descripcion:
+           "De qué va una noticia de hardware (Título:, Resumen:; o solo el titular) para quien sigue \
+            las gráficas de sobremesa: si va de ellas, su tipo (drivers, análisis, rumor, precio, \
+            mercado, lanzamiento, anuncio), fabricantes, modelos y las gráficas que aún no estaban en \
+            el catálogo.")

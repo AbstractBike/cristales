@@ -1,0 +1,4 @@
+(library
+ (name grafica_noticia)
+ (public_name cristales.grafica-noticia)
+ (libraries cristal grafica_modelo yojson))
