@@ -126,3 +126,8 @@ let restringir j ks =
                    tools)
           | x -> x)
         j
+
+let uso j =
+  match Option.map (fun u -> (campo "input_tokens" u, campo "output_tokens" u)) (campo "usage" j) with
+  | Some (Some (`Int e), Some (`Int s)) -> Some (e, s)
+  | _ -> None

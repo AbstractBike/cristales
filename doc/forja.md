@@ -355,6 +355,30 @@ la vez: todos leen la misma lista.
 Las dos se usan juntas: el proxy en el camino de las pipelines, el MCP en el
 agente que las cuida.
 
+## Métricas
+
+`GET /metrics` en el mismo puerto, en el formato de texto de Prometheus, para
+el vmagent de la flota (que las deja en la base `fleet` de GreptimeDB) y el
+dashboard «Forja» de Perses:
+
+| Métrica | Qué mide |
+|---|---|
+| `forja_peticiones_total{api, fuente, tarea}` | Peticiones, por cómo se respondieron: `cristal`, `parcial`, `liquido`, `defecto`, `paso` |
+| `forja_peticion_segundos{api, fuente}` | Histograma de lo que tarda la forja de punta a punta |
+| `forja_llm_segundos{api, tarea}` | Histograma de lo que tarda el LLM de detrás (`tarea` vacía en los pasos) |
+| `forja_llm_respuestas_total{api, codigo}` | Respuestas del LLM por código HTTP |
+| `forja_llm_tokens_total{api, tarea, tipo}` | Tokens que gastó el LLM en las tareas (`entrada`, `salida`) |
+| `forja_cristal_segundos{tarea}` | Histograma de lo que tarda un cristal |
+| `forja_campos_total{tarea, de}` | Campos de salidas estructuradas que dio el `cristal` y que dio el `llm` |
+| `forja_pasos_total{ruta, motivo}` | Peticiones que no son tareas, y por qué |
+| `forja_maduraciones_total{tarea}` | Tareas que han madurado |
+| `forja_tarea_muestras`, `_contrastes`, `_coincidencias`, `_madura`, `_campos_maduros` `{tarea, fase}` | El estado de cada tarea, calculado al servir |
+| `forja_campo_estabilidad{tarea, campo}` | Fracción de contrastes en que el LLM repitió cada campo |
+| `forja_vitrina_cristales` | Cristales en la vitrina |
+
+Lo que ahorra un cristal se lee como la fracción de peticiones con fuente
+`cristal` o `parcial`, y en las parciales, la de campos que dio el cristal.
+
 ## Cabeceras de respuesta
 
 | `x-forja-fuente` | Significado |

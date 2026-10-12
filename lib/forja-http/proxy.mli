@@ -6,7 +6,8 @@
 
     [POST /v1/messages] pasa por la forja, y [POST /v1/chat/completions]
     (la API de OpenAI) si hay [openai]; [/forja/…] es su introspección
-    ([Introspeccion], para [forja-mcp]); lo demás se reenvía tal cual.
+    ([Introspeccion], para [forja-mcp]); [GET /metrics], sus métricas
+    ({!Metricas}, doc/forja.md); lo demás se reenvía tal cual.
     Cada respuesta lleva [x-forja-fuente]: [cristal], [liquido], [defecto]
     (un cristal mixto no supo y respondió el LLM) o [paso] (la petición no es
     una tarea cristalizable: varios turnos, herramientas, streaming…). *)

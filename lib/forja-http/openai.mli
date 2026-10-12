@@ -37,3 +37,6 @@ val campos : Yojson.Safe.t -> string list
 
 val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
 (** La petición con el esquema reducido a esos campos. *)
+
+val uso : Yojson.Safe.t -> (int * int) option
+(** Tokens de entrada y de salida de una respuesta ([usage]). *)

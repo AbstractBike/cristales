@@ -81,7 +81,58 @@ module type API = sig
   val error : tipo:string -> string -> Yojson.Safe.t
   val campos : Yojson.Safe.t -> string list
   val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
+  val uso : Yojson.Safe.t -> (int * int) option
 end
+
+(* {1 Métricas}
+
+   Lo que pasa por la forja, para vmagent (GET /metrics). Un registro por
+   proceso: hay una forja por proceso. *)
+
+let metricas = Metricas.crear ()
+let segundos = [ 0.005; 0.025; 0.1; 0.25; 0.5; 1.; 2.5; 5.; 10.; 30.; 60.; 120.; 300. ]
+
+let () =
+  let open Metricas in
+  let m = metricas in
+  contador m "forja_peticiones_total" ~ayuda:"Peticiones atendidas, por API, fuente (cristal, parcial, liquido, defecto, paso) y tarea.";
+  histograma m "forja_peticion_segundos" ~ayuda:"Lo que tarda la forja en responder, por API y fuente." ~cubos:segundos;
+  histograma m "forja_llm_segundos" ~ayuda:"Lo que tarda el LLM de detrás, por API y tarea." ~cubos:segundos;
+  contador m "forja_llm_respuestas_total" ~ayuda:"Respuestas del LLM de detrás, por API y código HTTP.";
+  contador m "forja_llm_tokens_total" ~ayuda:"Tokens que gastó el LLM en las tareas, por API, tarea y tipo (entrada, salida).";
+  histograma m "forja_cristal_segundos" ~ayuda:"Lo que tarda un cristal, por tarea." ~cubos:[ 0.0001; 0.0005; 0.001; 0.005; 0.01; 0.05; 0.1; 0.5; 1. ];
+  contador m "forja_campos_total" ~ayuda:"Campos de las salidas estructuradas de tareas con cristal, por tarea y quién los dio (cristal, llm).";
+  contador m "forja_pasos_total" ~ayuda:"Peticiones que no son tareas, por ruta y motivo.";
+  contador m "forja_maduraciones_total" ~ayuda:"Tareas que han madurado (una vez por tarea y proceso)."
+
+let sumar ?etiquetas n = Metricas.sumar metricas n ?etiquetas 1.
+
+(* Las medidas que se calculan al servir: el estado de cada tarea. *)
+let medidas forja =
+  let ts = Forja.tareas forja in
+  let fase = function `Liquida -> "liquida" | `Mixta -> "mixta" | `Cristalina -> "cristalina" in
+  let por f = List.map (fun (r : Forja.resumen) -> ([ ("tarea", Forja.Tarea.to_string r.tarea); ("fase", fase r.fase) ], f r)) ts in
+  let medida nombre ayuda f = { Metricas.nombre; ayuda; valores = por f } in
+  [ medida "forja_tarea_muestras" "Muestras de la tarea en la cantera." (fun r -> float r.informe.muestras);
+    medida "forja_tarea_contrastes" "Contrastes de la tarea (pedida dos veces al LLM)." (fun r -> float r.informe.contrastes);
+    medida "forja_tarea_coincidencias" "Contrastes en que el LLM repitió la salida entera." (fun r -> float r.informe.coincidencias);
+    medida "forja_tarea_madura" "1 si la tarea está madura para nuclear." (fun r -> if r.madura then 1. else 0.);
+    medida "forja_tarea_campos_maduros" "Campos maduros de una tarea estructurada." (fun r -> float (List.length r.campos_maduros));
+    { Metricas.nombre = "forja_campo_estabilidad";
+      ayuda = "Fracción de contrastes en que el LLM repitió el campo.";
+      valores =
+        List.concat_map
+          (fun (r : Forja.resumen) ->
+            List.map
+              (fun (k, n) ->
+                ( [ ("tarea", Forja.Tarea.to_string r.tarea); ("campo", k) ],
+                  float n /. float (max 1 r.informe.estructurados) ))
+              r.informe.campos)
+          ts };
+    { Metricas.nombre = "forja_vitrina_cristales";
+      ayuda = "Cristales en la vitrina.";
+      valores = [ ([], float (List.length (Forja.Vitrina.listar (Forja.vitrina forja)))) ] } ]
+
 
 let reenviar p upstream req cuerpo =
   let destino = Uri.of_string (Http.Request.resource req) in
@@ -110,6 +161,8 @@ let con_fuente ?tarea fuente r =
 let pasos_vistos : (string * string, unit) Hashtbl.t = Hashtbl.create 16
 
 let avisar_paso req j motivo =
+  sumar "forja_pasos_total"
+    ~etiquetas:[ ("ruta", Uri.path (Uri.of_string (Http.Request.resource req))); ("motivo", motivo) ];
   let quien =
     match Http.Header.get (Http.Request.headers req) Anthropic.cabecera_tarea, j with
     | Some t, _ -> "tarea " ^ t
@@ -132,8 +185,34 @@ let json estado j =
     cuerpo = Yojson.Safe.to_string j }
 
 (* Una tarea por la API [A], con el LLM de [upstream] detrás. *)
-let mensajes (module A : API) upstream p req cuerpo =
-  let reenviar ?(cuerpo = cuerpo) () = reenviar p upstream req cuerpo in
+let mensajes (module A : API) ~api upstream p req cuerpo =
+  let tarea_de = function Some (t : Forja.peticion) -> Forja.Tarea.to_string t.tarea | None -> "" in
+  (* Cada llamada al LLM, medida: tiempo, código y, si es una tarea, tokens. *)
+  let reenviar ?pet ?(cuerpo = cuerpo) () =
+    let t0 = Unix.gettimeofday () in
+    let r = reenviar p upstream req cuerpo in
+    let tarea = tarea_de pet in
+    Metricas.observar metricas "forja_llm_segundos" ~etiquetas:[ ("api", api); ("tarea", tarea) ]
+      (Unix.gettimeofday () -. t0);
+    sumar "forja_llm_respuestas_total" ~etiquetas:[ ("api", api); ("codigo", string_of_int (Http.Status.to_int r.estado)) ];
+    (if pet <> None && Http.Status.to_int r.estado = 200 then
+       match A.uso (Yojson.Safe.from_string r.cuerpo) with
+       | Some (e, s) ->
+           let tok tipo n =
+             Metricas.sumar metricas "forja_llm_tokens_total"
+               ~etiquetas:[ ("api", api); ("tarea", tarea); ("tipo", tipo) ] (float n)
+           in
+           tok "entrada" e;
+           tok "salida" s
+       | None -> ()
+       | exception Yojson.Json_error _ -> ());
+    r
+  in
+  let campos (pet : Forja.peticion) de n =
+    if n > 0 then
+      Metricas.sumar metricas "forja_campos_total"
+        ~etiquetas:[ ("tarea", Forja.Tarea.to_string pet.tarea); ("de", de) ] (float n)
+  in
   let salida forma r =
     if Http.Status.to_int r.estado = 200 then
       try A.salida forma (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
@@ -141,13 +220,15 @@ let mensajes (module A : API) upstream p req cuerpo =
   in
   let aprender (pet : Forja.peticion) ?contraste ?defecto s =
     match Forja.aprender p.forja pet ?contraste ?defecto s with
-    | Some informe -> p.madura pet.tarea informe
+    | Some informe ->
+        sumar "forja_maduraciones_total" ~etiquetas:[ ("tarea", Forja.Tarea.to_string pet.tarea) ];
+        p.madura pet.tarea informe
     | None -> ()
   in
   let liquido (pet : Forja.peticion) forma ~contrastar ~defecto =
     let r, contraste =
-      if contrastar then Eio.Fiber.pair reenviar (fun () -> Some (reenviar ()))
-      else (reenviar (), None)
+      if contrastar then Eio.Fiber.pair (reenviar ~pet) (fun () -> Some (reenviar ~pet ()))
+      else (reenviar ~pet (), None)
     in
     Option.iter
       (fun s -> aprender pet ?contraste:(Option.bind contraste (salida forma)) ?defecto s)
@@ -175,7 +256,7 @@ let mensajes (module A : API) upstream p req cuerpo =
                 (Printf.sprintf "forja: la tarea %s es cristalina y su cristal no da todo: %s"
                    (Forja.Tarea.to_string pet.tarea) motivo)))
     | _ -> (
-        let r = reenviar ~cuerpo:(Yojson.Safe.to_string (A.restringir j ks)) () in
+        let r = reenviar ~pet ~cuerpo:(Yojson.Safe.to_string (A.restringir j ks)) () in
         let entera =
           match (Option.bind (salida forma r) Forja.Campos.de, Forja.Campos.de dada) with
           | Some llm, Some dados ->
@@ -184,6 +265,8 @@ let mensajes (module A : API) upstream p req cuerpo =
         in
         match Option.map (fun s -> (s, A.respuesta ~modelo forma s)) entera with
         | Some (s, Ok resp) ->
+            campos pet "cristal" (List.length (A.campos j) - List.length ks);
+            campos pet "llm" (List.length ks);
             aprender pet ~defecto:motivo s;
             con_fuente ~tarea:pet.tarea "parcial" (json `OK resp)
         | Some (_, Error _) | None -> con_fuente ~tarea:pet.tarea "defecto" r)
@@ -201,7 +284,13 @@ let mensajes (module A : API) upstream p req cuerpo =
       avisar_paso req j motivo;
       con_fuente "paso" (reenviar ())
   | Ok (pet, forma, j) -> (
-      match Forja.decidir p.forja pet with
+      let t0 = Unix.gettimeofday () in
+      let decision = Forja.decidir p.forja pet in
+      if Option.is_some (Forja.Vitrina.buscar (Forja.vitrina p.forja) pet.tarea) then
+        Metricas.observar metricas "forja_cristal_segundos"
+          ~etiquetas:[ ("tarea", Forja.Tarea.to_string pet.tarea) ]
+          (Unix.gettimeofday () -. t0);
+      match decision with
       | Por_cristal salida -> (
           let modelo =
             match Yojson.Safe.Util.member "model" j with `String m -> m | _ -> "forja"
@@ -209,7 +298,9 @@ let mensajes (module A : API) upstream p req cuerpo =
           match faltan j salida with
           | [] -> (
               match A.respuesta ~modelo forma salida with
-              | Ok r -> con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
+              | Ok r ->
+                  campos pet "cristal" (List.length (A.campos j));
+                  con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
               (* Un cristal estructurado que no da JSON tiene una impureza: se
                  trata como defecto y responde el LLM. *)
               | Error motivo -> liquido pet forma ~contrastar:false ~defecto:(Some motivo))
@@ -222,18 +313,37 @@ let mensajes (module A : API) upstream p req cuerpo =
                      etapa motivo)))
       | Al_liquido { contrastar; defecto } -> liquido pet forma ~contrastar ~defecto)
 
+(* Cada respuesta, contada por su fuente y su tarea (las cabeceras que ya
+   lleva) y medida de punta a punta. *)
+let medir api r t0 =
+  let h k = Option.value ~default:"" (Http.Header.get r.cabeceras k) in
+  let fuente = h "x-forja-fuente" in
+  sumar "forja_peticiones_total" ~etiquetas:[ ("api", api); ("fuente", fuente); ("tarea", h "x-forja-tarea") ];
+  Metricas.observar metricas "forja_peticion_segundos" ~etiquetas:[ ("api", api); ("fuente", fuente) ]
+    (Unix.gettimeofday () -. t0);
+  r
+
 let atender p req cuerpo =
   let uri = Uri.of_string (Http.Request.resource req) and meth = Http.Request.meth req in
-  match Introspeccion.atender p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
-  | Some r ->
-      { estado = Http.Status.of_int r.estado;
-        cabeceras = Http.Header.of_list [ ("content-type", r.tipo) ];
-        cuerpo = r.cuerpo }
-  | None -> (
-      match (meth, Uri.path uri, p.openai) with
-      | `POST, "/v1/messages", _ -> mensajes (module Anthropic) p.upstream p req cuerpo
-      | `POST, "/v1/chat/completions", Some u -> mensajes (module Openai) u p req cuerpo
-      | _ -> con_fuente "paso" (reenviar p p.upstream req cuerpo))
+  let t0 = Unix.gettimeofday () in
+  match (meth, Uri.path uri) with
+  | `GET, "/metrics" ->
+      { estado = `OK;
+        cabeceras = Http.Header.of_list [ ("content-type", "text/plain; version=0.0.4; charset=utf-8") ];
+        cuerpo = Metricas.servir metricas (medidas p.forja) }
+  | _ -> (
+      match Introspeccion.atender p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
+      | Some r ->
+          { estado = Http.Status.of_int r.estado;
+            cabeceras = Http.Header.of_list [ ("content-type", r.tipo) ];
+            cuerpo = r.cuerpo }
+      | None -> (
+          match (meth, Uri.path uri, p.openai) with
+          | `POST, "/v1/messages", _ ->
+              medir "anthropic" (mensajes (module Anthropic) ~api:"anthropic" p.upstream p req cuerpo) t0
+          | `POST, "/v1/chat/completions", Some u ->
+              medir "openai" (mensajes (module Openai) ~api:"openai" u p req cuerpo) t0
+          | _ -> medir "otra" (con_fuente "paso" (reenviar p p.upstream req cuerpo)) t0))
 
 let servir ~sw ~net ~ip ~puerto p =
   let callback _ req cuerpo =

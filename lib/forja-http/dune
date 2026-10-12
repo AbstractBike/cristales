@@ -8,6 +8,7 @@
   cohttp-eio
   http
   tls
+  unix
   tls-eio
   ca-certs
   domain-name

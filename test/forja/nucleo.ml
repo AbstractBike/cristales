@@ -313,4 +313,26 @@ let () =
     (O.salida Esquema (Result.get_ok (O.respuesta ~modelo:"m" Esquema {|{"a":1}|})) = Some {|{"a":1}|});
   comprueba "openai: cristal sin JSON es error" (Result.is_error (O.respuesta ~modelo:"m" Esquema "no"))
 
+(* Métricas: el texto de Prometheus. *)
+let () =
+  let module M = Forja_http.Metricas in
+  let m = M.crear () in
+  M.contador m "x_total" ~ayuda:"Equis.";
+  M.histograma m "h_segundos" ~ayuda:"Hache." ~cubos:[ 0.1; 1. ];
+  M.sumar m "x_total" ~etiquetas:[ ("b", "2"); ("a", "1") ] 1.;
+  M.sumar m "x_total" ~etiquetas:[ ("a", "1"); ("b", "2") ] 2.;
+  M.sumar m "x_total" ~etiquetas:[ ("a", "comilla \"y\\ barra") ] 1.;
+  M.sumar m "no_declarado_total" 1.;
+  List.iter (M.observar m "h_segundos") [ 0.05; 0.5; 5. ];
+  let t = M.servir m [ { M.nombre = "g"; ayuda = "Ge."; valores = [ ([ ("z", "1"); ("y", "2") ], 0.5) ] } ] in
+  comprueba "contador con su tipo" (contiene t "# TYPE x_total counter");
+  comprueba "mismas etiquetas en otro orden, misma serie" (contiene t {|x_total{a="1",b="2"} 3|});
+  comprueba "escapa comillas y barras" (contiene t {|x_total{a="comilla \"y\\ barra"} 1|});
+  comprueba "lo no declarado no sale" (not (contiene t "no_declarado"));
+  comprueba "cubos acumulados"
+    (contiene t {|h_segundos_bucket{le="0.1"} 1|} && contiene t {|h_segundos_bucket{le="1"} 2|}
+    && contiene t {|h_segundos_bucket{le="+Inf"} 3|});
+  comprueba "suma y cuenta" (contiene t "h_segundos_sum 5.55" && contiene t "h_segundos_count 3");
+  comprueba "medidas, con etiquetas ordenadas" (contiene t "# TYPE g gauge" && contiene t {|g{y="2",z="1"} 0.5|})
+
 let () = if !fallos > 0 then exit 1

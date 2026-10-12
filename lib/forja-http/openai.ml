@@ -111,3 +111,8 @@ let restringir j ks =
   Comun.cambiar "response_format"
     (Comun.cambiar "json_schema" (Comun.cambiar "schema" (Comun.restringir_esquema ks)))
     j
+
+let uso j =
+  match Option.map (fun u -> (campo "prompt_tokens" u, campo "completion_tokens" u)) (campo "usage" j) with
+  | Some (Some (`Int e), Some (`Int s)) -> Some (e, s)
+  | _ -> None

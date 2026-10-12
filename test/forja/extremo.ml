@@ -19,6 +19,11 @@ let llamadas_openai = ref 0
 let pedidos_openai : string list ref = ref []
 let leer b = Eio.Buf_read.(parse_exn take_all) b ~max_size:max_int
 
+let contiene s sub =
+  let n = String.length sub in
+  let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+  ir 0
+
 (* El LLM falso: pone en mayúsculas el texto del usuario; con herramienta
    forzada, lo devuelve como su entrada: {"mayus": …}. *)
 let rec llm _ req cuerpo =
@@ -281,4 +286,28 @@ let () =
       comprueba "parcial cristalino es 422"
         (match pedir_openai cliente (dos "cinco") with 422, "defecto", None -> true | _ -> false);
       comprueba "parcial cristalino, sin LLM" (!llamadas_openai = antes));
+  (* Las métricas: lo que acaba de pasar, contado. *)
+  con_forja (proxy Forja.Vitrina.(vacia |> con tarea_d `Mixta solo_a) cantera) (fun () ->
+      let m =
+        Eio.Switch.run @@ fun sw ->
+        let uri = Uri.of_string (Printf.sprintf "http://127.0.0.1:%d/metrics" puerto_forja) in
+        let _, b = Cohttp_eio.Client.get cliente ~sw uri in
+        leer b
+      in
+      let t = Forja.Tarea.to_string tarea_d in
+      let hay s = comprueba ("métricas: " ^ s) (contiene m s) in
+      hay {|# TYPE forja_peticiones_total counter|};
+      hay (Printf.sprintf {|forja_peticiones_total{api="openai",fuente="parcial",tarea="%s"} 1|} t);
+      hay {|forja_peticiones_total{api="anthropic",fuente="cristal",tarea=|};
+      hay {|forja_peticiones_total{api="openai",fuente="paso",tarea=""}|};
+      hay (Printf.sprintf {|forja_campos_total{de="cristal",tarea="%s"} 3|} t);
+      hay (Printf.sprintf {|forja_campos_total{de="llm",tarea="%s"} 1|} t);
+      hay {|forja_pasos_total{motivo="streaming",ruta="/v1/chat/completions"}|};
+      hay {|forja_llm_segundos_bucket{api="openai",tarea=""|};
+      hay {|forja_llm_respuestas_total{api="openai",codigo="200"}|};
+      hay (Printf.sprintf {|forja_cristal_segundos_count{tarea="%s"}|} t);
+      hay {|forja_maduraciones_total{tarea=|};
+      hay (Printf.sprintf {|forja_tarea_muestras{fase="mixta",tarea="%s"}|} t);
+      hay (Printf.sprintf {|forja_campo_estabilidad{campo="a",tarea="%s"} 1|} t);
+      hay {|forja_vitrina_cristales 1|});
   if !fallos > 0 then exit 1

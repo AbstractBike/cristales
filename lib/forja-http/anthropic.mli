@@ -47,3 +47,6 @@ val campos : Yojson.Safe.t -> string list
 val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
 (** La petición con la herramienta forzada reducida a esos campos: lo que se
     le pide al LLM cuando el cristal ya dio el resto. *)
+
+val uso : Yojson.Safe.t -> (int * int) option
+(** Tokens de entrada y de salida de una respuesta ([usage]). *)
