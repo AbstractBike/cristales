@@ -115,13 +115,27 @@ let () =
             (Forja_http.Horno.cocer ~dir:horno ~prompt:Forja_http.Prompt.cristalizar t i
                (cantera.muestras t))) }
   in
+  (* Antes de pedir nada, que la forja ya escuche: con la máquina cargada
+     (nix flake check) el cliente llegaba a veces antes que el listen. *)
+  let rec escuchando n =
+    match
+      Eio.Switch.run (fun sw ->
+          Eio.Net.close (Eio.Net.connect ~sw net (`Tcp (Eio.Net.Ipaddr.V4.loopback, puerto_forja))))
+    with
+    | () -> ()
+    | exception Eio.Io _ when n > 0 ->
+        Eio.Time.sleep (Eio.Stdenv.clock env) 0.01;
+        escuchando (n - 1)
+  in
   let con_forja p f =
     Eio.Switch.run @@ fun sw' ->
     Eio.Fiber.first
       (fun () ->
         Forja_http.Proxy.servir ~sw:sw' ~net ~ip:Eio.Net.Ipaddr.V4.loopback
           ~puerto:puerto_forja p)
-      f
+      (fun () ->
+        escuchando 500;
+        f ())
   in
   Eio.Fiber.fork_daemon ~sw (fun () ->
       Cohttp_eio.Server.run (escuchar ~sw net puerto_llm)
