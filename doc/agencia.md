@@ -93,6 +93,25 @@ encadenan: primero el modelo más barato que sabe, luego ninguno.
 Los modelos se nombran como en su API: `claude-haiku-5-5` va por Messages;
 `openai:<modelo>`, por Chat Completions (llama-server, vLLM…).
 
+## Mediciones
+
+El archivo guarda cada encargo entero, para releerlo; además, con
+`AGENCIA_GREPTIME`, cada encargo y cada veredicto se mide como un punto con
+etiquetas en la misma base (`Medidas`, protocolo de línea de InfluxDB), que
+se puede agrupar por PromQL. No hay `/metrics` que scrapear: agencia-mcp es
+un proceso por sesión, y cada encargo se mide al hacerse.
+
+| Tabla | Etiquetas | Campos |
+|---|---|---|
+| `agencia_encargo` | `agente`, `version`, `modelo`, `fuente` (`directo` o la de la forja), `resultado` (`ok`, `error`) | `n` (1), `ms`, `tokens_entrada`, `tokens_salida` |
+| `agencia_veredicto` | `agente`, `modelo`, `veredicto` (`bien`, `mal`) | `n` (1) |
+
+Por PromQL se elige el campo con `__field__`, y como son sucesos se suma la
+ventana: `sum by (modelo) (sum_over_time(agencia_encargo{__field__="n"}[1h]))`
+son los encargos por modelo en la última hora, y el acierto de cada modelo,
+los `bien` entre todos los veredictos. Es lo que pinta el dashboard «Agencia»
+de Perses (nixos-config, `modules/observability/cristales.nix`).
+
 ## Uso
 
 ```sh

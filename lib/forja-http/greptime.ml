@@ -43,3 +43,11 @@ let leer g consulta =
   match sql g consulta with
   | Ok (c, b) when c < 300 -> ( try crudas (Yojson.Safe.from_string b) with Yojson.Json_error _ -> [])
   | Ok _ | Error _ -> []
+
+(* Protocolo de línea de InfluxDB: las etiquetas pasan a ser columnas de la
+   clave, y la tabla se puede consultar por PromQL agrupando por ellas. *)
+let lineas g texto =
+  if texto <> "" then
+    avisar
+      (g.post (con_ruta g "/v1/influxdb/write" [ ("db", g.db); ("precision", "ms") ])
+         ~tipo:"text/plain; charset=utf-8" texto)

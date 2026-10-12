@@ -185,4 +185,39 @@ let () =
   List.iter
     (fun e -> comprueba "fila de encargo" (G.encargo (G.fila_encargo e) = Some { e with veredicto = None }))
     [ encargo caro; encargo ~salida:(Error "caído") ~veredicto:Mal barato ];
+  (* Las medidas: cada encargo y cada veredicto, un punto con etiquetas. *)
+  let module M = Agencia_http.Medidas in
+  let e = { (encargo medio) with fuente = "liquido"; ms = 1200; tokens_entrada = 300; tokens_salida = 50 } in
+  comprueba "línea de un encargo"
+    (M.linea (M.encargo e)
+    = Printf.sprintf
+        "agencia_encargo,agente=resumir,version=%s,modelo=claude-haiku-5-5,fuente=liquido,resultado=ok \
+         n=1i,ms=1200i,tokens_entrada=300i,tokens_salida=50i"
+        (Agente.version agente));
+  comprueba "un error es resultado=error"
+    (List.assoc "resultado" (M.encargo (encargo ~salida:(Error "x") caro)).etiquetas = "error");
+  comprueba "escapa comas, iguales y espacios; sin etiquetas vacías"
+    (M.linea { M.tabla = "t"; etiquetas = [ ("a", "x,y=z w"); ("b", "") ]; campos = [ ("n", 1) ]; ms = Some 5. }
+    = {|t,a=x\,y\=z\ w n=1i 5|});
+  let puntos = ref [] in
+  let archivo = Archivo.en_memoria () in
+  let medido = M.con_medidas (fun p -> puntos := p :: !puntos) archivo in
+  medido.registrar e;
+  medido.juzgar agente.nombre e.id Bien "";
+  (match List.rev !puntos with
+  | [ a; b ] ->
+      comprueba "registrar mide el encargo" (a.tabla = "agencia_encargo");
+      comprueba "juzgar mide el veredicto, con su modelo"
+        (b.tabla = "agencia_veredicto"
+        && List.assoc "modelo" b.etiquetas = "claude-haiku-5-5"
+        && List.assoc "veredicto" b.etiquetas = "bien")
+  | _ -> comprueba "dos puntos" false);
+  comprueba "y el archivo lo guarda igual"
+    (match archivo.historial agente.nombre with [ x ] -> x.veredicto = Some Bien | _ -> false);
+  (* Un veredicto de otra sesión: el modelo, del historial. *)
+  puntos := [];
+  let otro = M.con_medidas (fun p -> puntos := p :: !puntos) archivo in
+  otro.juzgar agente.nombre e.id Mal "";
+  comprueba "modelo del historial"
+    (match !puntos with [ p ] -> List.assoc "modelo" p.etiquetas = "claude-haiku-5-5" | _ -> false);
   if !fallos > 0 then exit 1

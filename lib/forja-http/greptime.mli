@@ -27,3 +27,8 @@ val leer : t -> string -> Yojson.Safe.t list
 
 val crudas : Yojson.Safe.t -> Yojson.Safe.t list
 (** Las filas de una respuesta de [/v1/sql]. *)
+
+val lineas : t -> string -> unit
+(** Puntos en el protocolo de línea de InfluxDB, uno por línea: las
+    etiquetas son columnas de la clave de la tabla, así que se pueden
+    agrupar por PromQL. Si GreptimeDB no responde, lo cuenta y sigue. *)

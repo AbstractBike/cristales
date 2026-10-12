@@ -32,8 +32,13 @@ let () =
   let archivo =
     match Sys.getenv_opt "AGENCIA_GREPTIME" with
     | Some url ->
-        Agencia_http.Archivo_greptime.crear ~post:(Forja_http.Proxy.post cliente) ~url:(Uri.of_string url)
-          ~db:(entorno "AGENCIA_GREPTIME_DB" "agencia") ()
+        let post = Forja_http.Proxy.post cliente and url = Uri.of_string url
+        and db = entorno "AGENCIA_GREPTIME_DB" "agencia" in
+        (* Y cada encargo y veredicto, medido (Medidas): las métricas de la
+           agencia, en la misma base. *)
+        Agencia_http.Medidas.con_medidas
+          (Agencia_http.Medidas.a_greptime (Forja_http.Greptime.conectar ~post ~url ~db))
+          (Agencia_http.Archivo_greptime.crear ~post ~url ~db ())
     | None ->
         prerr_endline "agencia-mcp: sin AGENCIA_GREPTIME, el archivo vive en memoria y se pierde al salir";
         Agencia.Archivo.en_memoria ()
