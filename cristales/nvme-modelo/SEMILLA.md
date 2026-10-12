@@ -63,6 +63,8 @@ detrás): `FIKWOT FX991 500GB NVMe` da «fikwot fx991»; `Acer Predator GM7
 - Un alias empieza donde empieza una palabra; un alias de un solo número
   («7450», «980») necesita su marca en el texto y no vale detrás de «bis»,
   «hasta», «up to» ni delante de MB/s, GB, W o rpm.
+- Entre los que comparten alias (Micron 7450 PRO y MAX), el que tiene la
+  capacidad del texto; sin capacidad, el primero del catálogo (el PRO).
 - La capacidad es la del texto; si es una de las del modelo (a un 5 %), esa,
   con su TBW. No cuentan la memoria («16GB RAM»), la resistencia («600TBW»)
   ni lo de menos de 100 GB.

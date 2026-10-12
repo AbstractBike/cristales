@@ -74,6 +74,8 @@ let ejemplos =
     ("2x Micron/HP 7450 MAX U.3 6,4TB SSD, neuwertig", [ "micron-7450-max/6400" ]);
     ("Micron 7450 PRO 3.84TB Enterprise NVME SSD", [ "micron-7450-pro/3840" ]);
     ("Micron 7450 Enterprise NVMe SSD 3.84 TB", [ "micron-7450-pro/3840" ]);
+    ("Micron 7450", [ "micron-7450-pro/-" ]);
+    ("Micron 7400 MAX 3.2TB", [ "micron-7400-max/3200" ]);
     ("Micron 7400 Pro 3.84TB NVMe Enterprise SSD U.2 (2 Stück)", [ "micron-7400-pro/3840" ]);
     ("Intel DC P4510 4TB U.2 NVMe Enterprise SSD – 100% Health", [ "intel-p4510/4000" ]);
     ("Intel 1TB SSD DC P4510 Series NVME U.2 2.5\"", [ "intel-p4510/1000" ]);

@@ -205,10 +205,9 @@ let menciones texto =
     | [] -> incr i
     | _ ->
       let largo = List.fold_left (fun m (a, _) -> max m (Array.length a)) 0 candidatos in
-      let modelos =
-        List.sort_uniq (fun (a : Catalogo.modelo) b -> compare a.clave b.clave)
-          (List.filter_map (fun (a, x) -> if Array.length a = largo then Some x else None) candidatos)
-      in
+      (* En el orden del catálogo: entre PRO y MAX, sin capacidad que decida, el PRO. *)
+      let largos = List.filter_map (fun (a, x) -> if Array.length a = largo then Some x else None) candidatos in
+      let modelos = List.filter (fun (m : Catalogo.modelo) -> List.memq m largos) Catalogo.modelos in
       salida := { modelos; primera = !i; largo } :: !salida;
       i := !i + largo
   done;
