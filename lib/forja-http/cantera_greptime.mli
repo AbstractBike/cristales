@@ -6,7 +6,7 @@
     Escribe con el pipeline [greptime_identity] (JSON tal cual, sin escapar
     SQL) en una tabla append-only y lee por la API SQL por HTTP. *)
 
-type post = Uri.t -> tipo:string -> string -> (int * string, string) result
+type post = Greptime.post
 (** Hace un POST con ese [Content-Type] y devuelve estado y cuerpo. *)
 
 val crear : post:post -> url:Uri.t -> ?db:string -> ?tabla:string -> unit -> Forja.Cantera.t

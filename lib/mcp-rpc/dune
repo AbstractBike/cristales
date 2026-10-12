@@ -1,0 +1,4 @@
+(library
+ (name mcp_rpc)
+ (public_name cristales.mcp-rpc)
+ (libraries yojson))

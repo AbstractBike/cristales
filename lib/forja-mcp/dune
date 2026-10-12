@@ -1,4 +1,4 @@
 (library
  (name forja_mcp)
  (public_name cristales.forja-mcp)
- (libraries forja cristal yojson))
+ (libraries forja cristal mcp_rpc yojson))
