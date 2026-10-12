@@ -98,6 +98,32 @@ let con_fuente ?tarea fuente r =
   in
   { r with cabeceras = h }
 
+(* Por qué la forja deja pasar una petición sin hacerla tarea: streaming,
+   herramientas, varios turnos, response_format sin esquema... Antes el motivo
+   se descartaba, y un cliente que mandaba json_object pasaba por la forja sin
+   dejar una sola muestra sin que nadie lo supiera (log-triage, 2026-10-12).
+   Se dice una vez por motivo y cliente (su tarea explícita o, si no, su
+   modelo), no en cada petición: el servidor es un solo dominio de Eio, así
+   que basta una tabla. *)
+let pasos_vistos : (string * string, unit) Hashtbl.t = Hashtbl.create 16
+
+let avisar_paso req j motivo =
+  let quien =
+    match Http.Header.get (Http.Request.headers req) Anthropic.cabecera_tarea, j with
+    | Some t, _ -> "tarea " ^ t
+    | None, Some j -> (
+        match Yojson.Safe.Util.member "model" j with
+        | `String m -> "modelo " ^ m
+        | _ -> "sin tarea ni modelo"
+        | exception Yojson.Safe.Util.Type_error _ -> "sin tarea ni modelo")
+    | None, None -> "sin tarea ni modelo"
+  in
+  if not (Hashtbl.mem pasos_vistos (motivo, quien)) then begin
+    Hashtbl.replace pasos_vistos (motivo, quien) ();
+    Printf.eprintf "forja: %s pasa sin muestra (%s): %s\n%!"
+      (Uri.path (Uri.of_string (Http.Request.resource req))) quien motivo
+  end
+
 let json estado j =
   { estado;
     cabeceras = Http.Header.of_list [ ("content-type", "application/json") ];
@@ -125,15 +151,18 @@ let mensajes (module A : API) upstream p req cuerpo =
         | None -> ()));
     con_fuente ~tarea:pet.tarea (if defecto = None then "liquido" else "defecto") r
   in
+  let j = try Some (Yojson.Safe.from_string cuerpo) with Yojson.Json_error _ -> None in
   let peticion =
-    match Yojson.Safe.from_string cuerpo with
-    | j ->
+    match j with
+    | Some j ->
         let tarea = Http.Header.get (Http.Request.headers req) Anthropic.cabecera_tarea in
         Result.map (fun (pet, forma) -> (pet, forma, j)) (A.peticion ~tarea j)
-    | exception Yojson.Json_error e -> Error e
+    | None -> Error "el cuerpo no es JSON"
   in
   match peticion with
-  | Error _ -> con_fuente "paso" (reenviar ())
+  | Error motivo ->
+      avisar_paso req j motivo;
+      con_fuente "paso" (reenviar ())
   | Ok (pet, forma, j) -> (
       match Forja.decidir p.forja pet with
       | Por_cristal salida -> (
