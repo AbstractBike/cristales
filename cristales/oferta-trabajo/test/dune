@@ -1,0 +1,11 @@
+(test
+ (name red)
+ (libraries oferta_trabajo cristal yojson))
+
+; Mide el cristal contra muestras de la cantera (una por línea,
+; {"e": entrada, "s": salida del LLM}): campo a campo, cuántas da y en
+; cuántas coincide. No es parte de la red: las muestras no se commitean.
+(executable
+ (name medir)
+ (modules medir)
+ (libraries oferta_trabajo yojson))

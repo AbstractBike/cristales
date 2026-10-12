@@ -45,4 +45,13 @@ let vitrina =
            "De qué va una noticia de hardware (Título:, Resumen:; o solo el titular) para quien sigue \
             las gráficas de sobremesa: si va de ellas, su tipo (drivers, análisis, rumor, precio, \
             mercado, lanzamiento, anuncio), fabricantes, modelos y las gráficas que aún no estaban en \
-            el catálogo.")
+            el catálogo."
+    (* La extracción de trabajo.email (2026-10-12), la tarea de su prompt: un
+       cristal parcial, da los campos que sabe y la forja le pide a gemma el resto. *)
+    |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal
+         ~descripcion:
+           "De una oferta de trabajo (el mensaje de la extracción de trabajo.email, con <posting> y \
+            sus líneas Title:, Location:, Description:), los campos que se deciden por reglas: \
+            salario null si no da dinero, años de experiencia null si no habla de años, Easy Apply, \
+            seniority por el título y onsite si no menciona remoto ni híbrido. Un objeto parcial: \
+            lo demás (habilidades, idiomas, contrato…) no lo da.")

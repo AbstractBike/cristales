@@ -1,0 +1,4 @@
+(library
+ (name oferta_trabajo)
+ (public_name cristales.oferta-trabajo)
+ (libraries cristal yojson))
