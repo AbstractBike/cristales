@@ -125,7 +125,8 @@ los antecedentes conocidos (§5): enrutadores de modelos, cascadas tipo
 FrugalGPT y selección por bandidos ya existen; lo divulgado es su
 combinación. Siguen los mismos pasos 1 y 3–5 de arriba para este documento.
 
-**Sello: hecho el 2026-10-12T21:47Z.**
+**Sello: hecho el 2026-10-12T21:47Z.** Anclado en Bitcoin el 2026-10-13, en el bloque
+971145 (y 971147).
 [`sellos/huellas-2026-10-12-agencia.txt`](sellos/huellas-2026-10-12-agencia.txt)
 recoge el commit público, el SHA-256 de `doc/agencia.md` en ese commit y el
 de la divulgación; los dos ficheros están sellados (`.ots` al lado). Para
