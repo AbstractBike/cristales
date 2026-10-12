@@ -115,3 +115,8 @@ Tres tablas append-only, escritas con `greptime_identity`:
 `agencia_encargos` y `agencia_veredictos` (gana el último de cada encargo).
 El histórico se puede consultar por SQL tal cual, por ejemplo qué modelo
 cuesta menos tokens por acierto en cada agente.
+
+---
+
+Divulgado como estado de la técnica: [`legal/divulgacion-agencia.md`](../legal/divulgacion-agencia.md),
+sellado con OpenTimestamps el 2026-10-12.

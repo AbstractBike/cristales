@@ -1,0 +1,18 @@
+cristales — huellas selladas con OpenTimestamps (agencia)
+Autor: Silvio Macías Sánchez
+Generado: 2026-10-12T21:47:42Z
+
+El commit se identifica por su id de git (SHA-1) y por el SHA-256 de
+'git archive --format=tar <commit>'.
+
+main (público en GitHub), con la agencia (doc/agencia.md, lib/agencia*, bin/agencia-mcp)
+  commit  442ba7d04e7577bc3b3b6caacafb039d16f2702d
+  fecha   2026-10-12T18:22:31+02:00
+  árbol   4452738b3c1543cf53bbaedaf6fa2e2037aab126
+  sha256  2dcb04d66602a8dede9cee47fc4b2639775998781e7ce02d561e113bb11b26bb
+
+doc/agencia.md (en ese commit)
+  sha256  a660c8fe6fa62ca812d14bc3b83cbe0a3f2091422fa82774f9c153e54d2c14d6
+
+legal/divulgacion-agencia.md (versión 1)
+  sha256  dd1a49bd17e6dd35f87eab5188f546127ad2d8ff514adfd23e70f4ef0de03a64

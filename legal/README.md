@@ -114,6 +114,31 @@ nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026
 nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-12-llaves-de-miel.txt.ots
 ```
 
+## Agencia (2026-10-12)
+
+El patrón de [`doc/agencia.md`](../doc/agencia.md) (agentes que eligen el
+modelo más barato que su histórico juzgado demuestra fiable, como servidor
+MCP) se commiteó el **2026-10-12** (commit `442ba7d`, 16:22Z) y está en GitHub
+a más tardar desde las 19:39Z. Tiene su propia divulgación,
+[`divulgacion-agencia.md`](divulgacion-agencia.md), con las variantes (§4) y
+los antecedentes conocidos (§5): enrutadores de modelos, cascadas tipo
+FrugalGPT y selección por bandidos ya existen; lo divulgado es su
+combinación. Siguen los mismos pasos 1 y 3–5 de arriba para este documento.
+
+**Sello: hecho el 2026-10-12T21:47Z.**
+[`sellos/huellas-2026-10-12-agencia.txt`](sellos/huellas-2026-10-12-agencia.txt)
+recoge el commit público, el SHA-256 de `doc/agencia.md` en ese commit y el
+de la divulgación; los dos ficheros están sellados (`.ots` al lado). Para
+completarlos cuando Bitcoin los confirme y comprobarlos:
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-12-agencia.txt.ots legal/divulgacion-agencia.md.ots
+```
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-12-agencia.txt.ots
+```
+
 ## Derechos de autor y licencia
 
 [`COPYRIGHT.md`](../COPYRIGHT.md) ya cubre lo esencial: todos los derechos
