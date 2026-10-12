@@ -1,0 +1,18 @@
+cristales — huellas selladas con OpenTimestamps (llaves de miel)
+Autor: Silvio Macías Sánchez
+Generado: 2026-10-12T19:39:31Z
+
+El commit se identifica por su id de git (SHA-1) y por el SHA-256 de
+'git archive --format=tar <commit>'.
+
+main (público en GitHub), con doc/llaves-de-miel.md
+  commit  d104783fc3389619b301c7c7f168d325ab95f114
+  fecha   2026-10-12T21:35:21+02:00
+  árbol   573c3f3a62b5d0e81f44191d484ef440c484dfd2
+  sha256  0f483a9d2aa328ef48c9dc355bf6c76092b1967b1a6beb8e9719e7f075ddf1d7
+
+doc/llaves-de-miel.md (en ese commit)
+  sha256  493eabf544013d84cea6413368abd0c17f1b1a329080692298dafc798de60e57
+
+legal/divulgacion-llaves-de-miel.md (versión 1)
+  sha256  69ffe4e53e2ecc2e9e47725c87468d5538501561d74c959bd38bf3f691a72750

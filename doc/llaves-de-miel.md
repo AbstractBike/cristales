@@ -128,6 +128,9 @@ avisar donde solo debería leer una persona.
 
 ## Antecedentes
 
+La divulgación defensiva, con sus variantes y su sello de tiempo, está en
+[`legal/divulgacion-llaves-de-miel.md`](../legal/divulgacion-llaves-de-miel.md).
+
 Los *honeytokens* y los *canary tokens* (credenciales falsas que avisan al
 usarse) son conocidos; los programas de escaneo de secretos de las
 plataformas y sus socios, también. Lo que describe este documento es

@@ -91,6 +91,29 @@ que los anclan en la cadena de Bitcoin; los `.ots` resultantes se guardan
 junto a los ficheros y se verifican con `ots verify`. Con firma GPG del tag
 (`git tag -s`) la autoría queda además ligada a tu clave.
 
+## Llaves de miel (2026-10-12)
+
+El patrón de [`doc/llaves-de-miel.md`](../doc/llaves-de-miel.md) se publicó
+en GitHub el **2026-10-12** (commit `d104783`, 19:35Z) y tiene su propia
+divulgación, [`divulgacion-llaves-de-miel.md`](divulgacion-llaves-de-miel.md),
+con las variantes (§4) y los antecedentes conocidos (§5): *honeytokens*,
+*canary tokens* y el escaneo de secretos ya existen; lo divulgado es su
+combinación. Siguen los mismos pasos 1 y 3–5 de arriba para este documento.
+
+**Sello: hecho el 2026-10-12T19:39Z.**
+[`sellos/huellas-2026-10-12-llaves-de-miel.txt`](sellos/huellas-2026-10-12-llaves-de-miel.txt)
+recoge el commit público, el SHA-256 de `doc/llaves-de-miel.md` en ese commit
+y el de la divulgación; los dos ficheros están sellados (`.ots` al lado).
+Para completarlos cuando Bitcoin los confirme y comprobarlos:
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-12-llaves-de-miel.txt.ots legal/divulgacion-llaves-de-miel.md.ots
+```
+
+```bash
+nix shell nixpkgs#opentimestamps-client -c ots verify legal/sellos/huellas-2026-10-12-llaves-de-miel.txt.ots
+```
+
 ## Derechos de autor y licencia
 
 [`COPYRIGHT.md`](../COPYRIGHT.md) ya cubre lo esencial: todos los derechos
