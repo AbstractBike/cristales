@@ -130,4 +130,18 @@ let () =
   comprueba "escena fuera del repo"
     (contiene (llamar "memoria_escena" [ ("slug", `String "../persona") ]) "no es un slug");
   comprueba "tres herramientas" (List.length (s.herramientas ()) = 3);
+  (* {1 Espejo} *)
+  let fs = Espejo.del_repo repo in
+  comprueba "espejo: persona y escenas válidas" (List.map (fun (f : Espejo.fichero) -> f.ruta) fs
+    = [ "escenas/b-empate.md"; "escenas/flota.md"; "escenas/greptime.md"; "escenas/sin-calor.md"; "persona.md" ]);
+  comprueba "huella sin orden" (Espejo.huella fs = Espejo.huella (List.rev fs));
+  comprueba "rutas fuera, inválidas"
+    (not (Espejo.ruta_valida "../x.md") && not (Espejo.ruta_valida "escenas/../../x.md") && Espejo.ruta_valida "escenas/a-b.md");
+  comprueba "huella no hex" (Result.is_error (Espejo.de_huella "x' OR 1=1"));
+  let dir = Filename.concat (Filename.temp_dir "espejo" "") "e" in
+  Espejo.escribir dir ({ Espejo.ruta = "../fuera.md"; contenido = "x" } :: fs);
+  Espejo.escribir dir fs;
+  comprueba "espejo escrito igual que el repo" (Contexto.de_repo dir <> "" && Escenas.indice dir = Escenas.indice repo);
+  comprueba "espejo con su huella" (Espejo.huella_local dir = Some (Espejo.huella fs));
+  comprueba "nada fuera del espejo" (not (Sys.file_exists (Filename.concat (Filename.dirname dir) "fuera.md")));
   if !fallos > 0 then exit 1
