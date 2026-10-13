@@ -96,6 +96,28 @@ let () =
   comprueba "residuos: nada tras redactar" (Residuos.buscar (fst (Redaccion.redactar sucio)) = []);
   comprueba "residuos: silueta, no valor"
     (List.for_all (fun (_, f) -> not (contiene f "Qx7b")) (Residuos.buscar sucio));
+  (* Ronda 2: contraseñas en español, [pass] en nombres, órdenes e Infisical. *)
+  redacta "la contraseña:" ~queda:[ "la contraseña: " ] Password "la contraseña: correcaballo" "correcaballo";
+  redacta "contraseña=" ~queda:[ "contraseña=" ] Password "contraseña=pinpanpun" "pinpanpun";
+  redacta "clave:" ~queda:[ "clave: " ] Password "la clave: pinpanpun" "pinpanpun";
+  redacta "DB_PASS=" ~queda:[ "DB_PASS=" ] Password "DB_PASS=hunter22" "hunter22";
+  redacta "mysql -pX" ~queda:[ "mysql -u root -p" ] Password "mysql -u root -phunter22 db" "hunter22";
+  redacta "-p 'X'" ~queda:[ "-p " ] Password "pg -p 'hunter 22'" "hunter 22";
+  redacta "sshpass -p" ~queda:[ "sshpass -p " ] Password "sshpass -p hunter22 ssh c1" "hunter22";
+  redacta "curl -u" ~queda:[ "curl -u silvio:" ] Password "curl -u silvio:hunter22 https://x" "hunter22";
+  redacta "--password X" ~queda:[ "--password " ] Password "rclone --password hunter22" "hunter22";
+  redacta "--password=X" ~queda:[ "--password=" ] Password "rclone --password=hunter22" "hunter22";
+  let st = "st." ^ "a1b2c3d4-e5f6-7890" ^ ".abcdef0123456789.fedcba98" in
+  redacta "token de Infisical" ~queda:[ "usa " ] Infisical ("usa " ^ st) "abcdef0123";
+  intacto "clave en prosa" "La clave: Infisical guarda los secretos";
+  intacto "clave con negrita" "clave: **c1** manda";
+  intacto "pass en prosa" "Pass: all tests green";
+  redacta "PASS: al final" ~queda:[ "PASS: " ] Password "SMTP_PASS: hunter22" "hunter22";
+  intacto "mkdir -p" "mkdir -p /tmp/x && ssh -p 22 c1";
+  intacto "mkdir -p con comillas" "mkdir -p '/tmp/a b'";
+  intacto "journalctl -u" "journalctl -u nginx --since today";
+  intacto "uid en docker" "docker run -u 1000:1000 imagen";
+  intacto "la palabra test." "un test.unitario_largo.otra_cosa_larga";
   (* La marca no se vuelve a redactar. *)
   let r1, _ = Redaccion.redactar ("A_TOKEN=" ^ gh) in
   let r2, c2 = Redaccion.redactar r1 in
@@ -160,13 +182,20 @@ let () =
   (match m with
   | Some m ->
       comprueba "asistente: texto y herramientas"
-        (m.texto = "Miro el disco.\n[herramienta Bash: Ver disco]\n[herramienta Read: /etc/hosts]\n[herramienta Write]");
+        (m.texto = "Miro el disco.\n[herramienta Bash: Ver disco]\n[herramienta Read]\n[herramienta Write]");
       comprueba "asistente: rol y agente" (m.rol = "assistant" && m.agente = "a9" && m.proyecto = "/logical-node")
   | None -> comprueba "asistente: hay mensaje" false);
   (* Se redacta lo que dijo el usuario. *)
   (match Transcript.de_linea (usuario (`String ("usa INFISICAL_TOKEN=st.abcdefgh.12345"))) with
   | Some m -> comprueba "redacta en el mensaje" (m.redacciones = [ (Redaccion.Clave, 1) ] && not (contiene m.texto "abcdefgh"))
   | None -> comprueba "redacta: hay mensaje" false);
+  (* La entrada de la herramienta no entra nunca; la descripción, cortada
+     sin partir UTF-8. *)
+  comprueba "sin description, solo el nombre"
+    (Transcript.herramienta "Bash" (`Assoc [ ("command", `String "ls /secreto") ]) = "[herramienta Bash]");
+  let larga = String.concat "" (List.init 150 (fun _ -> "ñ")) in
+  let h = Transcript.herramienta "Bash" (`Assoc [ ("description", `String larga) ]) in
+  comprueba "descripción cortada en UTF-8" (String.is_valid_utf_8 h && String.length h < 230);
   (* Truncado sin partir UTF-8. *)
   let largo = String.concat "" (List.init 5000 (fun _ -> "ñ")) in
   let t, sí = Transcript.truncar largo in
@@ -197,7 +226,8 @@ let () =
   Cursor.fijar c "/a b\tc" 0;
   Cursor.fijar c "/x/y.jsonl" 42;
   let ruta = Filename.concat (Filename.get_temp_dir_name ()) (Printf.sprintf "memoria-%d/sub/cursor" (Unix.getpid ())) in
-  Cursor.guardar ruta c;
+  comprueba "cursor se guarda" (Cursor.guardar ruta c = Ok ());
+  comprueba "cursor: error sin excepción" (Result.is_error (Cursor.guardar "/proc/no/se/puede/cursor" c));
   let c' = Cursor.cargar ruta in
   comprueba "cursor persiste" (Cursor.desde c' "/x/y.jsonl" = 42 && Cursor.desde c' "/nada" = 0);
   if !fallos > 0 then (

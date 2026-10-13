@@ -1,9 +1,9 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
    Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
-type tipo = Pem | Anthropic | Openai | Github | Gitlab | Slack | Aws | Jwt | Bearer | Url | Clave | Password | Entropia
+type tipo = Pem | Anthropic | Openai | Github | Gitlab | Slack | Aws | Jwt | Bearer | Url | Infisical | Clave | Password | Entropia
 
-let todos = [ Pem; Anthropic; Openai; Github; Gitlab; Slack; Aws; Jwt; Bearer; Url; Clave; Password; Entropia ]
+let todos = [ Pem; Anthropic; Openai; Github; Gitlab; Slack; Aws; Jwt; Bearer; Url; Infisical; Clave; Password; Entropia ]
 
 let nombre = function
   | Pem -> "pem"
@@ -16,6 +16,7 @@ let nombre = function
   | Jwt -> "jwt"
   | Bearer -> "bearer"
   | Url -> "url"
+  | Infisical -> "infisical"
   | Clave -> "clave"
   | Password -> "password"
   | Entropia -> "entropia"
@@ -110,14 +111,59 @@ let reglas =
     { tipo = Url;
       re = perl {|([A-Za-z][A-Za-z0-9+.-]*://)[^/\s:@'"]+:[^/\s@'"]+@|};
       sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Url ^ "@")) };
+    (* Tokens de servicio de Infisical: [st.<id>.<clave>…]. *)
+    { tipo = Infisical; re = perl (ini ^ {|st\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_.-]{8,}|}); sustituto = con_frontera Infisical };
     (* Nombre (con comillas opcionales), separador y valor: se conserva lo
        primero. Contraseñas desde 3 caracteres; claves desde 8, que [KEY]
        aparece en mucho código ([primaryKey: true]). *)
     { tipo = Password;
       re =
         perl ~opts:[ `Caseless ]
-          {|([A-Za-z0-9_.-]*(password|passwd|passphrase|pwd)["']?[ \t]*[:=][ \t]*)("[^"\n]{3,}"|'[^'\n]{3,}'|[^\s"'\[]{3,})|};
+          {|([A-Za-z0-9_.-]*(password|passwd|passphrase|pwd|contraseña)["']?[ \t]*[:=][ \t]*)("[^"\n]{3,}"|'[^'\n]{3,}'|[^\s"'\[]{3,})|};
       sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Password)) };
+    (* [pass] y [clave] son palabras corrientes ("Pass: all tests", "La
+       clave: Infisical guarda…"): con [:] solo si el valor cierra la frase
+       (no le sigue otra palabra) y no empieza por [*] ni signos; con [=],
+       siempre ([DB_PASS=…]). *)
+    { tipo = Password;
+      re =
+        perl ~opts:[ `Caseless ]
+          ({|([A-Za-z0-9_.-]*(pass|clave)["']?[ \t]*([:=])[ \t]*)("[^"\n]{3,}"|'[^'\n]{3,}'|[^\s"'\[*|}
+          ^ "\xC2" (* ¿, ¡, «… *) ^ {|]{3,})([ \t]+[A-Za-z(])?|});
+      sustituto =
+        (fun g ->
+          let v = Re.Group.get g 4 in
+          let sigue = Re.Group.test g 5 in
+          if Re.Group.get g 3 = ":" && sigue && v.[0] <> '"' && v.[0] <> '\'' then None
+          else Some (Re.Group.get g 1 ^ marca Password ^ if sigue then Re.Group.get g 5 else "")) };
+    (* En la línea de órdenes: [--password X], [mysql -pX], [-p 'X']
+       ([sshpass -p X] también), [curl -u usuario:clave]. Un [-p] suelto
+       ([mkdir -p], [ssh -p 22]) no es una contraseña. *)
+    { tipo = Password;
+      re = perl {|(--password[ \t]+)("[^"\n]+"|'[^'\n]+'|[^\s"']+)|};
+      sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Password)) };
+    { tipo = Password;
+      re = perl {|((mysql|mysqldump|mysqladmin|mariadb|mariadb-dump)[^\n]*?[ \t]-p)([^\s"']+)|};
+      sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Password)) };
+    { tipo = Password;
+      re = perl {|((^|[ \t])-p[ \t]+)("[^"\n]+"|'[^'\n]+')|};
+      sustituto =
+        (fun g ->
+          (* [mkdir -p '/ruta con espacios'] no. *)
+          let v = Re.Group.get g 3 in
+          if String.length v > 1 && (v.[1] = '/' || v.[1] = '$') then None
+          else Some (Re.Group.get g 1 ^ marca Password)) };
+    { tipo = Password;
+      re = perl {|(sshpass[ \t]+-p[ \t]*)([^\s"']+)|};
+      sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Password)) };
+    { tipo = Password;
+      re = perl {|((^|[ \t])(-u|--user)[ \t]+["']?[^\s:"'/]+:)([^\s"'@]+)|};
+      sustituto =
+        (fun g ->
+          (* [docker run -u 1000:1000] es un uid, no una clave. *)
+          let v = Re.Group.get g 4 in
+          if String.for_all (fun c -> c >= '0' && c <= '9') v then None
+          else Some (Re.Group.get g 1 ^ marca Password)) };
     { tipo = Clave;
       re =
         perl ~opts:[ `Caseless ]

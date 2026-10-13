@@ -10,8 +10,8 @@
     - Fuera los mensajes [isMeta] y los resúmenes de compactación.
     - Fuera los [tool_result] enteros, las imágenes y el [thinking].
     - Cada [tool_use], una línea [[herramienta <nombre>: <descripción>]]
-      (su [description] o, si no tiene, su primer campo corto), nunca su
-      entrada.
+      (su [description], cortada a 200 bytes sin partir UTF-8), o
+      [[herramienta <nombre>]] si no la tiene; nunca nada de su entrada.
     - Fuera los bloques [<system-reminder>], [<command-*>],
       [<local-command-*>], [<bash-stdout>], [<task-notification>]… (la
       salida de comandos y lo que inyecta el arnés).
@@ -41,7 +41,8 @@ val truncar : string -> string * bool
     [[…truncado, N bytes]]. *)
 
 val herramienta : string -> Yojson.Safe.t -> string
-(** La línea de un [tool_use] a partir de su nombre y su [input]. *)
+(** La línea de un [tool_use] a partir de su nombre y su [input]: de este
+    solo se lee [description]. *)
 
 val de_linea : ?al_redactar:(Redaccion.tipo -> antes:string -> string -> unit) -> string -> mensaje option
 (** [None] si la línea no es JSON, no es un mensaje o queda vacía.

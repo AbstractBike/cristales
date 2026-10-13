@@ -9,7 +9,7 @@ let nombre = function
   | Valor_tras_clave -> "valor-tras-clave"
 
 let perl p = Re.compile (Re.Perl.re ~opts:[ `Caseless ] p)
-let clave = {|(token|key|secret|password|passwd|api[-_]?key)|}
+let clave = {|(token|key|secret|password|passwd|pass|contraseña|clave|api[-_]?key)|}
 
 let patrones =
   [ (Pem_base64, Re.compile (Re.Perl.re {|LS0t[A-Za-z0-9+/=]{20,}|}));

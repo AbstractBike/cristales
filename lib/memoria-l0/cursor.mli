@@ -11,13 +11,16 @@ type t
 
 val vacio : unit -> t
 val ruta_por_defecto : unit -> string
-(** [$XDG_STATE_HOME/memoria/cursor], o [~/.local/state/memoria/cursor]. *)
+(** [$MEMORIA_ESTADO/cursor] (el servicio: [/var/lib/memoria], que corre con
+    [ProtectHome=read-only]); si no, [$XDG_STATE_HOME/memoria/cursor] o
+    [~/.local/state/memoria/cursor]. *)
 
 val cargar : string -> t
 (** Vacío si el fichero no existe o no se entiende. *)
 
-val guardar : string -> t -> unit
-(** Atómico (escribe al lado y renombra); crea el directorio. *)
+val guardar : string -> t -> (unit, string) result
+(** Atómico (escribe al lado y renombra); crea el directorio. No lanza: un
+    error (disco, permisos) vuelve como [Error]. *)
 
 val desde : t -> string -> int
 val fijar : t -> string -> int -> unit

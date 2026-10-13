@@ -2,7 +2,9 @@
    Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 (** Redacción de secretos (doc/memoria.md, «Seguridad»): lo que va a
-    [memoria_l0] pasa antes por aquí. Cada secreto se sustituye por
+    [memoria_l0] pasa antes por aquí, y también las notas que importa
+    memoria-escenas. API estable: [redactar] (y [nombre] para la marca); los
+    tipos pueden crecer, así que no los recorras con un [match] exhaustivo. Cada secreto se sustituye por
     [[redactado:<tipo>]]; en asignaciones, [Bearer] y URLs se conserva el
     nombre, la palabra o el esquema, que sí dicen algo.
 
@@ -21,8 +23,12 @@ type tipo =
   | Jwt  (** [eyJ….….…] *)
   | Bearer  (** [Bearer <token>] *)
   | Url  (** [esquema://usuario:clave@] *)
+  | Infisical  (** [st.<id>.<clave>], token de servicio de Infisical *)
   | Clave  (** [*_TOKEN=], [*_KEY=], [*SECRET*=], [api_key: …] *)
-  | Password  (** [password=], [passwd:], [pwd=] *)
+  | Password
+      (** [password=], [passwd:], [pwd=], [DB_PASS=], [contraseña:], [clave:];
+          en órdenes, [--password X], [mysql -pX], [-p 'X'], [sshpass -p X],
+          [curl -u usuario:clave]. *)
   | Entropia
       (** Una cadena de 20 o más caracteres de token con algún trozo (entre
           [/], [_], [.], [-], [=]) de 16 o más que parece al azar:

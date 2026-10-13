@@ -44,28 +44,27 @@ let ruido s =
   || String.starts_with ~prefix:"[Image" s
   || s = "No response requested."
 
+(* Los primeros [n] bytes como mucho, sin partir un carácter UTF-8. *)
+let prefijo s n =
+  if String.length s <= n then s
+  else
+    let rec corte i = if i > 0 && Char.code s.[i] land 0xC0 = 0x80 then corte (i - 1) else i in
+    String.sub s 0 (corte n)
+
 let truncar s =
   let n = String.length s in
   if n <= max_bytes then (s, false)
-  else
-    (* Retrocede hasta el principio de un carácter UTF-8. *)
-    let rec corte i = if i > 0 && Char.code s.[i] land 0xC0 = 0x80 then corte (i - 1) else i in
-    let i = corte max_bytes in
-    (Printf.sprintf "%s […truncado, %d bytes]" (String.sub s 0 i) n, true)
-
-let corto s = s <> "" && String.length s <= 120 && not (String.contains s '\n')
+  else (Printf.sprintf "%s […truncado, %d bytes]" (prefijo s max_bytes) n, true)
 
 let herramienta nombre input =
   let campos = match input with `Assoc l -> l | _ -> [] in
   let cadena = function `String s -> Some (String.trim s) | _ -> None in
-  let desc =
-    match Option.bind (List.assoc_opt "description" campos) cadena with
-    | Some d when d <> "" -> Some (if String.length d > 200 then fst (truncar (String.sub d 0 200)) else d)
-    | _ -> List.find_map (fun (_, v) -> Option.bind (cadena v) (fun s -> if corto s then Some s else None)) campos
-  in
-  match desc with
-  | Some d -> Printf.sprintf "[herramienta %s: %s]" nombre (String.map (fun c -> if c = '\n' then ' ' else c) d)
-  | None -> Printf.sprintf "[herramienta %s]" nombre
+  (* Solo la [description] que escribió el modelo; nunca la entrada. *)
+  match Option.bind (List.assoc_opt "description" campos) cadena with
+  | Some d when d <> "" ->
+      let d = if String.length d > 200 then prefijo d 200 ^ "…" else d in
+      Printf.sprintf "[herramienta %s: %s]" nombre (String.map (fun c -> if c = '\n' then ' ' else c) d)
+  | _ -> Printf.sprintf "[herramienta %s]" nombre
 
 let cadena j = match j with `String s -> s | _ -> ""
 
