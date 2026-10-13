@@ -201,6 +201,32 @@ Completions tiene detrás el llama-server de a1 (`fleet.llmLocal`), y
 trabajo-kt le manda la extracción (`fleet.trabajo.localLlm.url`). Un cristal nuevo
 llega a la flota con `nix flake update cristales` y un apply.
 
+### Una forja local, para probar una app
+
+Mientras la forja de la flota no tenga los cristales de una app nueva, la app
+se prueba (su `run-local`) contra una forja levantada desde un checkout de
+este repo, que sirve la vitrina de ese checkout:
+
+```sh
+nix develop -c dune build ./bin/forja/main.exe
+FORJA_PUERTO=8099 FORJA_HORNO=/tmp/horno ./_build/default/bin/forja/main.exe
+```
+
+Sin `FORJA_GREPTIME` la cantera vive en memoria (los defectos se pierden al
+pararla). La app apunta a ella con `FORJA_URL=http://127.0.0.1:8099` para la
+vitrina y, si tiene LLM de respaldo, con
+`ANTHROPIC_BASE_URL=http://127.0.0.1:8099` (la clave pasa tal cual). Para
+ver que un cristal está:
+
+```sh
+curl -s http://127.0.0.1:8099/forja/vitrina
+curl -s -X POST http://127.0.0.1:8099/forja/vitrina/memoria-anuncio \
+  -d '{"entrada": "Título: 4× Samsung 64GB DDR4-3200 ECC REG RDIMM M393A8G40AB2-CWE"}'
+```
+
+`POST /forja/vitrina/<tarea>` con `{"entrada": "…"}` responde
+`{"salida": "<la salida del cristal>"}` o `{"defecto": "<motivo>"}`.
+
 ### Cantera en GreptimeDB
 
 Con `FORJA_GREPTIME` (raíz HTTP, puerto 4000) cada muestra se escribe por
