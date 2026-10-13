@@ -21,13 +21,19 @@ let tildes =
 
 let reemplaza_todo patron por s =
   let lp = String.length patron in
-  if lp = 0 then s
+  let n = String.length s in
+  (* Sin copiar trozos: se compara en el sitio; y si la primera letra del
+     patrón no está, el texto vuelve tal cual (las tildes, casi siempre). *)
+  let encaja i =
+    let rec ir k = k >= lp || (s.[i + k] = patron.[k] && ir (k + 1)) in
+    i + lp <= n && ir 0
+  in
+  if lp = 0 || not (String.contains s patron.[0]) then s
   else begin
-    let b = Buffer.create (String.length s) in
+    let b = Buffer.create n in
     let i = ref 0 in
-    let n = String.length s in
     while !i < n do
-      if !i + lp <= n && String.sub s !i lp = patron then (Buffer.add_string b por; i := !i + lp)
+      if encaja !i then (Buffer.add_string b por; i := !i + lp)
       else (Buffer.add_char b s.[!i]; incr i)
     done;
     Buffer.contents b
