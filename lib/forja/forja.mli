@@ -85,6 +85,11 @@ module Cantera : sig
         (** Segunda respuesta del LLM a la misma entrada, si se pidió. *)
     defecto : Cristal.motivo option;
         (** Si vino de un defecto de un cristal, su motivo. *)
+    ejemplos : bool;
+        (** Si la petición llevaba ejemplos (turnos previos, few-shot): su
+            salida está sesgada por ellos y no dice si el LLM repite un
+            método. Cuenta como muestra, pero su contraste no cuenta para
+            la madurez. *)
   }
 
   type t = {
@@ -140,7 +145,8 @@ module Madurez : sig
 
   val vacio : informe
   val sumar : informe -> Cantera.muestra -> informe
-  (** Una muestra sin salida no dice nada del LLM: no cuenta. *)
+  (** Una muestra sin salida no dice nada del LLM: no cuenta. Una con
+      ejemplos cuenta como muestra, no como contraste. *)
   val informe : Cantera.muestra list -> informe
 
   val entera : politica -> informe -> bool
@@ -197,10 +203,12 @@ val aprender :
   peticion ->
   ?contraste:string ->
   ?defecto:Cristal.motivo ->
+  ?ejemplos:bool ->
   string ->
   Madurez.informe option
 (** Registra en la cantera la salida del LLM. Devuelve [Some informe] la
-    primera vez que la tarea madura; quien llama prepara la semilla. *)
+    primera vez que la tarea madura; quien llama prepara la semilla.
+    [ejemplos] (falso) si la petición llevaba turnos previos de ejemplo. *)
 
 (** {1 Introspección}
 

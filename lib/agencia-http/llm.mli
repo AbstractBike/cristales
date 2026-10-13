@@ -16,10 +16,11 @@ type destinos = {
 
 val peticion :
   ?contexto:Agencia.Ejemplos.t -> Agencia.Agente.t -> Agencia.Modelo.t -> string -> string * Yojson.Safe.t
-(** La ruta y el cuerpo. Con [contexto], el system lleva las advertencias
-    al final y los ejemplos van como turnos previos (usuario: su entrada;
-    asistente: su salida) antes de la entrada; en Messages el system va
-    marcado con [cache_control]. Sin él (o vacío), la petición de siempre. *)
+(** La ruta y el cuerpo. Con [contexto], sus {!Agencia.Ejemplos.turnos}
+    (advertencias y ejemplos) van como turnos previos a la entrada, y el
+    system son las instrucciones tal cual. En Messages, el system y el turno
+    que acepta las advertencias van marcados con [cache_control]. Sin
+    contexto (o vacío), la petición de siempre. *)
 
 val leer : Agencia.Modelo.api -> Yojson.Safe.t -> (string * int * int, string) result
 (** Texto, tokens de entrada (con los de la caché de prompts, leídos o

@@ -126,3 +126,14 @@ let uso j =
   match Option.map (fun u -> (campo "prompt_tokens" u, campo "completion_tokens" u)) (campo "usage" j) with
   | Some (Some (`Int e), Some (`Int s)) -> Some (e, s)
   | _ -> None
+
+(* {1 Ejemplos} *)
+
+let es_system m = List.mem (campo "role" m) [ Some (`String "system"); Some (`String "developer") ]
+
+let con_ejemplos j =
+  match campo "messages" j with
+  | Some (`List l) -> List.length (List.filter (fun m -> not (es_system m)) l) > 1
+  | _ -> false
+
+let sin_ejemplos = Comun.sin_ejemplos_en es_system

@@ -107,6 +107,9 @@ module Encargo : sig
     tokens_salida : int;
     veredicto : veredicto option;
     nota : string;  (** Del veredicto. *)
+    corregida : string option;
+        (** La salida buena, si quien juzgó la corrigió a mano: es la que
+            sirve de ejemplo ({!Ejemplos}), en vez de la del modelo. *)
   }
 
   val id_valido : string -> bool
@@ -119,8 +122,9 @@ module Archivo : sig
     guardar : Agente.t -> unit;  (** Crea o redefine (gana el último). *)
     agentes : unit -> Agente.t list;  (** Por nombre. *)
     registrar : Encargo.t -> unit;
-    juzgar : Forja.Tarea.t -> string -> veredicto -> string -> unit;
-        (** Agente, id del encargo, veredicto y nota. Gana el último. *)
+    juzgar : ?corregida:string -> Forja.Tarea.t -> string -> veredicto -> string -> unit;
+        (** Agente, id del encargo, veredicto y nota; y la salida corregida,
+            si la hay. Gana el último. *)
     historial : Forja.Tarea.t -> Encargo.t list;
         (** En orden de llegada, con su último veredicto. *)
   }
@@ -213,8 +217,11 @@ module Ejemplos : sig
       [max_advertencias] notas no vacías de veredictos [mal], recientes y
       sin repetir. Determinista. Con [Agente.ejemplos = 0], {!vacio}. *)
 
-  val system : Agente.t -> t -> string
-  (** Las instrucciones y, si hay advertencias, una sección
-      [## Advertencias] al final. Sin advertencias, las instrucciones tal
-      cual: el system solo cambia cuando llega un [mal] con nota nuevo. *)
+  val turnos : t -> (string * string) list
+  (** Los turnos previos a la entrada, pares usuario / asistente: primero,
+      si hay advertencias, uno que las da (y el asistente que las acepta);
+      luego los ejemplos. Las advertencias no van en el system para que el
+      system siga siendo las instrucciones: es la plantilla de la tarea en
+      la forja. Van delante de los ejemplos porque cambian mucho menos (con
+      un [mal] con nota nuevo): con el system, son el prefijo cacheable. *)
 end

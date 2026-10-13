@@ -51,6 +51,7 @@ let json_encargo ?(recorte = 200) (e : Encargo.t) =
        ("veredicto", match e.veredicto with Some v -> `String (veredicto_a_texto v) | None -> `Null);
        ("entrada", `String (recortar recorte e.entrada)) ]
     @ (if e.nota = "" then [] else [ ("nota", `String e.nota) ])
+    @ (match e.corregida with None -> [] | Some c -> [ ("salida_corregida", `String (recortar recorte c)) ])
     @
     match e.salida with
     | Ok s -> [ ("salida", `String (recortar (recorte * 5 / 2) s)) ]

@@ -105,6 +105,10 @@ Con `x-forja-tarea` explícita, los turnos previos usuario/asistente (alternos,
 de texto, acabados en usuario) son ejemplos few-shot, como los que pone la
 [agencia](agencia.md#ejemplos-y-advertencias): la entrada es el último turno y
 la plantilla no cambia. Sin tarea explícita, varios turnos son una conversación.
+Como una salida con ejemplos puede repetirse por copiarlos, el contraste de
+una petición con ejemplos se pide sin ellos (las dos veces), y las demás
+muestras van marcadas (`ejemplos` en `forja_cantera`): cuentan para el mínimo
+y la semilla, no para la estabilidad.
 
 Lo demás (conversaciones, agentes con herramientas libres, streaming) pasa al LLM
 sin tocar, con `x-forja-fuente: paso`. Es lo que [`concepto.md`](concepto.md)

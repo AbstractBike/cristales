@@ -68,3 +68,13 @@ let ultimo_de_ejemplos turnos =
     | _ -> None
   in
   alternos turnos
+
+(* Sin los turnos de ejemplo: el system y el último. *)
+let sin_ejemplos_en es_system j =
+  match campo "messages" j with
+  | Some (`List turnos) -> (
+      let systems = List.filter es_system turnos and resto = List.filter (fun t -> not (es_system t)) turnos in
+      match List.rev resto with
+      | ultimo :: _ :: _ -> cambiar "messages" (fun _ -> `List (systems @ [ ultimo ])) j
+      | _ -> j)
+  | _ -> j

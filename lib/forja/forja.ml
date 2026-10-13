@@ -40,6 +40,7 @@ module Cantera = struct
     salida : string option;
     contraste : string option;
     defecto : Cristal.motivo option;
+    ejemplos : bool;
   }
 
   type t = {
@@ -58,7 +59,7 @@ module Cantera = struct
     { registrar; muestras; tareas }
 
   let defecto_directo tarea ~entrada motivo =
-    { tarea; plantilla = ""; entrada; salida = None; contraste = None; defecto = Some motivo }
+    { tarea; plantilla = ""; entrada; salida = None; contraste = None; defecto = Some motivo; ejemplos = false }
 
   (* Los defectos directos no traen plantilla: la primera que haya. *)
   let plantilla muestras =
@@ -116,6 +117,9 @@ module Madurez = struct
     match (m.salida, m.contraste) with
     | None, _ -> i
     | Some _, None -> { i with muestras = i.muestras + 1 }
+    (* Con ejemplos, el LLM puede repetirse por copiarlos y no por tener un
+       método: la muestra vale, su contraste no. *)
+    | Some _, Some _ when m.ejemplos -> { i with muestras = i.muestras + 1 }
     | Some s, Some c ->
         let i =
           { i with
@@ -322,10 +326,10 @@ let decidir f p =
       let n = f.politica.contrastar_cada in
       Al_liquido { contrastar = n > 0 && e.llamadas mod n = 0; defecto = None }
 
-let aprender f p ?contraste ?defecto salida =
+let aprender f p ?contraste ?defecto ?(ejemplos = false) salida =
   let m =
     { Cantera.tarea = p.tarea; plantilla = p.plantilla; entrada = p.entrada;
-      salida = Some salida; contraste; defecto }
+      salida = Some salida; contraste; defecto; ejemplos }
   in
   let e = estado f p.tarea in
   f.cantera.registrar m;

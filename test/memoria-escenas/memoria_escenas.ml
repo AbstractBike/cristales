@@ -280,7 +280,7 @@ let () =
     let salida = match !respuestas with r :: resto -> respuestas := resto; r | [] -> Ok "{}" in
     { Agencia.Encargo.id = Printf.sprintf "%016d" !n; agente = a.nombre; version = Agencia.Agente.version a;
       modelo = "claude-haiku-5-5"; motivo = ""; fuente = "directo"; entrada; salida; ms = 1; tokens_entrada = 1;
-      tokens_salida = 1; veredicto = None; nota = "" }
+      tokens_salida = 1; veredicto = None; nota = ""; corregida = None }
   in
   let ef =
     { Ciclo.encargar; juzgar_mal = (fun e nota -> malos := (e.id, nota) :: !malos); ahora = (fun () -> ahora);
