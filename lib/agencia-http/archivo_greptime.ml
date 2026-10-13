@@ -71,10 +71,26 @@ let encargo = function
           Some
             { Encargo.id; agente; version; modelo; motivo; fuente; entrada;
               salida = (if ok then Ok salida else Error salida);
-              ms; tokens_entrada; tokens_salida; veredicto = None; nota = "" })
+              ms; tokens_entrada; tokens_salida; veredicto = None; nota = ""; corregida = None })
   | _ -> None
 
-let columnas_veredicto = [ "id"; "agente"; "veredicto"; "nota" ]
+let columnas_veredicto = [ "id"; "agente"; "veredicto"; "nota"; "salida_corregida" ]
+
+(* Como en los agentes: las filas y la tabla de antes no la tienen. *)
+let columnas_veredicto_viejas = List.filter (( <> ) "salida_corregida") columnas_veredicto
+
+let fila_veredicto ?corregida t id v nota =
+  `List
+    [ `String id; `String (Forja.Tarea.to_string t); `String (veredicto_a_texto v); `String nota;
+      `String (Option.value ~default:"" corregida) ]
+
+(* Id, veredicto, nota y salida corregida (vacía o nula: no la hay). *)
+let veredicto = function
+  | `List [ `String id; _; `String v; `String nota ] -> Option.map (fun v -> (id, v, nota, None)) (veredicto_de_texto v)
+  | `List [ `String id; _; `String v; `String nota; c ] ->
+      let c = match c with `String c when c <> "" -> Some c | _ -> None in
+      Option.map (fun v -> (id, v, nota, c)) (veredicto_de_texto v)
+  | _ -> None
 
 let objeto columnas = function
   | `List vs -> `Assoc (List.combine columnas vs)
@@ -102,24 +118,25 @@ let crear ~post ~url ?(db = "agencia") () =
   in
   let historial t =
     let veredictos = Hashtbl.create 16 in
+    let filas =
+      match select columnas_veredicto "agencia_veredictos" (de_agente t) with
+      | [] -> select columnas_veredicto_viejas "agencia_veredictos" (de_agente t)
+      | filas -> filas
+    in
     List.iter
-      (function
-        | `List [ `String id; _; `String v; `String nota ] ->
-            Option.iter (fun v -> Hashtbl.replace veredictos id (v, nota)) (veredicto_de_texto v)
-        | _ -> ())
-      (select columnas_veredicto "agencia_veredictos" (de_agente t));
+      (fun f -> Option.iter (fun (id, v, nota, c) -> Hashtbl.replace veredictos id (v, nota, c)) (veredicto f))
+      filas;
     select columnas_encargo "agencia_encargos" (de_agente t)
     |> List.filter_map encargo
     |> List.map (fun (e : Encargo.t) ->
            match Hashtbl.find_opt veredictos e.id with
-           | Some (v, nota) -> { e with veredicto = Some v; nota }
+           | Some (v, nota, corregida) -> { e with veredicto = Some v; nota; corregida }
            | None -> e)
   in
   { Archivo.guardar = (fun a -> ingerir "agencia_agentes" columnas_agente (fila_agente a));
     agentes;
     registrar = (fun e -> ingerir "agencia_encargos" columnas_encargo (fila_encargo e));
     juzgar =
-      (fun t id v nota ->
-        ingerir "agencia_veredictos" columnas_veredicto
-          (`List [ `String id; `String (Forja.Tarea.to_string t); `String (veredicto_a_texto v); `String nota ]));
+      (fun ?corregida t id v nota ->
+        ingerir "agencia_veredictos" columnas_veredicto (fila_veredicto ?corregida t id v nota));
     historial }

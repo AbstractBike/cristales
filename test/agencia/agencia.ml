@@ -8,6 +8,11 @@ open Agencia
 
 let fallos = ref 0
 
+let contiene s sub =
+  let n = String.length sub in
+  let rec ir i = i + n <= String.length s && (String.sub s i n = sub || ir (i + 1)) in
+  ir 0
+
 let comprueba nombre cond =
   if not cond then (
     incr fallos;
@@ -38,7 +43,8 @@ let encargo ?(a = agente) ?(salida = Ok "x") ?veredicto m =
     tokens_entrada = 1;
     tokens_salida = 1;
     veredicto;
-    nota = "" }
+    nota = "";
+    corregida = None }
 
 let elige es = (elegir agente es).modelo
 
@@ -141,6 +147,15 @@ let () =
     (match archivo.historial (Result.get_ok (Forja.Tarea.explicita "titular")) with
     | e :: _ -> e.veredicto = Some Bien
     | [] -> false);
+  ignore
+    (llama "agencia_juzgar"
+       (`Assoc
+         [ ("agente", `String "titular"); ("id", `String "0000000000000002"); ("veredicto", `String "mal");
+           ("nota", `String "largo"); ("salida_corregida", `String "Adiós") ]));
+  comprueba "juzgar con salida corregida"
+    (match archivo.historial (Result.get_ok (Forja.Tarea.explicita "titular")) with
+    | _ :: e :: _ -> e.corregida = Some "Adiós" && e.veredicto = Some Mal
+    | _ -> false);
   comprueba "juzgar un id ajeno"
     (campo [ "error"; "code" ]
        (llama "agencia_juzgar"
@@ -296,41 +311,79 @@ let () =
   let contexto = { Ejemplos.pares = [ ("e1", "s1") ]; advertencias = [ "no así" ] } in
   let campo ruta j = List.fold_left (fun j k -> Yojson.Safe.Util.member k j) j ruta in
   let _, m = Agencia_http.Llm.peticion ~contexto agente caro "hola" in
-  comprueba "Messages: ejemplos como turnos previos"
-    (campo [ "messages" ] m
-    = `List
-        [ `Assoc [ ("role", `String "user"); ("content", `String "e1") ];
-          `Assoc [ ("role", `String "assistant"); ("content", `String "s1") ];
-          `Assoc [ ("role", `String "user"); ("content", `String "hola") ] ]);
+  let roles = function
+    | `List ts -> List.map (fun t -> Yojson.Safe.Util.(t |> member "role" |> to_string)) ts
+    | _ -> []
+  in
+  comprueba "Messages: advertencias, ejemplos y entrada como turnos"
+    (roles (campo [ "messages" ] m) = [ "user"; "assistant"; "user"; "assistant"; "user" ]);
+  (match campo [ "messages" ] m with
+  | `List [ adv; ack; e1; s1; ultimo ] ->
+      comprueba "el primer turno da las advertencias"
+        (match campo [ "content" ] adv with `String t -> contiene t "- no así" | _ -> false);
+      comprueba "el asistente las acepta y cierra el prefijo cacheable"
+        (match campo [ "content" ] ack with
+        | `List [ b ] -> campo [ "cache_control"; "type" ] b = `String "ephemeral"
+        | _ -> false);
+      comprueba "luego los ejemplos y la entrada"
+        (campo [ "content" ] e1 = `String "e1" && campo [ "content" ] s1 = `String "s1"
+        && campo [ "content" ] ultimo = `String "hola")
+  | _ -> comprueba "cinco turnos" false);
   (match campo [ "system" ] m with
   | `List [ b ] ->
-      comprueba "Messages: system con advertencias y caché"
-        (campo [ "text" ] b = `String (Ejemplos.system agente contexto)
-        && campo [ "cache_control"; "type" ] b = `String "ephemeral")
+      comprueba "Messages: el system son las instrucciones, con caché"
+        (campo [ "text" ] b = `String agente.instrucciones && campo [ "cache_control"; "type" ] b = `String "ephemeral")
   | _ -> comprueba "Messages: system en un bloque" false);
-  comprueba "advertencias al final del system"
-    (Ejemplos.system agente contexto
-    = "Resume en una línea.\n\n## Advertencias\n\nEncargos anteriores de este trabajo se juzgaron mal por esto; \
-       no lo repitas:\n\n- no así");
+  comprueba "sin advertencias, solo los ejemplos"
+    (Ejemplos.turnos { contexto with advertencias = [] } = [ ("e1", "s1") ]);
   comprueba "contexto vacío: la petición de siempre"
     (Agencia_http.Llm.peticion ~contexto:Ejemplos.vacio agente caro "hola" = Agencia_http.Llm.peticion agente caro "hola");
   let _, o = Agencia_http.Llm.peticion ~contexto agente barato "hola" in
-  comprueba "Chat Completions: system, ejemplos, entrada"
+  comprueba "Chat Completions: system (las instrucciones), advertencias, ejemplos, entrada"
     (match campo [ "messages" ] o with
-    | `List [ s; u; a; e ] ->
-        campo [ "role" ] s = `String "system"
+    | `List [ s; _; _; u; _; e ] ->
+        campo [ "content" ] s = `String agente.instrucciones
         && campo [ "content" ] u = `String "e1"
-        && campo [ "role" ] a = `String "assistant"
         && campo [ "content" ] e = `String "hola"
     | _ -> false);
-  (* Y la forja los ve como la misma tarea: los ejemplos no son la entrada
-     ni la plantilla. *)
+  (* Y la forja los ve como la misma tarea, con la plantilla limpia: ni los
+     ejemplos ni las advertencias son la entrada ni la plantilla. *)
   (match Forja_http.Anthropic.peticion ~tarea:(Some "resumir") m with
-  | Ok (p, _) -> comprueba "forja: la entrada es la última" (p.entrada = "hola")
+  | Ok (p, _) ->
+      comprueba "forja: la entrada es la última, la plantilla las instrucciones"
+        (p.entrada = "hola" && p.plantilla = agente.instrucciones);
+      comprueba "forja: lleva ejemplos" (Forja_http.Anthropic.con_ejemplos m)
   | Error e -> comprueba ("forja: con ejemplos es tarea: " ^ e) false);
   (match Forja_http.Openai.peticion ~tarea:(Some "resumir") o with
-  | Ok (p, _) -> comprueba "forja openai: la entrada es la última" (p.entrada = "hola")
+  | Ok (p, _) ->
+      comprueba "forja openai: la entrada es la última, la plantilla las instrucciones"
+        (p.entrada = "hola" && p.plantilla = agente.instrucciones)
   | Error e -> comprueba ("forja openai: con ejemplos es tarea: " ^ e) false);
+  (* La salida corregida a mano es la que sirve de ejemplo, también de un
+     mal; y su nota sigue siendo advertencia. *)
+  let corr =
+    [ { (con ~veredicto:Bien ~salida:(Ok "regular") "los gatos") with corregida = Some "buena" };
+      { (con ~veredicto:Mal ~nota:"faltaba el tono" ~salida:(Ok "fatal") "los perros") with corregida = Some "arreglada" };
+      { (con ~salida:(Ok "x") "sin juzgar") with corregida = Some "no cuenta" } ]
+  in
+  let c = elige corr "los perros" in
+  comprueba "corregida en vez de la del modelo"
+    (List.sort compare c.pares = [ ("los gatos", "buena"); ("los perros", "arreglada") ]);
+  comprueba "y la nota del mal, advertencia" (c.advertencias = [ "faltaba el tono" ]);
+  let module G = Agencia_http.Archivo_greptime in
+  let v = Agencia.Bien in
+  comprueba "fila de veredicto con corregida"
+    (G.veredicto (G.fila_veredicto ~corregida:"c" agente.nombre "id" v "n") = Some ("id", v, "n", Some "c"));
+  comprueba "fila de veredicto sin corregida"
+    (G.veredicto (G.fila_veredicto agente.nombre "id" v "n") = Some ("id", v, "n", None));
+  comprueba "fila de veredicto vieja"
+    (G.veredicto (`List [ `String "id"; `String "resumir"; `String "mal"; `String "n" ]) = Some ("id", Mal, "n", None));
+  let archivo = Archivo.en_memoria () in
+  let e = encargo caro in
+  archivo.registrar e;
+  archivo.juzgar ~corregida:"mejor" agente.nombre e.id Bien "";
+  comprueba "el archivo guarda la corregida"
+    (match archivo.historial agente.nombre with [ x ] -> x.corregida = Some "mejor" | _ -> false);
   (* La fila del agente: ejemplos ida y vuelta, y las viejas sin ella. *)
   let module G = Agencia_http.Archivo_greptime in
   let a1 = { agente with ejemplos = 1 } in

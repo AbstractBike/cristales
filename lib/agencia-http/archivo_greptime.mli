@@ -19,3 +19,10 @@ val fila_agente : Agencia.Agente.t -> Yojson.Safe.t
 val agente : Yojson.Safe.t -> Agencia.Agente.t option
 val fila_encargo : Agencia.Encargo.t -> Yojson.Safe.t
 val encargo : Yojson.Safe.t -> Agencia.Encargo.t option
+
+val fila_veredicto :
+  ?corregida:string -> Forja.Tarea.t -> string -> Agencia.veredicto -> string -> Yojson.Safe.t
+
+val veredicto : Yojson.Safe.t -> (string * Agencia.veredicto * string * string option) option
+(** Id, veredicto, nota y salida corregida. Las filas de antes de
+    [salida_corregida] (cuatro columnas, o nula) no la tienen. *)

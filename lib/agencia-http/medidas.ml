@@ -68,8 +68,8 @@ let con_medidas medir (a : Archivo.t) =
         Hashtbl.replace modelos e.id e.modelo;
         medir (encargo e));
     juzgar =
-      (fun agente id v nota ->
-        a.juzgar agente id v nota;
+      (fun ?corregida agente id v nota ->
+        a.juzgar ?corregida agente id v nota;
         Option.iter (fun modelo -> medir (veredicto agente ~modelo v)) (modelo_de agente id)) }
 
 let a_greptime g p = Forja_http.Greptime.lineas g (linea p)

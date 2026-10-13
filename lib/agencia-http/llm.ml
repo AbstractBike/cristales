@@ -12,38 +12,42 @@ type destinos = {
 
 let turno rol texto = `Assoc [ ("role", `String rol); ("content", `String texto) ]
 
-(* Lo estable primero, para la caché de prompts: el system (instrucciones
-   y advertencias, que solo cambian con un [mal] con nota nuevo), luego los
-   ejemplos (cambian con la entrada) y al final la entrada. *)
+let cache = ("cache_control", `Assoc [ ("type", `String "ephemeral") ])
+let bloque_cacheado texto = `List [ `Assoc [ ("type", `String "text"); ("text", `String texto); cache ] ]
+
+(* Lo estable primero, para la caché de prompts: el system (las
+   instrucciones: no cambian en toda la versión), el turno de las
+   advertencias (cambia con un [mal] con nota nuevo), los ejemplos (cambian
+   con la entrada) y al final la entrada. *)
 let peticion ?(contexto = Ejemplos.vacio) (a : Agente.t) (m : Modelo.t) entrada =
-  let turnos =
-    List.concat_map (fun (e, s) -> [ turno "user" e; turno "assistant" s ]) contexto.pares @ [ turno "user" entrada ]
+  let previos ~marcar =
+    List.concat
+      (List.mapi
+         (fun i (u, r) ->
+           (* El asistente que acepta las advertencias cierra el prefijo
+              estable: ahí, el segundo punto de caché. *)
+           let r = if marcar && i = 0 && contexto.advertencias <> [] then
+               `Assoc [ ("role", `String "assistant"); ("content", bloque_cacheado r) ]
+             else turno "assistant" r in
+           [ turno "user" u; r ])
+         (Ejemplos.turnos contexto))
   in
-  let system = Ejemplos.system a contexto in
   match m.api with
   | Anthropic ->
+      let vacio = Ejemplos.es_vacio contexto in
       ( "/v1/messages",
         `Assoc
           [ ("model", `String m.nombre);
             ("max_tokens", `Int a.max_tokens);
-            ( "system",
-              (* Sin ejemplos ni advertencias, la petición de siempre. Con
-                 ellos, el system marcado para la caché: lo que va detrás
-                 varía en cada encargo. *)
-              if Ejemplos.es_vacio contexto then `String system
-              else
-                `List
-                  [ `Assoc
-                      [ ("type", `String "text");
-                        ("text", `String system);
-                        ("cache_control", `Assoc [ ("type", `String "ephemeral") ]) ] ] );
-            ("messages", `List turnos) ] )
+            (* Sin ejemplos ni advertencias, la petición de siempre. *)
+            ("system", if vacio then `String a.instrucciones else bloque_cacheado a.instrucciones);
+            ("messages", `List (previos ~marcar:(not vacio) @ [ turno "user" entrada ])) ] )
   | Openai ->
       ( "/v1/chat/completions",
         `Assoc
           [ ("model", `String m.nombre);
             ("max_tokens", `Int a.max_tokens);
-            ("messages", `List (turno "system" system :: turnos)) ] )
+            ("messages", `List ((turno "system" a.instrucciones :: previos ~marcar:false) @ [ turno "user" entrada ])) ] )
 
 let leer api j =
   let open Yojson.Safe.Util in

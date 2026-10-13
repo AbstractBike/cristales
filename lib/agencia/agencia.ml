@@ -82,6 +82,7 @@ module Encargo = struct
     tokens_salida : int;
     veredicto : veredicto option;
     nota : string;
+    corregida : string option;
   }
 
   let id_valido s =
@@ -93,16 +94,16 @@ module Archivo = struct
     guardar : Agente.t -> unit;
     agentes : unit -> Agente.t list;
     registrar : Encargo.t -> unit;
-    juzgar : Forja.Tarea.t -> string -> veredicto -> string -> unit;
+    juzgar : ?corregida:string -> Forja.Tarea.t -> string -> veredicto -> string -> unit;
     historial : Forja.Tarea.t -> Encargo.t list;
   }
 
   let en_memoria () =
     let agentes = Hashtbl.create 16 and encargos = ref [] in
-    let juzgar _ id v nota =
+    let juzgar ?corregida _ id v nota =
       encargos :=
         List.map
-          (fun (e : Encargo.t) -> if e.id = id then { e with veredicto = Some v; nota } else e)
+          (fun (e : Encargo.t) -> if e.id = id then { e with veredicto = Some v; nota; corregida } else e)
           !encargos
     in
     { guardar = (fun (a : Agente.t) -> Hashtbl.replace agentes a.nombre a);
@@ -273,7 +274,12 @@ module Ejemplos = struct
       let candidatos =
         List.filter_map
           (fun (e : Encargo.t) ->
-            match (e.veredicto, e.salida) with Some Bien, Ok s -> Some (e.entrada, s) | _ -> None)
+            (* La salida corregida a mano, si la hay, sea cual sea el
+               veredicto: es la buena. Si no, la del modelo, si fue bien. *)
+            match (e.corregida, e.veredicto, e.salida) with
+            | Some c, Some _, _ -> Some (e.entrada, c)
+            | None, Some Bien, Ok s -> Some (e.entrada, s)
+            | _ -> None)
           recientes
       in
       let vistos = Hashtbl.create 16 in
@@ -325,11 +331,15 @@ module Ejemplos = struct
       in
       { pares; advertencias }
 
-  let system (a : Agente.t) c =
-    match c.advertencias with
-    | [] -> a.instrucciones
+  let enterado = "Entendido: lo tendré en cuenta en lo que sigue."
+
+  let advertencia = function
+    | [] -> None
     | ns ->
-        a.instrucciones
-        ^ "\n\n## Advertencias\n\nEncargos anteriores de este trabajo se juzgaron mal por esto; no lo repitas:\n"
-        ^ String.concat "" (List.map (fun n -> "\n- " ^ String.concat " " (String.split_on_char '\n' n)) ns)
+        Some
+          ( "Antes de empezar: encargos anteriores de este trabajo se juzgaron mal por esto; no lo repitas:\n"
+            ^ String.concat "" (List.map (fun n -> "\n- " ^ String.concat " " (String.split_on_char '\n' n)) ns),
+            enterado )
+
+  let turnos c = Option.to_list (advertencia c.advertencias) @ c.pares
 end

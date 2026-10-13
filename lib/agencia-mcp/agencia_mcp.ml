@@ -34,7 +34,8 @@ let encargar ef (a : Agente.t) ?modelo entrada =
       tokens_entrada = r.tokens_entrada;
       tokens_salida = r.tokens_salida;
       veredicto = None;
-      nota = "" }
+      nota = "";
+      corregida = None }
   in
   ef.archivo.registrar e;
   e
@@ -148,13 +149,14 @@ let juzgar ef args =
   let* id = requerido args "id" in
   let* v = requerido args "veredicto" in
   let* nota = texto_de args "nota" in
+  let* corregida = texto_de args "salida_corregida" in
   match veredicto_de_texto v with
   | None -> invalido "veredicto: bien o mal"
   | Some v -> (
       match List.find_opt (fun (e : Encargo.t) -> e.id = id) (ef.archivo.historial a.nombre) with
       | None -> invalido (id ^ ": no es un encargo de " ^ n)
       | Some _ ->
-          ef.archivo.juzgar a.nombre id v (Option.value ~default:"" nota);
+          ef.archivo.juzgar ?corregida a.nombre id v (Option.value ~default:"" nota);
           let siguiente = elegir ~politica:ef.politica a (ef.archivo.historial a.nombre) in
           Ok
             (texto
@@ -216,13 +218,16 @@ let fijas =
     { nombre = "agencia_juzgar";
       descripcion =
         "Juzga un encargo: bien o mal, con una nota opcional. Con los veredictos la agencia \
-         aprende qué modelo hace bien cada agente y deja de pedírselo a los que no.";
+         aprende qué modelo hace bien cada agente y deja de pedírselo a los que no. \
+         Si corregiste la salida a mano, pásala en salida_corregida: es la que irá de ejemplo \
+         en los encargos siguientes (y la nota de un mal, como advertencia).";
       esquema =
         esquema ~requeridos:[ "agente"; "id"; "veredicto" ]
           [ agente;
             ("id", cadena);
             ("veredicto", `Assoc [ ("type", `String "string"); ("enum", `List [ `String "bien"; `String "mal" ]) ]);
-            ("nota", cadena) ];
+            ("nota", cadena);
+            ("salida_corregida", cadena) ];
       llamar = juzgar } ]
 
 let herramientas ef () =
