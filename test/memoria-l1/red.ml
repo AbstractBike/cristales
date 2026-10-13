@@ -210,6 +210,32 @@ let () =
   let ds = List.map (fun (d : Dedup.decision) -> { d with accion = Dedup.Actualizar; objetivos = [ "a-6" ] }) (Dedup.guardar_todo c) in
   comprueba "plan: versiones encadenadas" (List.map (fun (a : Atomo.t) -> a.version) (Dedup.plan c ds) = [ 2; 3 ])
 
+(* Grabado de la prueba real (gemma, memoria-dedup): un episodio de
+   retirada que se come un método, un hecho y un episodio. Con los frenos,
+   solo cae el episodio. *)
+let () =
+  let c =
+    Dedup.casos
+      [ ( nuevo ~tipo:Atomo.Episodio "El 2026-08-28 se completó la retirada de gefs de la flota.",
+          [ atomo ~tipo:Atomo.Metodo "a-9515109a6d91" "Réplica DRBD del pool gefs de a2 hacia a1: protocolo C, failover manual.";
+            atomo ~tipo:Atomo.Episodio "a-ca3750963c05" "El 2026-08-26 gh se añadió a los paquetes comunes.";
+            atomo "a-54984a69f0a9" "gefs-client.nix tiene selfHeal por defecto.";
+            atomo ~tipo:Atomo.Episodio "a-1" "uno";
+            atomo ~tipo:Atomo.Episodio "a-2" "dos" ] ) ]
+  in
+  let respuesta =
+    {|[{"id":"n1","accion":"fusionar","objetivos":["a-9515109a6d91","a-ca3750963c05","a-54984a69f0a9","a-1","a-2"],"contenido":"El 2026-08-28 se completó la retirada de gefs.","tipo":"episodio","prioridad":80}]|}
+  in
+  match Dedup.leer c respuesta with
+  | Error _ -> comprueba "freno: legible" false
+  | Ok ds ->
+      let filas = Dedup.plan c ds in
+      comprueba "freno: el método y el hecho no se tocan"
+        (not (List.exists (fun (a : Atomo.t) -> a.id = "a-9515109a6d91" || a.id = "a-54984a69f0a9") filas));
+      comprueba "freno: como mucho tres objetivos" (List.length filas = 3);
+      comprueba "freno: el resultado vive en el primer episodio"
+        ((List.hd filas).id = "a-ca3750963c05" && (List.hd filas).vigente)
+
 (* {1 Almacen (sin red)} *)
 
 let () =

@@ -184,6 +184,9 @@ let leer casos respuesta =
 
 (* {1 El plan} *)
 
+let durabilidad = function Atomo.Persona | Atomo.Regla | Atomo.Metodo -> 3 | Atomo.Hecho -> 2 | Atomo.Episodio -> 1
+let max_objetivos = 3
+
 (* La prioridad de una fusión: -1 manda; si no, la mayor. *)
 let fundir ps = if List.mem (-1) ps then -1 else List.fold_left max 0 ps
 
@@ -208,10 +211,15 @@ let plan casos decisiones =
       | Guardar -> guardar_nuevo ()
       | Saltar -> ()
       | Actualizar | Fusionar -> (
+          let tipo = Option.value ~default:c.nuevo.tipo d.tipo in
           let objetivos =
             List.filter_map
               (fun id -> Option.bind (List.find_opt (fun (a : Atomo.t) -> a.id = id) c.candidatos) actual)
               d.objetivos
+            (* Un resultado menos duradero no se come a uno más duradero: un
+               episodio no absorbe la lección de un método. *)
+            |> List.filter (fun (a : Atomo.t) -> durabilidad a.tipo <= durabilidad tipo)
+            |> List.filteri (fun i _ -> i < max_objetivos)
           in
           match objetivos with
           | [] -> guardar_nuevo ()
@@ -227,7 +235,7 @@ let plan casos decisiones =
                 { primero with
                   version = primero.version + 1;
                   vigente = true;
-                  tipo = Option.value ~default:c.nuevo.tipo d.tipo;
+                  tipo;
                   prioridad;
                   escena = (if primero.escena = "" then c.nuevo.escena else primero.escena);
                   contenido = Option.value ~default:c.nuevo.contenido d.contenido;

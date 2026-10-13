@@ -89,5 +89,15 @@ val plan : caso list -> decision list -> Atomo.t list
       prioridad no baja de la mayor de las fusionadas, y una regla absoluta
       (-1) sigue siéndolo.
 
+    Dos frenos, porque un juez flojo (en la prueba real, gemma) llegó a
+    fundir un método, un hecho y un episodio en el episodio de una
+    retirada, y las lecciones se perdían: un objetivo más duradero que el
+    resultado no se toca (persona, regla y método > hecho > episodio), y
+    como mucho {!max_objetivos} objetivos por decisión. Si no queda
+    ninguno, se guarda el nuevo.
+
     Las decisiones se aplican en orden: un objetivo ya absorbido en el lote
     no cuenta, y el que ya se actualizó parte de su última versión. *)
+
+val durabilidad : Atomo.tipo -> int
+val max_objetivos : int

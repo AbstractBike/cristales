@@ -13,6 +13,8 @@ Los átomos son de cinco tipos: `persona` (cómo es y trabaja el usuario), `regl
 
 - Mismo asunto = mismo objeto (servicio, nodo, repo, regla, rasgo) **y** misma afirmación sobre él. Parecerse en palabras no basta.
 - Se puede fusionar entre tipos: un `episodio` («el 2026-09-01 se perdió X por Y») y un `metodo` («para evitar Y, haz Z») pueden quedar en un `metodo` que lleve la fecha. Elige el tipo que mejor describa el resultado.
+- Fusiona solo lo que afirma lo mismo, no lo que trata del mismo proyecto: que dos átomos hablen del mismo servicio no basta. Como mucho tres objetivos.
+- Un `episodio` no absorbe `hecho`, `metodo`, `regla` ni `persona`, ni un `hecho` absorbe un `metodo`: la lección o el dato se perderían. Si un suceso nuevo cambia el estado de algo (se retiró, se mudó), `actualizar` el `hecho` de ese estado o `guardar` el episodio aparte.
 - Una `regla` del usuario no se rebaja ni se suaviza al fusionar; si el nuevo la contradice, es `actualizar` (la última palabra del usuario manda).
 - `objetivos`: los ids (`a-…`) de los candidatos que el resultado sustituye o absorbe; solo de la lista de candidatos de ese átomo. Vacío en `guardar` y `saltar`. En `saltar`, puedes poner en `objetivos` el candidato que ya lo dice.
 - En `actualizar` y `fusionar` da `contenido` (la frase final, autosuficiente, en español), `tipo`, `prioridad` y `fechas`. Al fusionar, la prioridad sube un poco (información más completa y confirmada), y nunca baja de la mayor de las fusionadas; -1 (regla absoluta) se conserva. `fechas` es la unión ordenada, sin repetir, de las fechas (AAAA-MM-DD) del nuevo y de los objetivos.
@@ -23,3 +25,5 @@ Los átomos son de cinco tipos: `persona` (cómo es y trabaja el usuario), `regl
 Solo un array JSON, un elemento por átomo nuevo, sin texto alrededor ni bloque de código:
 
 [{"id":"n1","accion":"guardar|saltar|actualizar|fusionar","objetivos":["a-…"],"contenido":"…","tipo":"…","prioridad":85,"fechas":["2026-10-13"]}]
+
+En `guardar` y `saltar` basta con `id`, `accion` y `objetivos`: no repitas el contenido.
