@@ -142,6 +142,21 @@ let () =
   comprueba "sin system ni tarea es paso" (paso {|{"messages":[{"role":"user","content":"x"}]}|});
   comprueba "varios turnos es paso"
     (paso {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|});
+  comprueba "con tarea explícita, los turnos previos son ejemplos"
+    (match
+       p ~tarea:"mayus"
+         {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"assistant","content":"X"},{"role":"user","content":"z"}]}|}
+     with
+    | Ok { entrada = "z"; plantilla = "S"; _ } -> true
+    | _ -> false);
+  comprueba "con tarea explícita, una conversación que no alterna es paso"
+    (Result.is_error
+       (p ~tarea:"mayus"
+          {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"user","content":"z"}]}|}));
+  comprueba "con tarea explícita, acabar en el asistente es paso"
+    (Result.is_error
+       (p ~tarea:"mayus"
+          {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"assistant","content":"X"}]}|}));
   comprueba "streaming es paso" (paso {|{"system":"S","stream":true,"messages":[{"role":"user","content":"x"}]}|});
   comprueba "herramientas sin tool_choice forzado es paso"
     (paso {|{"system":"S","tools":[{"name":"t"}],"messages":[{"role":"user","content":"x"}]}|});
@@ -297,6 +312,19 @@ let () =
   comprueba "openai: sin system ni tarea es paso" (paso {|{"messages":[{"role":"user","content":"x"}]}|});
   comprueba "openai: varios turnos es paso"
     (paso {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|});
+  comprueba "openai: con tarea explícita, los turnos previos son ejemplos"
+    (match
+       p ~tarea:"mayus"
+         {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|}
+     with
+    | Ok { entrada = "z"; plantilla = "S"; _ } -> true
+    | _ -> false);
+  comprueba "openai: ejemplos sin system"
+    (match
+       p ~tarea:"mayus" {|{"messages":[{"role":"user","content":"x"},{"role":"assistant","content":"y"},{"role":"user","content":"z"}]}|}
+     with
+    | Ok { entrada = "z"; plantilla = ""; _ } -> true
+    | _ -> false);
   comprueba "openai: herramientas es paso"
     (paso {|{"tools":[{}],"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"}]}|});
   comprueba "openai: json_object sin esquema es paso"

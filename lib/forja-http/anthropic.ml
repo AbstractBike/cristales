@@ -36,6 +36,13 @@ let peticion ~tarea j =
         match Option.bind (campo "content" m) solo_texto with
         | Some t -> Ok t
         | None -> Error "contenido que no es texto")
+    (* Con tarea explícita, los turnos previos son ejemplos (few-shot, como
+       los que pone la agencia): ni son la entrada ni van a la plantilla.
+       Sin ella, una conversación no es una tarea. *)
+    | Some (`List (_ :: _ :: _ as turnos)) when Option.is_some tarea -> (
+        match Option.bind (Comun.ultimo_de_ejemplos turnos) (fun m -> Option.bind (campo "content" m) solo_texto) with
+        | Some t -> Ok t
+        | None -> Error "conversación de varios turnos")
     | Some (`List _) -> Error "conversación de varios turnos"
     | _ -> Error "sin messages"
   in

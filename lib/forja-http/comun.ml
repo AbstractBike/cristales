@@ -55,3 +55,16 @@ let restringir_esquema ks esquema =
   |> cambiar "required" (function
        | `List l -> `List (List.filter (function `String k -> List.mem k ks | _ -> false) l)
        | j -> j)
+
+(* {1 Ejemplos (few-shot)} *)
+
+(* Turnos usuario/asistente alternos, de texto, que acaban en uno de
+   usuario: los previos son ejemplos y el último, la entrada. *)
+let ultimo_de_ejemplos turnos =
+  let rol r m = campo "role" m = Some (`String r) && Option.is_some (Option.bind (campo "content" m) solo_texto) in
+  let rec alternos = function
+    | [ u ] when rol "user" u -> Some u
+    | u :: a :: l when rol "user" u && rol "assistant" a -> alternos l
+    | _ -> None
+  in
+  alternos turnos
