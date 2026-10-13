@@ -234,11 +234,14 @@ let llamar ef n args =
 (* {1 Instrucciones} *)
 
 let uso =
-  "La agencia hace encargos a agentes y sabe a qué modelo pedir cada uno. Cuando tengas una \
-   subtarea que se repite (clasificar, extraer, resumir, redactar con unas instrucciones fijas), \
-   crea un agente con agencia_crear y encárgasela en vez de hacerla tú: la agencia elige el modelo \
-   más barato que la hace bien. Juzga cada resultado con agencia_juzgar (bien o mal): sin \
-   veredictos no aprende. agencia_historico enseña lo que ha hecho cada agente y con qué modelo."
+  "La agencia hace encargos a agentes y sabe a qué modelo pedir cada uno. Úsala por defecto: \
+   cuando una subtarea sea una transformación con instrucciones fijas que harías igual otra vez \
+   (clasificar, extraer, resumir, traducir, reescribir, redactar con una plantilla), no la hagas \
+   tú. Mira antes agencia_agentes por si ya hay un agente para ella; si no, créalo con \
+   agencia_crear y encárgasela: la agencia elige el modelo más barato que la hace bien, y un \
+   modelo pequeño o un cristal cuestan mucho menos que tú. Juzga cada resultado con \
+   agencia_juzgar (bien o mal): sin veredictos no aprende. Si un cristal (servidor cristales) \
+   cubre la tarea, llámalo a él. Todo se ve en https://agencia.pin."
 
 let instrucciones ef () =
   match ef.archivo.agentes () with
@@ -252,6 +255,24 @@ let instrucciones ef () =
                if a.descripcion = "" then n else Printf.sprintf "%s (%s)" n a.descripcion)
              l)
       ^ "."
+      ^
+      (* Lo que falta por juzgar: la agencia aprende de eso. *)
+      let sin_juzgar =
+        List.fold_left
+          (fun n (a : Agente.t) ->
+            n
+            + List.length
+                (List.filter
+                   (fun (e : Encargo.t) -> e.veredicto = None && Result.is_ok e.salida)
+                   (ef.archivo.historial a.nombre)))
+          0 l
+      in
+      if sin_juzgar = 0 then ""
+      else
+        Printf.sprintf
+          "\n\nHay %d encargos sin juzgar: si sabes si salieron bien, júzgalos (agencia_historico los \
+           enseña)."
+          sin_juzgar
 
 let servidor ef =
   { Mcp_rpc.nombre = "agencia-mcp";
