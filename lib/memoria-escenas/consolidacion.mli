@@ -35,6 +35,7 @@ val abiertas : Escena.t list -> Atomo.t list -> string list
 val entrada :
   ?reglas:string ->
   ?anteriores:Atomo.etapa list ->
+  ?trayectoria:bool ->
   ahora:string ->
   escenas:Escena.t list ->
   abiertas:string list ->
@@ -43,7 +44,8 @@ val entrada :
 (** El mensaje para el agente: reglas vigentes (el CLAUDE.md y el AGENTS.md
     de hoy, que mandan), aviso, índice, escenas abiertas enteras, átomos
     nuevos (con su marca de historia o de etapa anterior, ver
-    {!Atomo.linea}) y hora. *)
+    {!Atomo.linea}) y hora. Con [trayectoria], los átomos son de una etapa
+    anterior y el mensaje dice que solo se puede tocar la trayectoria. *)
 
 val reintento : entrada:string -> salida:string -> string list -> string
 (** El mensaje para repetir: la entrada, la respuesta y los rechazos. *)
@@ -62,6 +64,7 @@ type resultado = {
 }
 
 val aplicar :
+  ?solo_trayectoria:bool ->
   ahora:string ->
   abiertas:string list ->
   nuevos:Atomo.t list ->
@@ -71,4 +74,6 @@ val aplicar :
 (** Primero las fusiones (liberan sitio), luego las actualizaciones y al
     final las creaciones; las que incumplen una regla se rechazan con su
     motivo y no cambian nada. Los [atomos] de cada operación se filtran a
-    los ids de [nuevos] y se unen a los de la escena. *)
+    los ids de [nuevos] y se unen a los de la escena. Con
+    [solo_trayectoria] (átomos de una etapa anterior) solo vale [actualizar]
+    y solo puede cambiar la sección [## Trayectoria] (ni título ni resumen). *)

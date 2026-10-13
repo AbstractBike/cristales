@@ -65,7 +65,7 @@ let reglas_vigentes b r =
   if String.trim r <> "" then
       Printf.bprintf b "## Reglas vigentes (máxima prioridad)\n\nLas reglas actuales del usuario (su CLAUDE.md y AGENTS.md). Mandan sobre cualquier átomo: lo que las contradiga solo puede ir a `## Trayectoria` o `## Por confirmar`, nunca como regla.\n\n%s\n\n" (String.trim r)
 
-let entrada ?(reglas = "") ?(anteriores = []) ~ahora ~escenas ~abiertas atomos =
+let entrada ?(reglas = "") ?(anteriores = []) ?(trayectoria = false) ~ahora ~escenas ~abiertas atomos =
   let b = Buffer.create 8192 in
   let p fmt = Printf.bprintf b fmt in
   reglas_vigentes b reglas;
@@ -90,15 +90,11 @@ let entrada ?(reglas = "") ?(anteriores = []) ~ahora ~escenas ~abiertas atomos =
             (Escena.a_texto e)
       | None -> ())
     abiertas;
-  (* Los de una etapa anterior, aparte: el modelo no los confunde con
-     reglas vigentes si ni siquiera están en la misma lista. *)
-  let viejos, nuevos = List.partition (Atomo.anterior ~anteriores) atomos in
-  p "## Átomos nuevos (%d)\n\n" (List.length nuevos);
-  if nuevos = [] then p "(ninguno)\n";
-  List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) nuevos;
-  if viejos <> [] then (
-    p "\n## Historia de una etapa anterior (%d)\n\nDe otra etapa de la flota (otras máquinas, rutas y lenguajes). PROHIBIDO usarlos como regla, método o dato vigente: como mucho, una línea en `## Trayectoria` de una escena que ya exista. Si no aportan trayectoria, ignóralos.\n\n" (List.length viejos);
-    List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) viejos);
+  if trayectoria then (
+    p "## Modo trayectoria\n\nEstos átomos son de una etapa ANTERIOR de la flota (otras máquinas, rutas y lenguajes): no son reglas ni datos vigentes. Solo puedes `actualizar` una escena abierta para añadir o corregir líneas de su `## Trayectoria` (de X a Y, porque…), dejando idéntico el resto del cuerpo, o `nada`. El código rechaza cualquier otra cosa.\n\n";
+    p "## Átomos de una etapa anterior (%d)\n\n" (List.length atomos))
+  else p "## Átomos nuevos (%d)\n\n" (List.length atomos);
+  List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) atomos;
   p "\n## Hora actual\n\n%s\n" ahora;
   Buffer.contents b
 
@@ -146,7 +142,7 @@ let validar_contenido (c : Operacion.contenido) =
 
 let orden = function Operacion.Fusionar _ -> 0 | Actualizar _ -> 1 | Crear _ -> 2 | Nada -> 3
 
-let aplicar ~ahora ~abiertas ~nuevos escenas ops =
+let aplicar ?(solo_trayectoria = false) ~ahora ~abiertas ~nuevos escenas ops =
   let recortadas = ref [] in
   let ids = List.map (fun (a : Atomo.t) -> a.id) nuevos in
   let suyos l = List.filter (fun i -> List.mem i ids) l in
@@ -169,10 +165,17 @@ let aplicar ~ahora ~abiertas ~nuevos escenas ops =
   let paso (escenas, escritas, borradas, creadas) op =
     match (op : Operacion.t) with
     | Nada -> Ok (escenas, escritas, borradas, creadas)
+    | (Crear _ | Fusionar _) when solo_trayectoria -> Error "en modo trayectoria solo se actualiza la «## Trayectoria»"
     | Actualizar c ->
         let* c, r = validar_contenido c in
         if r then recortadas := c.slug :: !recortadas;
         let* e = tocable ~escritas escenas c.slug in
+        let* c =
+          if not solo_trayectoria then Ok c
+          else if Escena.sin_trayectoria e.cuerpo <> Escena.sin_trayectoria c.cuerpo then
+            Error (Printf.sprintf "«%s»: en modo trayectoria solo puede cambiar «## Trayectoria»" c.slug)
+          else Ok { c with titulo = e.titulo; resumen = e.resumen }
+        in
         let e' = nueva c ~creada:e.creada ~calor:(e.calor + 1) ~atomos:(union e.atomos (suyos c.atomos)) in
         Ok (con { e' with extra = e.extra } escenas, union escritas [ c.slug ], borradas, creadas)
     | Crear c ->

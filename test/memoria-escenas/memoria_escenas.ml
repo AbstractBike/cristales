@@ -331,12 +331,15 @@ let () =
   comprueba "fechas en rango" (contiene "2026-03-01" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} })
     && contiene "2026-03-01..2026-10-13" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} }));
   comprueba "ms_de_iso" (Ciclo.ms_de_iso "1970-01-02T00:00:01Z" = Some 86401000 && Ciclo.ms_de_iso "2026-10-13T20:37:06Z" = Some 1791923826000);
-  (let m =
-     Consolidacion.entrada ~anteriores:[ Atomo.Proyecto "/viejo" ] ~ahora ~escenas:[] ~abiertas:[]
-       [ atomo "a-n" "nuevo"; { (atomo "a-v" "viejo") with proyecto = "/viejo/x" } ]
-   in
-   comprueba "la etapa anterior, aparte"
-     (contiene "## Historia de una etapa anterior (1)" m && contiene "## Átomos nuevos (1)" m));
+  comprueba "modo trayectoria en la entrada"
+    (contiene "## Modo trayectoria" (Consolidacion.entrada ~trayectoria:true ~ahora ~escenas:[] ~abiertas:[] [ atomo "a" "x" ]));
+  (let base = { (escena "s") with cuerpo = "## Datos clave\n\n- uno\n\n## Trayectoria\n\n- de A a B" } in
+   let ap ops = Consolidacion.aplicar ~solo_trayectoria:true ~ahora ~abiertas:[ "s" ] ~nuevos:[] [ base ] ops in
+   let r = ap [ Actualizar (contenido ~cuerpo:"## Datos clave\n- uno\n\n## Trayectoria\n- de A a B\n- de Scala a OCaml" "s") ] in
+   comprueba "trayectoria: se puede añadir" (r.rechazos = [] && (List.hd r.escenas).titulo = base.titulo);
+   comprueba "trayectoria: el resto no se toca"
+     (List.length (ap [ Actualizar (contenido ~cuerpo:"## Datos clave\n- dos\n## Trayectoria\n- x" "s") ]).rechazos = 1);
+   comprueba "trayectoria: no se crea" (List.length (ap [ Crear (contenido "t") ]).rechazos = 1));
   comprueba "reglas en la entrada"
     (contiene "Reglas vigentes" (Consolidacion.entrada ~reglas:"Python prohibido" ~ahora ~escenas:[] ~abiertas:[] []));
   (* Un átomo que ya está en una escena actualizada después no se repite. *)

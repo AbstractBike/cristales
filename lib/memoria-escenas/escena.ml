@@ -121,3 +121,14 @@ let recortar ?(max = max_cuerpo) cuerpo =
       else match lineas_rev with [] -> "" | _ :: r -> ir (quitar r)
     in
     ir (quitar (List.rev (String.split_on_char '\n' cuerpo)))
+
+let sin_trayectoria cuerpo =
+  let lineas = String.split_on_char '\n' cuerpo |> List.map String.trim in
+  let es_titulo l = String.length l >= 3 && String.sub l 0 3 = "## " in
+  let rec ir dentro acc = function
+    | [] -> List.rev acc
+    | l :: r when es_titulo l -> ir (String.lowercase_ascii l = "## trayectoria") (if String.lowercase_ascii l = "## trayectoria" then acc else l :: acc) r
+    | _ :: r when dentro -> ir dentro acc r
+    | l :: r -> ir dentro (if l = "" then acc else l :: acc) r
+  in
+  String.concat "\n" (ir false [] lineas)

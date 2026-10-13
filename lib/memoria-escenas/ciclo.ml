@@ -97,11 +97,13 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
       @ List.map (fun s -> "RECORTADA " ^ s) r.recortadas
       @ List.map (fun (o, m) -> Printf.sprintf "RECHAZADA %s (%s)" (Operacion.describir o) m) r.rechazos)
   in
-  let un_lote (escenas, escritas, borradas, senal) atomos =
+  let un_lote ~trayectoria (escenas, escritas, borradas, senal) atomos =
     let ahora = ef.ahora () in
     let abiertas = Consolidacion.abiertas escenas atomos in
-    let entrada = Consolidacion.entrada ~reglas ~anteriores ~ahora ~escenas ~abiertas atomos in
-    let aplicar ops = Consolidacion.aplicar ~ahora ~abiertas ~nuevos:atomos escenas ops in
+    let entrada = Consolidacion.entrada ~reglas ~anteriores ~trayectoria ~ahora ~escenas ~abiertas atomos in
+    let aplicar ops =
+      Consolidacion.aplicar ~solo_trayectoria:trayectoria ~ahora ~abiertas ~nuevos:atomos escenas ops
+    in
     let final, senal' =
       (* Si la salida no sirve (error, o no es JSON), una vez más con el
          modelo por defecto del agente; si tampoco, el lote queda sin hacer y
@@ -148,7 +150,12 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
         (r.escenas, escritas, borradas, match senal' with Some _ -> senal' | None -> senal)
   in
   let escenas', escritas, borradas, senal =
-    List.fold_left un_lote (escenas, [], [], None) (lotes lote atomos)
+    (* Primero lo vigente; después, la etapa anterior, solo como trayectoria
+       de las escenas que ya existen. *)
+    let viejos, vigentes = List.partition (Atomo.anterior ~anteriores) atomos in
+    let acc = List.fold_left (un_lote ~trayectoria:false) (escenas, [], [], None) (lotes lote vigentes) in
+    let escenas_hechas, _, _, _ = acc in
+    if escenas_hechas = [] then acc else List.fold_left (un_lote ~trayectoria:true) acc (lotes lote viejos)
   in
   let n = List.length atomos in
   let estado =
@@ -191,11 +198,15 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
                 debajo de 1700 caracteres: quita secciones enteras antes que dejarla larga.\n"
                entrada texto err)
         in
-        let resultado =
+        let primera =
           match pedir_persona entrada with
+          | `Fallo -> pedir_persona ~modelo:persona_agente.defecto entrada
+          | r -> r
+        in
+        let resultado =
+          match primera with
           | `Bien p -> Some p
-          | `Fallo -> (
-              match pedir_persona ~modelo:persona_agente.defecto entrada with `Bien p -> Some p | _ -> None)
+          | `Fallo -> None
           | `Mal (e, texto, err) -> (
               (* Como en las escenas: el mismo modelo y luego el más capaz. *)
               match corregir (mismo e) texto err with
