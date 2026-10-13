@@ -39,56 +39,10 @@ let encargar ef (a : Agente.t) ?modelo entrada =
   ef.archivo.registrar e;
   e
 
-(* {1 JSON} *)
+(* {1 JSON} (los de la vista: los mismos que pinta agencia.pin) *)
 
-let recortar n s = if String.length s <= n then s else String.sub s 0 n ^ "…"
-let nivel = function Fiable -> "fiable" | Descartado -> "descartado" | Por_ver -> "por ver"
 let json_texto j = Yojson.Safe.pretty_to_string j
-
-let json_cuenta (c : cuenta) =
-  `Assoc
-    [ ("modelo", `String (Modelo.to_string c.modelo));
-      ("nivel", `String (nivel c.nivel));
-      ("encargos", `Int c.encargos);
-      ("juzgados", `Int c.juzgados);
-      ("bien", `Int c.bien);
-      ("errores", `Int c.errores);
-      ("ms_medio", `Int c.ms_medio);
-      ("tokens", `Int c.tokens) ]
-
-let json_agente ef ?(instrucciones = false) (a : Agente.t) =
-  let es = ef.archivo.historial a.nombre in
-  let siguiente = elegir ~politica:ef.politica a es in
-  `Assoc
-    ([ ("nombre", `String (Forja.Tarea.to_string a.nombre));
-       ("descripcion", `String a.descripcion);
-       ("version", `String (Agente.version a));
-       ("escalera", `List (List.map (fun m -> `String (Modelo.to_string m)) a.escalera));
-       ("defecto", `String (Modelo.to_string a.defecto));
-       ("max_tokens", `Int a.max_tokens) ]
-    @ (if instrucciones then [ ("instrucciones", `String a.instrucciones) ] else [])
-    @ [ ( "siguiente",
-          `Assoc
-            [ ("modelo", `String (Modelo.to_string siguiente.modelo));
-              ("motivo", `String siguiente.motivo) ] );
-        ("modelos", `List (List.map json_cuenta (cuentas ~politica:ef.politica a es))) ])
-
-let json_encargo (e : Encargo.t) =
-  `Assoc
-    ([ ("id", `String e.id);
-       ("modelo", `String e.modelo);
-       ("motivo", `String e.motivo);
-       ("fuente", `String e.fuente);
-       ("version", `String e.version);
-       ("ms", `Int e.ms);
-       ("tokens", `Int (e.tokens_entrada + e.tokens_salida));
-       ("veredicto", match e.veredicto with Some v -> `String (veredicto_a_texto v) | None -> `Null);
-       ("entrada", `String (recortar 200 e.entrada)) ]
-    @ (if e.nota = "" then [] else [ ("nota", `String e.nota) ])
-    @
-    match e.salida with
-    | Ok s -> [ ("salida", `String (recortar 500 s)) ]
-    | Error m -> [ ("error", `String m) ])
+let json_agente ef a = Agencia_vista.json_agente ef.archivo ef.politica a
 
 (* {1 Herramientas} *)
 
@@ -155,15 +109,7 @@ let historico ef args =
     | Ok (Some _) -> invalido "ultimos: entero de 0 a 1000"
     | Error e -> Error e
   in
-  let es = ef.archivo.historial a.nombre in
-  let ultimos = List.filteri (fun i _ -> i >= List.length es - ultimos) es |> List.rev in
-  Ok
-    (texto
-       (json_texto
-          (`Assoc
-            [ ("agente", json_agente ef ~instrucciones:true a);
-              ("encargos", `Int (List.length es));
-              ("ultimos", `List (List.map json_encargo ultimos)) ])))
+  Ok (texto (json_texto (Agencia_vista.json_historico ef.archivo ef.politica ~ultimos a)))
 
 let resultado (e : Encargo.t) =
   let meta =

@@ -81,6 +81,7 @@ bien.
 | [`bin/forja/`](bin/forja/) | El binario `forja` y su vitrina de cristales |
 | [`mcp/`](mcp/) | `forja-mcp` en OCaml, TypeScript, Go, Rust, Kotlin y Python: contrato y prueba de conformidad |
 | [`lib/agencia/`](lib/agencia/), [`bin/agencia-mcp/`](bin/agencia-mcp/) | La agencia y su servidor MCP |
+| [`lib/agencia-vista/`](lib/agencia-vista/), [`bin/agencia-vista/`](bin/agencia-vista/) | La agencia a la vista: `/agencia/…` de solo lectura, para `agencia.pin` |
 | [`legal/`](legal/) | Divulgación técnica defensiva, sellos de tiempo y expediente |
 | [`cristales/fecha-es/`](cristales/fecha-es/) | Cristal de ejemplo: fechas en español a ISO 8601 |
 | [`cristales/grafica-modelo/`](cristales/grafica-modelo/) | Las gráficas de sobremesa que nombra un texto, con su catálogo (GTX 750 Ti a RTX 5090, RX 9070 XT, Arc) |

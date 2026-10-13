@@ -35,6 +35,8 @@ crea con él otros agentes, les hace encargos y juzga lo que devuelven.
 El núcleo (`lib/agencia`) es puro salvo el archivo, que se inyecta, como la
 cantera en la forja. `lib/agencia-http` habla con los modelos y con
 GreptimeDB; `lib/agencia-mcp`, el protocolo; `bin/agencia-mcp`, stdio.
+`lib/agencia-vista` pinta agentes, cuentas y encargos en JSON (los mismos
+para el MCP y para la web); `bin/agencia-vista`, su API de solo lectura.
 
 ## Cómo elige
 
@@ -111,6 +113,27 @@ ventana: `sum by (modelo) (sum_over_time(agencia_encargo{__field__="n"}[1h]))`
 son los encargos por modelo en la última hora, y el acierto de cada modelo,
 los `bien` entre todos los veredictos. Es lo que pinta el dashboard «Agencia»
 de Perses (nixos-config, `modules/observability/cristales.nix`).
+
+## A la vista
+
+`agencia-vista` lee el mismo archivo de GreptimeDB que escriben los
+`agencia-mcp` y lo sirve por HTTP, solo GET: no llama a ningún modelo ni
+escribe nada. Es de donde tira `agencia.pin` en la flota
+(`modules/services/agencia-ui.nix` de nixos-config): los agentes, cómo le va
+a cada modelo con cada uno, a quién irá su siguiente encargo y sus últimos
+encargos con su veredicto.
+
+```
+GET /agencia/politica                       juicios, acierto, explorar_cada
+GET /agencia/agentes                        los agentes con sus cuentas y su siguiente
+GET /agencia/agentes/{agente}?encargos=20   uno, con instrucciones y últimos encargos
+```
+
+| Variable | Por defecto |
+|---|---|
+| `AGENCIA_IP`, `AGENCIA_PUERTO` | `127.0.0.1`, `8091` |
+| `AGENCIA_GREPTIME` | obligatoria |
+| `AGENCIA_GREPTIME_DB` | `agencia` |
 
 ## Uso
 

@@ -163,6 +163,21 @@ let () =
   let i = campo [ "result"; "instructions" ] (pide "initialize" (`Assoc [])) in
   comprueba "las instrucciones nombran los agentes"
     (match i with `String s -> List.exists (fun l -> l = "Agentes: titular (Titulares.).") (String.split_on_char '\n' s) | _ -> false);
+  (* La vista: la API de solo lectura de agencia.pin, sobre el mismo archivo. *)
+  let vista meth ruta query = Agencia_vista.atender archivo Politica.por_defecto ~meth ~ruta ~query in
+  let cuerpo_de = function Some (r : Agencia_vista.respuesta) -> (r.estado, Yojson.Safe.from_string r.cuerpo) | None -> (0, `Null) in
+  (match cuerpo_de (vista `GET "/agencia/agentes" []) with
+  | 200, `List [ a ] -> comprueba "vista: los agentes, con su siguiente" (campo [ "nombre" ] a = `String "titular" && campo [ "siguiente"; "modelo" ] a <> `Null)
+  | _ -> comprueba "vista: un agente" false);
+  (match cuerpo_de (vista `GET "/agencia/agentes/titular" [ ("encargos", [ "1" ]) ]) with
+  | 200, j ->
+      comprueba "vista: histórico con instrucciones" (campo [ "agente"; "instrucciones" ] j <> `Null);
+      comprueba "vista: solo los pedidos" (match campo [ "ultimos" ] j with `List [ _ ] -> true | _ -> false)
+  | _ -> comprueba "vista: histórico" false);
+  comprueba "vista: agente inexistente" (fst (cuerpo_de (vista `GET "/agencia/agentes/nadie" [])) = 404);
+  comprueba "vista: solo lectura" (fst (cuerpo_de (vista `POST "/agencia/agentes" [])) = 405);
+  comprueba "vista: política" (fst (cuerpo_de (vista `GET "/agencia/politica" [])) = 200);
+  comprueba "vista: lo demás no es suyo" (vista `GET "/forja/tareas" [] = None);
   (* Las APIs. *)
   let ruta, cuerpo = Agencia_http.Llm.peticion agente caro "hola" in
   comprueba "Messages" (ruta = "/v1/messages" && campo [ "system" ] cuerpo = `String "Resume en una línea.");

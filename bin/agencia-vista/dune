@@ -1,0 +1,20 @@
+(executable
+ (name main)
+ (public_name agencia-vista)
+ (package cristales)
+ (libraries
+  agencia
+  agencia_http
+  agencia_vista
+  forja_http
+  cohttp-eio
+  http
+  eio
+  eio_main
+  eio.unix
+  mirage-crypto-rng.unix
+  ipaddr
+  ipaddr.unix
+  unix
+  uri
+  yojson))

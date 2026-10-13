@@ -1,0 +1,4 @@
+(library
+ (name agencia_vista)
+ (public_name cristales.agencia-vista)
+ (libraries agencia forja http yojson))
