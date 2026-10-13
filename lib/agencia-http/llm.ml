@@ -10,23 +10,40 @@ type destinos = {
   cabeceras_openai : (string * string) list;
 }
 
-let peticion (a : Agente.t) (m : Modelo.t) entrada =
-  let usuario = `Assoc [ ("role", `String "user"); ("content", `String entrada) ] in
+let turno rol texto = `Assoc [ ("role", `String rol); ("content", `String texto) ]
+
+(* Lo estable primero, para la caché de prompts: el system (instrucciones
+   y advertencias, que solo cambian con un [mal] con nota nuevo), luego los
+   ejemplos (cambian con la entrada) y al final la entrada. *)
+let peticion ?(contexto = Ejemplos.vacio) (a : Agente.t) (m : Modelo.t) entrada =
+  let turnos =
+    List.concat_map (fun (e, s) -> [ turno "user" e; turno "assistant" s ]) contexto.pares @ [ turno "user" entrada ]
+  in
+  let system = Ejemplos.system a contexto in
   match m.api with
   | Anthropic ->
       ( "/v1/messages",
         `Assoc
           [ ("model", `String m.nombre);
             ("max_tokens", `Int a.max_tokens);
-            ("system", `String a.instrucciones);
-            ("messages", `List [ usuario ]) ] )
+            ( "system",
+              (* Sin ejemplos ni advertencias, la petición de siempre. Con
+                 ellos, el system marcado para la caché: lo que va detrás
+                 varía en cada encargo. *)
+              if Ejemplos.es_vacio contexto then `String system
+              else
+                `List
+                  [ `Assoc
+                      [ ("type", `String "text");
+                        ("text", `String system);
+                        ("cache_control", `Assoc [ ("type", `String "ephemeral") ]) ] ] );
+            ("messages", `List turnos) ] )
   | Openai ->
       ( "/v1/chat/completions",
         `Assoc
           [ ("model", `String m.nombre);
             ("max_tokens", `Int a.max_tokens);
-            ( "messages",
-              `List [ `Assoc [ ("role", `String "system"); ("content", `String a.instrucciones) ]; usuario ] ) ] )
+            ("messages", `List (turno "system" system :: turnos)) ] )
 
 let leer api j =
   let open Yojson.Safe.Util in
@@ -61,7 +78,7 @@ let sin_barra p = if String.ends_with ~suffix:"/" p then String.sub p 0 (String.
 
 let recortar s = if String.length s <= 500 then s else String.sub s 0 500 ^ "…"
 
-let llamar clock cliente d ?(espera = 600.) (a : Agente.t) (m : Modelo.t) entrada =
+let llamar clock cliente d ?(espera = 600.) ?archivo (a : Agente.t) (m : Modelo.t) entrada =
   let inicio = Eio.Time.now clock in
   let ms () = int_of_float ((Eio.Time.now clock -. inicio) *. 1000.) in
   let fallo ?(fuente = sin_respuesta) e =
@@ -75,7 +92,10 @@ let llamar clock cliente d ?(espera = 600.) (a : Agente.t) (m : Modelo.t) entrad
   match base with
   | None -> fallo (Modelo.to_string m ^ ": no hay servidor Chat Completions (AGENCIA_OPENAI)")
   | Some base -> (
-      let ruta, cuerpo = peticion a m entrada in
+      let contexto =
+        Option.map (fun (ar : Archivo.t) -> Ejemplos.elegir a (ar.historial a.nombre) entrada) archivo
+      in
+      let ruta, cuerpo = peticion ?contexto a m entrada in
       let cuerpo = Yojson.Safe.to_string cuerpo in
       let uri = Uri.with_path base (sin_barra (Uri.path base) ^ ruta) in
       let cabeceras =

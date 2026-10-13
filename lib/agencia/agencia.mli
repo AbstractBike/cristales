@@ -44,6 +44,9 @@ module Agente : sig
     defecto : Modelo.t;
         (** A quién se pide mientras no se sepa más: uno de la escalera. *)
     max_tokens : int;
+    ejemplos : int;
+        (** Cuántos encargos juzgados [bien] van como ejemplos en cada
+            encargo (y si van advertencias): 0 los apaga. Ver {!Ejemplos}. *)
   }
 
   val crear :
@@ -53,9 +56,13 @@ module Agente : sig
     escalera:Modelo.t list ->
     ?defecto:Modelo.t ->
     ?max_tokens:int ->
+    ?ejemplos:int ->
     unit ->
     (t, string) result
-  (** Sin [defecto], el más capaz de la escalera; [max_tokens] 4096. *)
+  (** Sin [defecto], el más capaz de la escalera; [max_tokens] 4096;
+      [ejemplos] 3 (de 0 a {!ejemplos_maximo}). *)
+
+  val ejemplos_maximo : int
 
   val version : t -> string
   (** 12 hex del digest de las instrucciones. Otras instrucciones son otro
@@ -162,3 +169,50 @@ val elegir : ?politica:Politica.t -> Agente.t -> Encargo.t list -> eleccion
       están todos, el más capaz;
     - uno de cada [explorar_cada] encargos va al más barato {!Por_ver} por
       debajo de la base, si lo hay. *)
+
+(** {1 Ejemplos y advertencias}
+
+    Lo que la agencia aprende de los veredictos, además de a qué modelo
+    pedir: los encargos juzgados [bien] van como ejemplos (few-shot) en los
+    siguientes, y las notas de los juzgados [mal], como advertencias. Solo
+    los de la versión actual de las instrucciones. *)
+
+module Ejemplos : sig
+  type t = {
+    pares : (string * string) list;
+        (** Entrada y salida de encargos juzgados [bien], del menos parecido
+            a la entrada al más: el más parecido queda junto a ella. *)
+    advertencias : string list;  (** Notas de veredictos [mal], la más reciente primero. *)
+  }
+
+  val vacio : t
+  val es_vacio : t -> bool
+
+  type parametros = {
+    presupuesto : int;  (** Bytes de todos los pares juntos. *)
+    max_entrada : int;  (** Una entrada más larga se corta (y lo dice). *)
+    max_advertencias : int;
+    max_nota : int;  (** Bytes de cada advertencia. *)
+  }
+
+  val por_defecto : parametros
+  (** 6000 de presupuesto, entradas de 1500, 3 advertencias de 500. *)
+
+  val similitud : string -> string -> float
+  (** Jaccard de los conjuntos de palabras (minúsculas, de 2 bytes o más),
+      de 0 a 1. Léxica y barata: nada de embeddings. *)
+
+  val elegir : ?parametros:parametros -> Agente.t -> Encargo.t list -> string -> t
+  (** Con el historial del agente (en orden de llegada) y la entrada del
+      encargo nuevo: hasta [Agente.ejemplos] pares de los encargos de la
+      versión actual con salida y veredicto [bien], los más parecidos a la
+      entrada y, a igualdad, los más recientes, sin repetir entrada; uno que
+      no cabe en lo que queda del presupuesto se salta. Y hasta
+      [max_advertencias] notas no vacías de veredictos [mal], recientes y
+      sin repetir. Determinista. Con [Agente.ejemplos = 0], {!vacio}. *)
+
+  val system : Agente.t -> t -> string
+  (** Las instrucciones y, si hay advertencias, una sección
+      [## Advertencias] al final. Sin advertencias, las instrucciones tal
+      cual: el system solo cambia cuando llega un [mal] con nota nuevo. *)
+end

@@ -55,7 +55,7 @@ let () =
   let azar = Random.State.make_self_init () in
   let efectos =
     { Agencia_mcp.archivo;
-      llamar = Agencia_http.Llm.llamar (Eio.Stdenv.clock env) cliente destinos;
+      llamar = Agencia_http.Llm.llamar (Eio.Stdenv.clock env) cliente destinos ~archivo;
       id = (fun () -> String.init 16 (fun _ -> "0123456789abcdef".[Random.State.int azar 16]));
       escalera = escalera ();
       politica = Agencia.Politica.por_defecto }

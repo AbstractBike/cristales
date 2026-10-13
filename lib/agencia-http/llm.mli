@@ -14,8 +14,12 @@ type destinos = {
   cabeceras_openai : (string * string) list;
 }
 
-val peticion : Agencia.Agente.t -> Agencia.Modelo.t -> string -> string * Yojson.Safe.t
-(** La ruta y el cuerpo. *)
+val peticion :
+  ?contexto:Agencia.Ejemplos.t -> Agencia.Agente.t -> Agencia.Modelo.t -> string -> string * Yojson.Safe.t
+(** La ruta y el cuerpo. Con [contexto], el system lleva las advertencias
+    al final y los ejemplos van como turnos previos (usuario: su entrada;
+    asistente: su salida) antes de la entrada; en Messages el system va
+    marcado con [cache_control]. Sin él (o vacío), la petición de siempre. *)
 
 val leer : Agencia.Modelo.api -> Yojson.Safe.t -> (string * int * int, string) result
 (** Texto, tokens de entrada y tokens de salida de una respuesta 200. *)
@@ -25,9 +29,11 @@ val llamar :
   Cohttp_eio.Client.t ->
   destinos ->
   ?espera:float ->
+  ?archivo:Agencia.Archivo.t ->
   Agencia.Agente.t ->
   Agencia.Modelo.t ->
   string ->
   Agencia.respuesta
 (** Nunca lanza: un fallo es [salida = Error]. [espera] en segundos
-    (600). *)
+    (600). Con [archivo], cada encargo lleva los ejemplos y advertencias
+    del historial del agente ({!Agencia.Ejemplos.elegir}). *)

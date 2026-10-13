@@ -234,5 +234,110 @@ let () =
   let otro = M.con_medidas (fun p -> puntos := p :: !puntos) archivo in
   otro.juzgar agente.nombre e.id Mal "";
   comprueba "modelo del historial"
-    (match !puntos with [ p ] -> List.assoc "modelo" p.etiquetas = "claude-haiku-5-5" | _ -> false);
+    (match !puntos with [ p ] -> List.assoc "modelo" p.etiquetas = "claude-haiku-5-5" | _ -> false)
+
+(* Ejemplos y advertencias: qué encargos previos acompañan al siguiente. *)
+let () =
+  let con ?(a = agente) ?veredicto ?(nota = "") ?(salida = Ok "s") entrada =
+    { (encargo ~a ~salida ?veredicto caro) with entrada; nota }
+  in
+  let elige ?parametros ?(a = agente) es e = Ejemplos.elegir ?parametros a es e in
+  comprueba "similitud: iguales 1, disjuntos 0"
+    (Ejemplos.similitud "Hola, Mundo" "mundo hola" = 1. && Ejemplos.similitud "uno dos" "tres" = 0.);
+  comprueba "similitud: UTF-8 es una palabra" (Ejemplos.similitud "canción" "canción larga" = 0.5);
+  let es =
+    [ con ~veredicto:Bien ~salida:(Ok "gatos") "los gatos duermen";
+      con ~veredicto:Mal ~nota:"demasiado largo" "los perros ladran";
+      con ~veredicto:Bien ~salida:(Ok "perros") "los perros ladran mucho";
+      con "los perros sin juzgar";
+      con ~veredicto:Bien ~salida:(Error "caído") "los perros con error";
+      { (con ~veredicto:Bien "los perros de otra versión") with version = "000000000000" };
+      con ~veredicto:Bien ~salida:(Ok "pájaros") "los pájaros cantan";
+      con ~veredicto:Bien ~salida:(Ok "peces") "los peces nadan" ]
+  in
+  let c = elige es "los perros ladran fuerte" in
+  comprueba "solo bien, con salida y de la versión actual; el más parecido al final"
+    (match c.pares with
+    | [ _; _; ("los perros ladran mucho", "perros") ] -> true
+    | _ -> false);
+  comprueba "a igualdad de parecido, los más recientes"
+    (List.map fst c.pares = [ "los pájaros cantan"; "los peces nadan"; "los perros ladran mucho" ]);
+  comprueba "advertencias de los mal" (c.advertencias = [ "demasiado largo" ]);
+  comprueba "determinista" (elige es "los perros ladran fuerte" = c);
+  comprueba "ejemplos = 0 lo apaga"
+    (Ejemplos.es_vacio (elige ~a:{ agente with ejemplos = 0 } es "los perros ladran fuerte"));
+  comprueba "a lo sumo los del agente"
+    (List.length (elige ~a:{ agente with ejemplos = 1 } es "los perros ladran fuerte").pares = 1);
+  let repetidos = [ con ~veredicto:Bien ~salida:(Ok "1") "igual"; con ~veredicto:Bien ~salida:(Ok "2") "igual" ] in
+  comprueba "una entrada repetida, la última vez" ((elige repetidos "igual").pares = [ ("igual", "2") ]);
+  let notas =
+    List.map (fun n -> con ~veredicto:Mal ~nota:n "x") [ "a"; "b"; " a "; "c"; "d" ]
+  in
+  comprueba "advertencias: recientes, sin repetir, tres" ((elige notas "x").advertencias = [ "d"; "c"; "a" ]);
+  (* El presupuesto: una entrada larga se corta; lo que no cabe se salta. *)
+  let parametros = { Ejemplos.por_defecto with presupuesto = 100; max_entrada = 20 } in
+  let largos =
+    [ con ~veredicto:Bien ~salida:(Ok (String.make 90 'z')) "corto";
+      con ~veredicto:Bien ~salida:(Ok "ok") (String.make 50 'a' ^ " ñ") ]
+  in
+  let c = elige ~parametros largos "aaa" in
+  comprueba "entrada larga, cortada y avisada"
+    (match c.pares with
+    | [ (e, "ok") ] -> String.length e < 60 && String.starts_with ~prefix:(String.make 20 'a') e
+    | _ -> false);
+  comprueba "sin partir un carácter"
+    (match (elige ~parametros:{ parametros with max_entrada = 52 } largos "aaa").pares with
+    | [ (e, _) ] -> String.length (List.hd (String.split_on_char '\n' e)) = 51
+    | _ -> false);
+  (* Las peticiones: lo estable delante. *)
+  let contexto = { Ejemplos.pares = [ ("e1", "s1") ]; advertencias = [ "no así" ] } in
+  let campo ruta j = List.fold_left (fun j k -> Yojson.Safe.Util.member k j) j ruta in
+  let _, m = Agencia_http.Llm.peticion ~contexto agente caro "hola" in
+  comprueba "Messages: ejemplos como turnos previos"
+    (campo [ "messages" ] m
+    = `List
+        [ `Assoc [ ("role", `String "user"); ("content", `String "e1") ];
+          `Assoc [ ("role", `String "assistant"); ("content", `String "s1") ];
+          `Assoc [ ("role", `String "user"); ("content", `String "hola") ] ]);
+  (match campo [ "system" ] m with
+  | `List [ b ] ->
+      comprueba "Messages: system con advertencias y caché"
+        (campo [ "text" ] b = `String (Ejemplos.system agente contexto)
+        && campo [ "cache_control"; "type" ] b = `String "ephemeral")
+  | _ -> comprueba "Messages: system en un bloque" false);
+  comprueba "advertencias al final del system"
+    (Ejemplos.system agente contexto
+    = "Resume en una línea.\n\n## Advertencias\n\nEncargos anteriores de este trabajo se juzgaron mal por esto; \
+       no lo repitas:\n\n- no así");
+  comprueba "contexto vacío: la petición de siempre"
+    (Agencia_http.Llm.peticion ~contexto:Ejemplos.vacio agente caro "hola" = Agencia_http.Llm.peticion agente caro "hola");
+  let _, o = Agencia_http.Llm.peticion ~contexto agente barato "hola" in
+  comprueba "Chat Completions: system, ejemplos, entrada"
+    (match campo [ "messages" ] o with
+    | `List [ s; u; a; e ] ->
+        campo [ "role" ] s = `String "system"
+        && campo [ "content" ] u = `String "e1"
+        && campo [ "role" ] a = `String "assistant"
+        && campo [ "content" ] e = `String "hola"
+    | _ -> false);
+  (* Y la forja los ve como la misma tarea: los ejemplos no son la entrada
+     ni la plantilla. *)
+  (match Forja_http.Anthropic.peticion ~tarea:(Some "resumir") m with
+  | Ok (p, _) -> comprueba "forja: la entrada es la última" (p.entrada = "hola")
+  | Error e -> comprueba ("forja: con ejemplos es tarea: " ^ e) false);
+  (match Forja_http.Openai.peticion ~tarea:(Some "resumir") o with
+  | Ok (p, _) -> comprueba "forja openai: la entrada es la última" (p.entrada = "hola")
+  | Error e -> comprueba ("forja openai: con ejemplos es tarea: " ^ e) false);
+  (* La fila del agente: ejemplos ida y vuelta, y las viejas sin ella. *)
+  let module G = Agencia_http.Archivo_greptime in
+  let a1 = { agente with ejemplos = 1 } in
+  comprueba "fila con ejemplos" (G.agente (G.fila_agente a1) = Some a1);
+  (match G.fila_agente agente with
+  | `List l ->
+      let vieja = `List (List.filteri (fun i _ -> i < 6) l) in
+      comprueba "fila vieja: 3 ejemplos" (G.agente vieja = Some agente);
+      comprueba "fila con nulo: 3 ejemplos" (G.agente (`List (List.filteri (fun i _ -> i < 6) l @ [ `Null ])) = Some agente)
+  | _ -> comprueba "fila es lista" false);
+  comprueba "ejemplos fuera de rango"
+    (Result.is_error (Agente.crear ~nombre:"x" ~instrucciones:"i" ~escalera:[ caro ] ~ejemplos:11 ()));
   if !fallos > 0 then exit 1
