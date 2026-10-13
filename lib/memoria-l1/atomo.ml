@@ -26,7 +26,15 @@ let conservar tipo p = p >= umbral tipo || (tipo = Regla && p = -1)
 
 let prioridad_valida p = max (-1) (min 100 p)
 
-type mensaje = { sesion : string; uuid : string; ts : int; proyecto : string; rol : string; texto : string }
+type mensaje = { sesion : string; uuid : string; ts : int; proyecto : string; rol : string; agente : string; texto : string }
+
+type autor = Usuario | Asistente | Agente_padre | Tarea_programada
+
+let autor m =
+  if m.rol <> "user" then Asistente
+  else if m.agente <> "" then Agente_padre
+  else if String.starts_with ~prefix:"<scheduled-task" (String.trim m.texto) then Tarea_programada
+  else Usuario
 
 let origen m = m.sesion ^ "/" ^ m.uuid
 
@@ -59,7 +67,27 @@ let hora ms =
   let (y, m, d), h, mi = partes ms in
   Printf.sprintf "%04d-%02d-%02d %02d:%02d" y m d h mi
 
+let sql_ts ms =
+  let (y, m, d), h, mi = partes ms in
+  Printf.sprintf "%04d-%02d-%02d %02d:%02d:%02d" y m d h mi (ms / 1000 mod 60)
+
+(* El inverso de [civil] (days_from_civil). *)
+let ms_de_fecha s =
+  try
+    Scanf.sscanf s "%4d-%2d-%2d%!" (fun y m d ->
+        if m < 1 || m > 12 || d < 1 || d > 31 then None
+        else
+          let y = if m <= 2 then y - 1 else y in
+          let era = (if y >= 0 then y else y - 399) / 400 in
+          let yoe = y - (era * 400) in
+          let mp = if m > 2 then m - 3 else m + 9 in
+          let doy = ((153 * mp) + 2) / 5 + d - 1 in
+          let doe = (yoe * 365) + (yoe / 4) - (yoe / 100) + doy in
+          Some (((era * 146097) + doe - 719468) * dia_ms))
+  with _ -> None
+
 type nuevo = {
+  id : string;
   contenido : string;
   tipo : tipo;
   prioridad : int;
@@ -82,11 +110,10 @@ type t = {
   fechas : string list;
 }
 
-let id_de (n : nuevo) =
-  "a-" ^ String.sub (Digest.to_hex (Digest.string (n.contenido ^ "\000" ^ String.concat "," n.origen))) 0 12
+let id_de ~clave i = "a-" ^ String.sub (Digest.to_hex (Digest.string (clave ^ "#" ^ string_of_int i))) 0 12
 
 let de_nuevo (n : nuevo) =
-  { id = id_de n;
+  { id = n.id;
     version = 1;
     vigente = true;
     tipo = n.tipo;

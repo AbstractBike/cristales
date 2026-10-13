@@ -15,9 +15,9 @@ val terminos : ?max:int -> string -> string list
     mucho [max] (6). Solo letras y cifras: van tal cual a [matches]. *)
 
 val consulta : string -> string
-(** La consulta de [matches] para un término: la forma tal cual, en
-    minúsculas y con mayúscula inicial, unidas por [OR] (el índice de
-    GreptimeDB distingue mayúsculas). *)
+(** El patrón de [matches(lower(contenido), …)] para un término: en
+    minúsculas y entre comillas dobles (así [or], [and] y [not] no son
+    operadores, y casa como subcadena). *)
 
 val rrf : ?k:int -> string list list -> (string * float) list
 (** Reciprocal Rank Fusion de varias listas de ids ordenadas: la suma de

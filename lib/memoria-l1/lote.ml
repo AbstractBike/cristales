@@ -15,6 +15,7 @@ let util (m : Atomo.mensaje) =
   in
   alfanumericos >= 2
 
+type cursor = { hasta : int; escena : string option; fallos : int }
 type t = { fondo : Atomo.mensaje list; nuevos : Atomo.mensaje list; hasta : int }
 type paso = Nada | Avanzar of int | Lote of t
 

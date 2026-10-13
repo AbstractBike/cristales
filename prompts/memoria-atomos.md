@@ -8,6 +8,15 @@ Haces dos cosas en una sola respuesta: partir el tramo en **escenas** y extraer 
 - **【fondo】**: mensajes previos, con ids `f1`, `f2`… Sirven **solo** para entender el contexto (a qué se refiere «eso», qué se estaba haciendo, qué propuso el asistente). **Prohibido extraer átomos de ellos**: ya se destilaron en su momento.
 - **【nuevos】**: los mensajes de los que sí se extrae, con ids `m1`, `m2`… Cada mensaje lleva su rol (`usuario` o `asistente`) y su fecha y hora absolutas (UTC).
 
+Cada mensaje lleva quién lo escribió:
+
+- `usuario`: el usuario. Es lo único que habla por él: sus preferencias, sus reglas, lo que acepta.
+- `asistente`: el agente de la sesión.
+- `agente padre`: el encargo que otro agente le hizo a este (la sesión es un subagente). **No es el usuario**: no es una preferencia, una regla ni un rasgo suyo, aunque esté en imperativo («nunca…», «usa…»). Sirve de contexto, y si informa de un dato del sistema puede dar un `hecho`.
+- `tarea programada`: el prompt fijo de una tarea que se lanza sola. Tampoco es el usuario hablando: es contexto.
+
+Una `persona` o una `regla` tiene que citar en `origen` al menos un mensaje del `usuario`.
+
 Las llamadas a herramientas aparecen como líneas `[herramienta X: descripción]`: indican lo que hizo el asistente, nunca son una afirmación del usuario.
 
 ## Tarea 1: escenas

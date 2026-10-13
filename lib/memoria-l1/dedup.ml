@@ -45,9 +45,7 @@ let terminos ?(max = 6) contenido =
   let ordenadas = List.stable_sort (fun a b -> compare (peso b) (peso a)) unicas in
   List.filteri (fun i _ -> i < max) ordenadas
 
-let consulta t =
-  let capital s = if s = "" then s else String.capitalize_ascii (String.lowercase_ascii s) in
-  String.concat " OR " (List.sort_uniq String.compare [ t; String.lowercase_ascii t; capital t ])
+let consulta t = "\"" ^ String.lowercase_ascii t ^ "\""
 
 (* Sin repetir, en el orden de la primera aparición. *)
 let distintos l = List.rev (List.fold_left (fun acc x -> if List.mem x acc then acc else x :: acc) [] l)
