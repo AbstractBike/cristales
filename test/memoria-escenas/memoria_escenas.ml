@@ -331,6 +331,12 @@ let () =
   comprueba "fechas en rango" (contiene "2026-03-01" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} })
     && contiene "2026-03-01..2026-10-13" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} }));
   comprueba "ms_de_iso" (Ciclo.ms_de_iso "1970-01-02T00:00:01Z" = Some 86401000 && Ciclo.ms_de_iso "2026-10-13T20:37:06Z" = Some 1791923826000);
+  (let m =
+     Consolidacion.entrada ~anteriores:[ Atomo.Proyecto "/viejo" ] ~ahora ~escenas:[] ~abiertas:[]
+       [ atomo "a-n" "nuevo"; { (atomo "a-v" "viejo") with proyecto = "/viejo/x" } ]
+   in
+   comprueba "la etapa anterior, aparte"
+     (contiene "## Historia de una etapa anterior (1)" m && contiene "## Átomos nuevos (1)" m));
   comprueba "reglas en la entrada"
     (contiene "Reglas vigentes" (Consolidacion.entrada ~reglas:"Python prohibido" ~ahora ~escenas:[] ~abiertas:[] []));
   (* Un átomo que ya está en una escena actualizada después no se repite. *)

@@ -90,8 +90,15 @@ let entrada ?(reglas = "") ?(anteriores = []) ~ahora ~escenas ~abiertas atomos =
             (Escena.a_texto e)
       | None -> ())
     abiertas;
-  p "## Átomos nuevos (%d)\n\n" (List.length atomos);
-  List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) atomos;
+  (* Los de una etapa anterior, aparte: el modelo no los confunde con
+     reglas vigentes si ni siquiera están en la misma lista. *)
+  let viejos, nuevos = List.partition (Atomo.anterior ~anteriores) atomos in
+  p "## Átomos nuevos (%d)\n\n" (List.length nuevos);
+  if nuevos = [] then p "(ninguno)\n";
+  List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) nuevos;
+  if viejos <> [] then (
+    p "\n## Historia de una etapa anterior (%d)\n\nDe otra etapa de la flota (otras máquinas, rutas y lenguajes). PROHIBIDO usarlos como regla, método o dato vigente: como mucho, una línea en `## Trayectoria` de una escena que ya exista. Si no aportan trayectoria, ignóralos.\n\n" (List.length viejos);
+    List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) viejos);
   p "\n## Hora actual\n\n%s\n" ahora;
   Buffer.contents b
 

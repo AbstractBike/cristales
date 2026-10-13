@@ -21,6 +21,8 @@ de tareas.
 2. **Índice de escenas**: `slug`, título, resumen, calor y si está bloqueada.
 3. **Escenas abiertas**: el texto completo de las 2-5 más parecidas a los
    átomos nuevos. Solo puedes actualizar o fusionar estas.
+3b. **Historia de una etapa anterior** (si la hay): átomos de otra etapa de la
+   flota. Nunca son regla ni dato vigente; como mucho, trayectoria.
 4. **Átomos nuevos**: `id`, tipo (`persona`, `regla`, `hecho`, `metodo`,
    `episodio`), una marca si es historia, fechas, proyecto y contenido.
    - `{historia: nota importada}`: una nota antigua; vale mientras nada más
