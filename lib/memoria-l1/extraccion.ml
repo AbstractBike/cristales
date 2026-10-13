@@ -14,10 +14,15 @@ let recortar n s =
     let a = frontera s mitad and b = frontera s (String.length s - mitad) in
     String.sub s 0 a ^ " […] " ^ String.sub s b (String.length s - b)
 
-let rol = function "user" -> "usuario" | "assistant" -> "asistente" | r -> r
+let rol (m : Atomo.mensaje) =
+  match Atomo.autor m with
+  | Atomo.Usuario -> "usuario"
+  | Atomo.Asistente -> "asistente"
+  | Atomo.Agente_padre -> "agente padre"
+  | Atomo.Tarea_programada -> "tarea programada"
 
 let linea etiqueta (m : Atomo.mensaje) =
-  Printf.sprintf "[%s] [%s] [%s UTC]\n%s" etiqueta (rol m.rol) (Atomo.hora m.ts) (recortar max_texto (String.trim m.texto))
+  Printf.sprintf "[%s] [%s] [%s UTC]\n%s" etiqueta (rol m) (Atomo.hora m.ts) (recortar max_texto (String.trim m.texto))
 
 let etiquetar prefijo l = List.mapi (fun i m -> (Printf.sprintf "%s%d" prefijo (i + 1), m)) l
 
@@ -50,7 +55,7 @@ let escenas_de j =
   | `Assoc _ -> ( match Yojson.Safe.Util.member "escenas" j with `List l -> Some l | _ -> None)
   | _ -> None
 
-let leer ~nuevos respuesta =
+let leer ~clave ~nuevos respuesta =
   match Json_llm.extraer respuesta with
   | Error e -> Error e
   | Ok j -> (
@@ -58,7 +63,7 @@ let leer ~nuevos respuesta =
       | None -> Error "sin «escenas»"
       | Some escenas ->
           let por_etiqueta = etiquetar "m" nuevos in
-          let descartados = ref [] in
+          let descartados = ref [] and indice = ref 0 in
           let descartar c motivo = descartados := (c, motivo) :: !descartados in
           let atomo escena a =
             match Json_llm.texto a "contenido" with
@@ -74,15 +79,23 @@ let leer ~nuevos respuesta =
                     if not (Atomo.conservar tipo prioridad) then (
                       descartar contenido (Printf.sprintf "prioridad %d bajo el umbral" prioridad);
                       None)
-                    else
+                    else if
+                      (tipo = Atomo.Persona || tipo = Atomo.Regla)
+                      && not (List.exists (fun m -> Atomo.autor m = Atomo.Usuario) mensajes)
+                    then (
+                      descartar contenido "persona o regla sin un mensaje del usuario";
+                      None)
+                    else (
+                      incr indice;
                       Some
-                        { Atomo.contenido;
+                        { Atomo.id = Atomo.id_de ~clave !indice;
+                          contenido;
                           tipo;
                           prioridad;
                           escena;
                           proyecto = primero.proyecto;
                           origen = List.map Atomo.origen mensajes;
-                          fechas = List.sort_uniq String.compare (List.map (fun (m : Atomo.mensaje) -> Atomo.fecha m.ts) mensajes) })
+                          fechas = List.sort_uniq String.compare (List.map (fun (m : Atomo.mensaje) -> Atomo.fecha m.ts) mensajes) }))
           in
           let leidas =
             List.filter_map

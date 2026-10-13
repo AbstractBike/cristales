@@ -28,8 +28,8 @@ let () =
   comprueba "hecho -1 no" (not (Atomo.conservar Atomo.Hecho (-1)));
   comprueba "persona 50" (Atomo.conservar Atomo.Persona 50 && not (Atomo.conservar Atomo.Persona 49))
 
-let msg ?(rol = "user") ?(sesion = "s1") i texto =
-  { Atomo.sesion; uuid = Printf.sprintf "u%02d" i; ts = t0 + (i * min); proyecto = "/logical-node/nixos-config"; rol; texto }
+let msg ?(rol = "user") ?(sesion = "s1") ?(agente = "") i texto =
+  { Atomo.sesion; uuid = Printf.sprintf "u%02d" i; ts = t0 + (i * min); proyecto = "/logical-node/nixos-config"; rol; agente; texto }
 
 let () = comprueba "fecha de t0" (Atomo.fecha t0 = "2026-10-13")
 
@@ -72,7 +72,7 @@ let () =
   comprueba "recortar respeta UTF-8"
     (let s = Extraccion.recortar 10 (String.concat "" (List.init 20 (fun _ -> "ñ"))) in
      String.length s < 40 && String.is_valid_utf_8 s);
-  match Extraccion.leer ~nuevos respuesta_atomos with
+  match Extraccion.leer ~clave:"s1/1" ~nuevos respuesta_atomos with
   | Error e -> comprueba ("extracción legible: " ^ e) false
   | Ok r ->
       comprueba "extracción: dos átomos válidos" (List.length r.atomos = 2);
@@ -87,14 +87,47 @@ let () =
 
 let () =
   comprueba "extracción: formato de Tencent (array)"
-    (match Extraccion.leer ~nuevos {|[{"escena":"x","atomos":[{"contenido":"c","tipo":"metodo","prioridad":70,"origen":["m2"]}]}]|} with
+    (match Extraccion.leer ~clave:"s1/1" ~nuevos {|[{"escena":"x","atomos":[{"contenido":"c","tipo":"metodo","prioridad":70,"origen":["m2"]}]}]|} with
     | Ok r -> List.length r.atomos = 1
     | Error _ -> false);
-  comprueba "extracción: basura" (Result.is_error (Extraccion.leer ~nuevos "Lo siento, no puedo."));
+  comprueba "extracción: basura" (Result.is_error (Extraccion.leer ~clave:"s1/1" ~nuevos "Lo siento, no puedo."));
   comprueba "extracción: vacía vale"
-    (match Extraccion.leer ~nuevos {|{"escenas":[{"escena":"x","mensajes":["m1"],"atomos":[]}]}|} with
+    (match Extraccion.leer ~clave:"s1/1" ~nuevos {|{"escenas":[{"escena":"x","mensajes":["m1"],"atomos":[]}]}|} with
     | Ok r -> r.atomos = [] && r.escenas = [ "x" ]
     | Error _ -> false)
+
+(* Los [user] que no son el usuario: el agente padre y las tareas programadas. *)
+let () =
+  let padre = msg ~agente:"a1b2" 1 "Nunca uses --impure; revisa el flake." in
+  let tarea = msg 2 "<scheduled-task name=\"ronda\">Revisa los logs de la flota.</scheduled-task>" in
+  let usuario = msg 3 "prefiero timeouts cortos" in
+  comprueba "autor: agente padre" (Atomo.autor padre = Atomo.Agente_padre);
+  comprueba "autor: tarea programada" (Atomo.autor tarea = Atomo.Tarea_programada);
+  comprueba "autor: usuario" (Atomo.autor usuario = Atomo.Usuario);
+  let nuevos = [ padre; tarea; usuario ] in
+  let e = Extraccion.entrada ~escena_previa:None ~fondo:[] ~nuevos in
+  let contiene s sub =
+    let n = String.length s and m = String.length sub in
+    let rec ir i = i + m <= n && (String.sub s i m = sub || ir (i + 1)) in
+    ir 0
+  in
+  comprueba "entrada: etiqueta de agente padre" (contiene e "[m1] [agente padre]");
+  comprueba "entrada: etiqueta de tarea" (contiene e "[m2] [tarea programada]");
+  let r =
+    Extraccion.leer ~clave:"s1/1" ~nuevos
+      {|{"escenas":[{"escena":"x","atomos":[
+        {"contenido":"Nunca --impure.","tipo":"regla","prioridad":-1,"origen":["m1"]},
+        {"contenido":"El usuario revisa los logs.","tipo":"persona","prioridad":70,"origen":["m2"]},
+        {"contenido":"El usuario prefiere timeouts cortos.","tipo":"persona","prioridad":70,"origen":["m3","m1"]},
+        {"contenido":"El flake se evalúa en puro.","tipo":"hecho","prioridad":70,"origen":["m1"]}]}]}|}
+  in
+  match r with
+  | Error _ -> comprueba "autores: legible" false
+  | Ok r ->
+      comprueba "autores: regla y persona sin usuario, fuera"
+        (List.map (fun (a : Atomo.nuevo) -> a.contenido) r.atomos
+        = [ "El usuario prefiere timeouts cortos."; "El flake se evalúa en puro." ]);
+      comprueba "autores: ids distintos" ((List.nth r.atomos 0).id <> (List.nth r.atomos 1).id)
 
 (* {1 Lote} *)
 
@@ -134,7 +167,7 @@ let atomo ?(version = 1) ?(vigente = true) ?(prioridad = 70) ?(tipo = Atomo.Hech
     fechas = [ "2026-09-01" ] }
 
 let nuevo ?(tipo = Atomo.Hecho) ?(prioridad = 80) contenido =
-  { Atomo.contenido; tipo; prioridad; escena = "nueva"; proyecto = "p"; origen = [ "s1/u01" ]; fechas = [ "2026-10-13" ] }
+  { Atomo.id = Atomo.id_de ~clave:"s1/1" (Hashtbl.hash contenido); contenido; tipo; prioridad; escena = "nueva"; proyecto = "p"; origen = [ "s1/u01" ]; fechas = [ "2026-10-13" ] }
 
 let () =
   let t = Dedup.terminos "GreptimeDB corre en c3 desde el 2026-10-13, con la base de la flota y k0s" in
@@ -142,7 +175,7 @@ let () =
   comprueba "términos: cifras cortas" (List.mem "c3" t && List.mem "k0s" t);
   comprueba "términos: sin vacías" (not (List.mem "desde" t));
   comprueba "términos: máximo" (List.length t <= 6);
-  comprueba "consulta" (Dedup.consulta "GreptimeDB" = "GreptimeDB OR Greptimedb OR greptimedb");
+  comprueba "consulta" (Dedup.consulta "GreptimeDB" = "\"greptimedb\"");
   let r = Dedup.rrf [ [ "a"; "b"; "c" ]; [ "b"; "c" ]; [ "c" ] ] in
   comprueba "rrf: el que más aparece" (fst (List.hd r) = "c");
   comprueba "rrf: k=60" (abs_float (List.assoc "a" r -. (1. /. 61.)) < 1e-9);
@@ -249,12 +282,19 @@ let () =
          [ `String "a-1"; `Int 1; `Bool true; `String "hecho"; `Int 70; `String "e"; `String "con 'comillas'"; `String "p";
            `String {|["s0/a-1"]|}; `String {|["2026-09-01"]|} ])
     = Some a);
-  comprueba "valores" (String.starts_with ~prefix:"(5, 'a-1', 1, true, 'hecho', 70" (Almacen.valores ~ts:5 a))
+  comprueba "valores" (String.starts_with ~prefix:"(5, 7, 'a-1', 1, true, 'hecho', 70" (Almacen.valores ~ts:5 ~escrito:7 a))
+
+let () =
+  let c = Almacen.cursor_de_fila (`List [ `String "s"; `Int 20; `String "b"; `Null ]) in
+  comprueba "cursor de fila, fallos nulos" (c = Some ("s", { Lote.hasta = 20; escena = Some "b"; fallos = 0 }));
+  comprueba "ms_de_fecha" (Atomo.ms_de_fecha "2026-10-13" = Some (t0 - (10 * 3_600_000)));
+  comprueba "ms_de_fecha mala" (Atomo.ms_de_fecha "13/10/2026" = None);
+  comprueba "sql_ts" (Atomo.sql_ts (t0 + 5_000) = "2026-10-13 10:00:05")
 
 (* {1 Destila, con efectos falsos} *)
 
 let modelo s = Result.get_ok (Agencia.Modelo.de_texto s)
-let escalera = [ modelo "openai:gemma-4-12b"; modelo "claude-haiku-5-5"; modelo "claude-sonnet-5-5"; modelo "claude-opus-5-5" ]
+let escalera = [ modelo "claude-haiku-5-5"; modelo "claude-sonnet-5-5"; modelo "claude-opus-5-5" ]
 let agentes = { Destila.atomos = Result.get_ok (Agentes.atomos ~escalera); dedup = Result.get_ok (Agentes.dedup ~escalera) }
 
 let () =
@@ -264,9 +304,14 @@ let () =
   comprueba "asegurar: la primera vez guarda" (Agentes.asegurar archivo agentes.atomos);
   comprueba "asegurar: la segunda no" (not (Agentes.asegurar archivo agentes.atomos))
 
-let falsos ?(escribir = fun _ -> Ok ()) respuestas =
+let falsos ?(escribir = fun _ -> Ok ()) ?(ya = false) ?candidatos respuestas =
   let cola = ref respuestas and encargados = ref [] and malos = ref [] and escrito = ref [] and cursores = ref [] in
   let n = ref 0 in
+  let candidatos =
+    match candidatos with
+    | Some f -> f
+    | None -> fun (n : Atomo.nuevo) -> Ok (if n.tipo = Atomo.Hecho then [ atomo "a-111111111111" "GreptimeDB corre en c2." ] else [])
+  in
   let ef =
     { Destila.encargar =
         (fun a ?modelo entrada ->
@@ -278,9 +323,10 @@ let falsos ?(escribir = fun _ -> Ok ()) respuestas =
             motivo = ""; fuente = "directo"; entrada; salida; ms = 1; tokens_entrada = 1; tokens_salida = 1; veredicto = None;
             nota = "" });
       juzgar_mal = (fun e nota -> malos := (e.id, nota) :: !malos);
-      candidatos = (fun (n : Atomo.nuevo) -> if n.tipo = Atomo.Hecho then [ atomo "a-111111111111" "GreptimeDB corre en c2." ] else []);
-      escribir = (fun f -> match escribir f with Ok () -> escrito := !escrito @ f; Ok () | e -> e);
-      guardar_cursor = (fun ~sesion:_ ~hasta ~escena -> cursores := (hasta, escena) :: !cursores; Ok ());
+      candidatos;
+      escrito = (fun ~sesion:_ ~hasta:_ -> Ok ya);
+      escribir = (fun ~hasta:_ f -> match escribir f with Ok () -> escrito := !escrito @ f; Ok () | e -> e);
+      guardar_cursor = (fun ~sesion:_ c -> cursores := c :: !cursores; Ok ());
       avisar = (fun _ -> ()) }
   in
   (ef, encargados, malos, escrito, cursores)
@@ -290,29 +336,77 @@ let () =
   let ef, encargados, malos, escrito, cursores =
     falsos [ Ok respuesta_atomos; Ok {|[{"id":"n2","accion":"actualizar","objetivos":["a-111111111111"],"contenido":"GreptimeDB corre en c3."}]|} ]
   in
-  let informes, error = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
-  comprueba "destila: sin error" (error = None);
-  comprueba "destila: un lote" (List.length informes = 1);
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "destila: sin error" (r.error = None);
+  comprueba "destila: un lote" (List.length r.informes = 1 && Destila.avanzo r);
   comprueba "destila: dos encargos" (List.rev !encargados = [ ("memoria-atomos", "claude-sonnet-5-5"); ("memoria-dedup", "claude-haiku-5-5") ]);
   comprueba "destila: nada juzgado mal" (!malos = []);
-  comprueba "destila: regla nueva y hecho actualizado"
-    (List.map (fun (a : Atomo.t) -> a.version) !escrito = [ 1; 2 ]);
-  comprueba "destila: cursor al último" (!cursores = [ ((List.nth nuevos 2).ts, Some "Despliegue de a2 con colmena") ])
+  comprueba "destila: regla nueva y hecho actualizado" (List.map (fun (a : Atomo.t) -> a.version) !escrito = [ 1; 2 ]);
+  comprueba "destila: cursor al último"
+    (!cursores = [ { Lote.hasta = (List.nth nuevos 2).ts; escena = Some "Despliegue de a2 con colmena"; fallos = 0 } ]);
+  (* Reprocesar el mismo lote da los mismos ids. *)
+  let ef2, _, _, escrito2, _ =
+    falsos [ Ok respuesta_atomos; Ok {|[{"id":"n2","accion":"actualizar","objetivos":["a-111111111111"],"contenido":"GreptimeDB corre en c3."}]|} ]
+  in
+  let _ = Destila.sesion ef2 agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "destila: ids deterministas" (List.map (fun (a : Atomo.t) -> a.id) !escrito = List.map (fun (a : Atomo.t) -> a.id) !escrito2)
 
 let () =
-  (* Basura del extractor: mal, y reintento con el siguiente más capaz. *)
-  let ef, encargados, malos, _, cursores = falsos [ Ok "no sé"; Ok {|{"escenas":[{"escena":"x","atomos":[]}]}|} ] in
-  let _, error = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
-  comprueba "reintento: sin error" (error = None);
-  comprueba "reintento: a opus" (List.rev !encargados = [ ("memoria-atomos", "claude-sonnet-5-5"); ("memoria-atomos", "claude-opus-5-5") ]);
-  comprueba "reintento: el primero, mal" (List.length !malos = 1);
-  comprueba "reintento: avanza" (List.length !cursores = 1)
+  (* Lote ya escrito (el cursor falló tras escribir): solo el cursor. *)
+  let ef, encargados, _, escrito, cursores = falsos ~ya:true [] in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "recuperado: sin encargos ni filas" (!encargados = [] && !escrito = []);
+  comprueba "recuperado: cursor" (r.recuperados = 1 && List.length !cursores = 1)
+
+let () =
+  (* Los candidatos nunca incluyen los átomos del propio lote. *)
+  let propio = ref "" in
+  let ef, _, _, _, _ =
+    falsos
+      ~candidatos:(fun (n : Atomo.nuevo) ->
+        propio := n.id;
+        Ok [ atomo n.id n.contenido ])
+      [ Ok respuesta_atomos ]
+  in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "propios fuera: sin juez" (match r.informes with [ i ] -> List.length i.encargos = 1 | _ -> false)
+
+let () =
+  (* Un fallo leyendo candidatos para la pasada, sin escribir nada. *)
+  let ef, _, _, escrito, cursores = falsos ~candidatos:(fun _ -> Error "greptime 503") [ Ok respuesta_atomos ] in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "candidatos: error" (r.error = Some "greptime 503" && !escrito = [] && !cursores = [])
+
+let ilegible = [ Ok "no sé"; Ok "tampoco" ]
+
+let () =
+  (* Ilegible dos veces: mal ambos, el cursor no avanza y cuenta el fallo. *)
+  let ef, encargados, malos, _, cursores = falsos ilegible in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "ilegible: sin error" (r.error = None);
+  comprueba "ilegible: reintento a opus" (List.rev !encargados = [ ("memoria-atomos", "claude-sonnet-5-5"); ("memoria-atomos", "claude-opus-5-5") ]);
+  comprueba "ilegible: los dos, mal" (List.length !malos = 2);
+  comprueba "ilegible: no avanza" (r.ilegibles = 1 && not (Destila.avanzo r));
+  comprueba "ilegible: cursor antes del lote, fallo contado"
+    (!cursores = [ { Lote.hasta = (List.hd nuevos).ts - 1; escena = None; fallos = 1 } ]);
+  (* A la tercera pasada se salta. *)
+  let ef, _, _, _, cursores = falsos ilegible in
+  let antes = { Lote.hasta = (List.hd nuevos).ts - 1; escena = Some "e"; fallos = Destila.max_fallos - 1 } in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:(Some antes) nuevos in
+  comprueba "ilegible: saltado" (r.saltados = 1 && Destila.avanzo r);
+  comprueba "ilegible: el cursor pasa el lote" (List.exists (fun (c : Lote.cursor) -> c.hasta = (List.nth nuevos 2).ts && c.fallos = 0) !cursores)
+
+let () =
+  (* Reintento que sale bien. *)
+  let ef, _, malos, _, cursores = falsos [ Ok "no sé"; Ok {|{"escenas":[{"escena":"x","atomos":[]}]}|} ] in
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "reintento: avanza" (Destila.avanzo r && List.length !malos = 1 && List.length !cursores = 1)
 
 let () =
   (* Sin respuesta: la sesión se para y el cursor no se mueve. *)
   let ef, _, malos, _, cursores = falsos [ Error "503" ] in
-  let _, error = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
-  comprueba "sin respuesta: error" (error <> None);
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "sin respuesta: error" (r.error <> None);
   comprueba "sin respuesta: no se juzga" (!malos = []);
   comprueba "sin respuesta: cursor quieto" (!cursores = [])
 
@@ -326,16 +420,16 @@ let () =
 let () =
   (* GreptimeDB no escribe: error y el cursor quieto. *)
   let ef, _, _, _, cursores = falsos ~escribir:(fun _ -> Error "greptime 500") [ Ok respuesta_atomos; Ok "[]" ] in
-  let _, error = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
-  comprueba "sin escribir: error" (error = Some "greptime 500");
+  let r = Destila.sesion ef agentes ~sesion:"s1" ~cursor:None nuevos in
+  comprueba "sin escribir: error" (r.error = Some "greptime 500");
   comprueba "sin escribir: cursor quieto" (!cursores = [])
 
 let () =
   (* Límite de lotes. *)
   let ef, encargados, _, _, _ = falsos (List.init 10 (fun _ -> Ok {|{"escenas":[]}|})) in
   let sesion = List.init 35 (fun i -> msg i (Printf.sprintf "mensaje %d" i)) in
-  let informes, _ = Destila.sesion ef agentes ~limite:2 ~sesion:"s1" ~cursor:None sesion in
-  comprueba "límite: 2 lotes" (List.length informes = 2 && List.length !encargados = 2)
+  let r = Destila.sesion ef agentes ~limite:2 ~sesion:"s1" ~cursor:None sesion in
+  comprueba "límite: 2 lotes" (List.length r.informes = 2 && List.length !encargados = 2)
 
 let () =
   if !fallos > 0 then (

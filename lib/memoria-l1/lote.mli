@@ -13,6 +13,13 @@ val util : Atomo.mensaje -> bool
     [[herramienta …]]. Los que no, no cuentan para el lote ni van de fondo
     (pero el cursor pasa por encima). *)
 
+type cursor = {
+  hasta : int;  (** [ts] del último mensaje destilado. *)
+  escena : string option;  (** La última escena, que hereda el siguiente lote. *)
+  fallos : int;  (** Pasadas seguidas en que el lote siguiente salió ilegible. *)
+}
+(** El cursor de una sesión, como se guarda en [memoria_cursor]. *)
+
 type t = {
   fondo : Atomo.mensaje list;  (** Útiles anteriores al lote, solo contexto. *)
   nuevos : Atomo.mensaje list;  (** Útiles, de los que se extrae. *)

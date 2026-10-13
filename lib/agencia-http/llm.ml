@@ -70,7 +70,13 @@ let leer api j =
   in
   match (texto, api) with
   | None, _ -> Error "respuesta sin texto"
-  | Some t, Modelo.Anthropic -> Ok (t, tokens "input_tokens", tokens "output_tokens")
+  (* Lo leído o escrito en la caché de prompts también es entrada: sin
+     sumarlo, un encargo con el system cacheado decía 2 tokens. *)
+  | Some t, Modelo.Anthropic ->
+      Ok
+        ( t,
+          tokens "input_tokens" + tokens "cache_creation_input_tokens" + tokens "cache_read_input_tokens",
+          tokens "output_tokens" )
   | Some t, Modelo.Openai -> Ok (t, tokens "prompt_tokens", tokens "completion_tokens")
   | exception Type_error (m, _) -> Error m
 
