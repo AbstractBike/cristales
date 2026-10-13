@@ -1,0 +1,21 @@
+; Consolidación L2/L3 de la memoria (doc/memoria.md). El núcleo es puro
+; (Atomo, Escena, Operacion, Consolidacion, Persona, Nota, Estado); la E/S
+; con GreptimeDB y con el repo memoria vive en L1 y Repo.
+
+(library
+ (name memoria_escenas)
+ (public_name cristales.memoria-escenas)
+ (libraries agencia forja_http yojson unix))
+
+; Los prompts de los dos agentes van dentro del binario, como cristalizar.md
+; en la forja.
+
+(rule
+ (with-stdout-to
+  prompt.ml
+  (progn
+   (echo "let escenas = {memoria|")
+   (cat %{project_root}/prompts/memoria-escenas.md)
+   (echo "|memoria}\n\nlet persona = {memoria|")
+   (cat %{project_root}/prompts/memoria-persona.md)
+   (echo "|memoria}\n"))))

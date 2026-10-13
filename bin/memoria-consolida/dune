@@ -1,0 +1,15 @@
+(executable
+ (name main)
+ (public_name memoria-consolida)
+ (package cristales)
+ (libraries
+  memoria_escenas
+  agencia
+  agencia_mcp
+  agencia_http
+  forja_http
+  eio
+  eio_main
+  mirage-crypto-rng.unix
+  unix
+  uri))
