@@ -103,3 +103,25 @@ salida de las herramientas. Una prueba por patrón.
 | C. Consolidación L2/L3 e importación de las notas de `~/.claude/projects/*/memory` | `lib/memoria-escenas` | `bin/memoria-consolida` |
 | D. Recall: MCP y hook SessionStart; módulo de la flota | `lib/memoria-recall` | `bin/memoria-mcp`, `bin/memoria-hook` |
 | E. Ejemplos con nota en la agencia | `lib/agencia-http`, `lib/agencia` | — |
+
+## Recall (pieza D)
+
+- `memoria-hook` (SessionStart): `persona.md` y el índice de escenas (calor
+  descendente, luego slug) como `hookSpecificOutput.additionalContext`, ≤ 6000
+  bytes, sin nada variable: igual byte a byte mientras el repo no cambie. Sin
+  repo, no escribe nada. `MEMORIA_REPO` cambia el checkout.
+- `memoria-mcp`: `memoria_buscar`, `memoria_conversacion`, `memoria_escena`.
+  `MEMORIA_GREPTIME`, `MEMORIA_GREPTIME_DB`, `MEMORIA_TABLA_L0`/`_L1`.
+
+Lo que se aprendió de GreptimeDB 1.2 al escribirlo, y vale para A y B:
+
+- `id`, `uuid` y `version` son palabras reservadas: en el SQL, entre comillas
+  dobles (`"id"`).
+- `matches` filtra distinguiendo mayúsculas aunque el índice diga
+  `case_sensitive = 'false'`: se busca con `matches(lower(col), …)`.
+- En el patrón de `matches`, `or`/`and`/`not` son operadores aunque vayan en
+  minúscula, y los términos sueltos son un O; cada término va entre comillas
+  dobles (entonces casa como subcadena).
+- La barra invertida escapa dentro de un literal: se quita antes de citar.
+- Un timestamp se compara con `'AAAA-MM-DD HH:MM:SS'`; `'AAAA-MM-DD'` solo no
+  se convierte.
