@@ -12,7 +12,7 @@
     es JSON se juzga mal en la agencia sin esperar a nadie. *)
 
 type efectos = {
-  encargar : Agencia.Agente.t -> string -> Agencia.Encargo.t;
+  encargar : ?modelo:Agencia.Modelo.t -> Agencia.Agente.t -> string -> Agencia.Encargo.t;
   juzgar_mal : Agencia.Encargo.t -> string -> unit;  (** Con la nota. *)
   ahora : unit -> string;  (** ISO 8601 en UTC. *)
   log : string -> unit;
@@ -28,6 +28,7 @@ type salida = {
   persona : string option;  (** El texto nuevo de [persona.md], si se regeneró. *)
   estado : Estado.t;
   consolidados : int;  (** Átomos procesados. *)
+  fallidos : int;  (** Lotes sin hacer: si hay alguno, el cursor no se mueve. *)
   encargos : encargo list;
 }
 
@@ -45,4 +46,7 @@ val consolidar :
   Atomo.t list ->
   salida
 (** [lote] por defecto 30. [persona] es el [persona.md] actual. El cursor
-    nuevo es el [ts] mayor de los átomos dados. *)
+    nuevo es el [ts] mayor de los átomos dados, salvo que algún lote se
+    quedara sin hacer (dos salidas inservibles, la segunda con el modelo por
+    defecto del agente): entonces no se mueve y la siguiente pasada los
+    repite todos. *)

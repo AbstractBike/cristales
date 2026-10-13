@@ -213,7 +213,7 @@ let () =
   log (Printf.sprintf "%d átomos nuevos desde %d; %d escenas" (List.length atomos) estado.cursor (List.length escenas));
   if atomos = [] && not !importar then exit 0;
   let ciclo =
-    { Ciclo.encargar = (fun a entrada -> Agencia_mcp.encargar efectos a entrada);
+    { Ciclo.encargar = (fun ?modelo a entrada -> Agencia_mcp.encargar efectos a ?modelo entrada);
       juzgar_mal = (fun e nota -> archivo.juzgar e.agente e.id Agencia.Mal nota);
       ahora = (fun () -> iso (Unix.gettimeofday ()));
       log }
@@ -226,6 +226,7 @@ let () =
     (fun (e : Ciclo.encargo) ->
       Printf.printf "encargo %s %s %s %d ms %d tokens: %s\n" e.agente e.id e.modelo e.ms e.tokens e.resumen)
     s.encargos;
+  if s.fallidos > 0 then log (Printf.sprintf "%d lotes sin hacer: el cursor no avanza" s.fallidos);
   Printf.printf "escenas (%d): %s\n" (List.length s.escenas)
     (String.concat ", " (List.map (fun (e : Escena.t) -> Printf.sprintf "%s(%d)" e.slug e.calor) s.escenas));
   if !seco then (

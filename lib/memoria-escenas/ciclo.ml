@@ -2,7 +2,7 @@
    Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
 type efectos = {
-  encargar : Agencia.Agente.t -> string -> Agencia.Encargo.t;
+  encargar : ?modelo:Agencia.Modelo.t -> Agencia.Agente.t -> string -> Agencia.Encargo.t;
   juzgar_mal : Agencia.Encargo.t -> string -> unit;
   ahora : unit -> string;
   log : string -> unit;
@@ -17,6 +17,7 @@ type salida = {
   persona : string option;
   estado : Estado.t;
   consolidados : int;
+  fallidos : int;
   encargos : encargo list;
 }
 
@@ -38,8 +39,9 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
   let encargos = ref [] in
   let anotar e r = encargos := contar e r :: !encargos in
   (* Pide y entiende; un JSON que no se entiende se juzga mal ya. *)
-  let pedir entrada =
-    let e = ef.encargar escenas_agente entrada in
+  let fallidos = ref 0 in
+  let pedir ?modelo entrada =
+    let e = ef.encargar ?modelo escenas_agente entrada in
     match e.salida with
     | Error err ->
         anotar e ("error: " ^ err);
@@ -63,8 +65,19 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
     let entrada = Consolidacion.entrada ~ahora ~escenas ~abiertas atomos in
     let aplicar ops = Consolidacion.aplicar ~ahora ~abiertas ~nuevos:atomos escenas ops in
     let final, senal' =
-      match pedir entrada with
-      | _, Error _ -> (None, None)
+      (* Si la salida no sirve (error, o no es JSON), una vez más con el
+         modelo por defecto del agente; si tampoco, el lote queda sin hacer y
+         el cursor no avanza. *)
+      let primera =
+        match pedir entrada with
+        | _, Ok _ as r -> r
+        | _, Error _ -> pedir ~modelo:escenas_agente.defecto entrada
+      in
+      match primera with
+      | _, Error _ ->
+          incr fallidos;
+          ef.log (Printf.sprintf "lote de %d átomos SIN HACER: el cursor no avanza" (List.length atomos));
+          (None, None)
       | e, Ok (texto, s) -> (
           let r = aplicar s.operaciones in
           anotar e (resumen r);
@@ -91,8 +104,12 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
     List.fold_left un_lote (escenas, [], [], None) (lotes lote atomos)
   in
   let n = List.length atomos in
-  let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.ts) estado.Estado.cursor atomos in
-  let estado = { estado with cursor; atomos_desde_persona = estado.atomos_desde_persona + n } in
+  let estado =
+    if !fallidos > 0 then estado
+    else
+      let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.ts) estado.Estado.cursor atomos in
+      { estado with cursor; atomos_desde_persona = estado.atomos_desde_persona + n }
+  in
   let motivo =
     Persona.disparo ~ultima:estado.persona ~escenas:escenas' ~senal ~atomos_desde:estado.atomos_desde_persona
   in
@@ -104,8 +121,8 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
         let cambiadas = Persona.cambiadas ~ultima:estado.persona escenas' in
         let resto = List.filter (fun e -> not (List.memq e cambiadas)) escenas' in
         let entrada = Persona.entrada ~actual:persona ~motivo ~cambiadas ~resto in
-        let pedir_persona entrada =
-          let e = ef.encargar persona_agente entrada in
+        let pedir_persona ?modelo entrada =
+          let e = ef.encargar ?modelo persona_agente entrada in
           match e.salida with
           | Error err ->
               anotar e ("error: " ^ err);
@@ -123,7 +140,8 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
         let resultado =
           match pedir_persona entrada with
           | `Bien p -> Some p
-          | `Fallo -> None
+          | `Fallo -> (
+              match pedir_persona ~modelo:persona_agente.defecto entrada with `Bien p -> Some p | _ -> None)
           | `Mal (texto, err) -> (
               match
                 pedir_persona
@@ -137,4 +155,4 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
         | None -> (None, estado))
   in
   { escenas = escenas'; escritas; borradas; persona = persona'; estado; consolidados = n;
-    encargos = List.rev !encargos }
+    encargos = List.rev !encargos; fallidos = !fallidos }

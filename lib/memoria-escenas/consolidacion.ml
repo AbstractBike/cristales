@@ -80,7 +80,9 @@ let entrada ~ahora ~escenas ~abiertas atomos =
   List.iter
     (fun s ->
       match List.find_opt (fun (e : Escena.t) -> e.slug = s) escenas with
-      | Some e -> p "### `%s`\n\n%s\n" s (Escena.a_texto e)
+      | Some e ->
+          p "### `%s` (cuerpo: %d/%d caracteres)\n\n%s\n" s (Escena.longitud e.cuerpo) Escena.max_cuerpo
+            (Escena.a_texto e)
       | None -> ())
     abiertas;
   p "## Átomos nuevos (%d)\n\n" (List.length atomos);

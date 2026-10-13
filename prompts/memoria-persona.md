@@ -25,6 +25,8 @@ quita lo menos útil.
 - Parte de la persona actual: **refuerza** lo que las escenas confirman,
   **añade** lo nuevo que cambie el trabajo, **corrige** lo que haya quedado
   viejo y **no toques** nada por un simple avance de proyecto.
+- Si dos reglas chocan, vale la más reciente (las escenas traen fechas y
+  trayectoria); la vieja no entra, o entra en `## Evolución`.
 - Todo debe salir de las escenas o de la persona actual. Nada inventado, nada
   sacado de rutas o nombres de fichero; si no se sabe, no se escribe.
 - Cada línea tiene que poder cambiar lo que hace un agente. Si no, fuera.

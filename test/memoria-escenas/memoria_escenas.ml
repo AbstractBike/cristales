@@ -255,7 +255,7 @@ let () =
   let escenas_agente = Agentes.escenas ~escalera and persona_agente = Agentes.persona ~escalera in
   let respuestas = ref [] and malos = ref [] and pedidos = ref [] in
   let n = ref 0 in
-  let encargar (a : Agencia.Agente.t) entrada =
+  let encargar ?modelo:_ (a : Agencia.Agente.t) entrada =
     incr n;
     pedidos := entrada :: !pedidos;
     let salida = match !respuestas with r :: resto -> respuestas := resto; r | [] -> Ok "{}" in
@@ -274,7 +274,8 @@ let () =
   respuestas :=
     [ Ok (Printf.sprintf {|{"operaciones": [%s]}|} (crear "Mal" "c"));  (* rechazada: slug *)
       Ok (Printf.sprintf {|{"operaciones": [%s], "persona": ""}|} (crear "bien" "c"));  (* el reintento *)
-      Ok "no es JSON";  (* segundo lote: mal *)
+      Ok "no es JSON";  (* segundo lote: mal... *)
+      Ok {|{"operaciones": [{"op": "nada"}]}|};  (* ...y bien con el de por defecto *)
       Ok "# Persona\n\nNueva." ];
   let s =
     Ciclo.consolidar ef ~escenas_agente ~persona_agente ~lote:1 ~estado:Estado.inicial ~persona:"" []
@@ -286,7 +287,13 @@ let () =
   comprueba "pasada: el que no es JSON, juzgado mal" (List.length !malos = 1);
   comprueba "pasada: persona" (s.persona = Some "# Persona\n\nNueva.");
   comprueba "pasada: cursor" (s.estado.cursor = 20 && s.estado.persona = Some ahora && s.estado.atomos_desde_persona = 0);
-  comprueba "pasada: cuatro encargos" (List.length s.encargos = 4);
+  comprueba "pasada: cinco encargos" (List.length s.encargos = 5 && s.fallidos = 0);
+  (* Dos salidas inservibles: el lote queda sin hacer y el cursor quieto. *)
+  respuestas := [ Ok "x"; Error "caído"; Ok "# P" ];
+  let s =
+    Ciclo.consolidar ef ~escenas_agente ~persona_agente ~estado:Estado.inicial ~persona:"" [] [ atomo ~ts:30 "a-3" "tres" ]
+  in
+  comprueba "lote fallido: cursor quieto" (s.fallidos = 1 && s.estado.cursor = 0 && s.estado.atomos_desde_persona = 0);
   comprueba "lotes por escena" (List.map List.length (Ciclo.lotes 2 [ atomo "a" "x"; atomo "b" "y"; atomo "c" "z" ]) = [ 2; 1 ])
 
 let () =

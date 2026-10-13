@@ -60,6 +60,13 @@ let fechas a =
   with Yojson.Json_error _ -> []
 
 let linea a =
-  let f = match fechas a with [] -> "" | l -> " " ^ String.concat "," l in
+  (* La primera y la última fecha: lo que importa es desde cuándo y hasta
+     cuándo valió. *)
+  let f =
+    match fechas a with
+    | [] -> ""
+    | [ d ] -> " " ^ d
+    | d :: r -> Printf.sprintf " %s..%s" d (List.nth r (List.length r - 1))
+  in
   let p = if a.proyecto = "" then "" else Printf.sprintf " (%s)" a.proyecto in
   Printf.sprintf "- `%s` [%s]%s%s: %s" a.id a.tipo f p (String.trim a.contenido)

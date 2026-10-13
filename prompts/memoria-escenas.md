@@ -80,6 +80,13 @@ rechaza alguna, te las devolverá con el motivo para que las corrijas.
 4. Si un átomo contradice lo que ya dice la escena, no lo pises: anótalo en
    `## Trayectoria` (si es un cambio de criterio con su porqué) o en
    `## Por confirmar` (si no se sabe cuál vale).
+5. **Manda lo reciente.** Cada átomo trae sus fechas (`primera..última`). Si dos
+   átomos chocan, la regla o el dato vigente es el de fecha más reciente; el
+   viejo va, como mucho, a `## Trayectoria`. Lo que solo tiene fechas antiguas y
+   nada reciente lo respalda es historia: resúmelo o déjalo fuera.
+6. **Mide antes de escribir.** Cada escena abierta dice su longitud. Si ya está
+   cerca de 1500, al integrar algo nuevo quita otra cosa de igual tamaño:
+   reescribe, no añadas.
 
 ## Plantilla del cuerpo
 
