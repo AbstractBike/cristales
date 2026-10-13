@@ -96,4 +96,15 @@ let vitrina =
        (el mismo mensaje con <posting> y la misma herramienta extract_job, por
        la Messages API): el mismo cristal la sirve. *)
     |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal ~descripcion:Oferta_trabajo.descripcion
-    |> con (tarea "t-cab6e50313a9") `Mixta Oferta_trabajo.cristal ~descripcion:Oferta_trabajo.descripcion)
+    |> con (tarea "t-cab6e50313a9") `Mixta Oferta_trabajo.cristal ~descripcion:Oferta_trabajo.descripcion
+    (* La ficha de empresa para un headhunter (2026-10-13), la tarea de su
+       prompt (company_profile): un cristal parcial, da solo lo que la evidencia
+       sostiene y la forja le pide al LLM el resto. *)
+    |> con (tarea "t-3df20b85d1d5") `Mixta Ficha_empresa.cristal
+         ~descripcion:
+           "De la evidencia de una empresa (<evidence> con Empresa:, Ubicaciones vistas:, sus ofertas y \
+            un extracto), los campos de su ficha que el texto sostiene: remotePolicy remote si todas las \
+            ubicaciones son remotas y nada habla de oficina, onsite si todas son presenciales; website si \
+            un dominio de la evidencia es el nombre de la empresa; hqCountry y hqCountryEn si la sede se \
+            dice en primera persona; sizeBucket si dice cuántos son. Un objeto parcial: no sabe nada del \
+            mundo, y el resumen, el sector, la ciudad, las señales de alarma y la confianza no los da.")

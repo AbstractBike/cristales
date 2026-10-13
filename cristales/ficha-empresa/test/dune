@@ -1,0 +1,12 @@
+(test
+ (name red)
+ (modules red)
+ (libraries ficha_empresa cristal yojson))
+
+; Mide el cristal contra muestras de la semilla (una por línea,
+; {"e": entrada, "s": salida del LLM}): campo a campo, cuántas da y en
+; cuántas coincide. No es parte de la red: las muestras no se commitean.
+(executable
+ (name medir)
+ (modules medir)
+ (libraries ficha_empresa yojson))

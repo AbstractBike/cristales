@@ -1,0 +1,4 @@
+(library
+ (name ficha_empresa)
+ (public_name cristales.ficha-empresa)
+ (libraries cristal yojson))
