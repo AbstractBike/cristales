@@ -1,0 +1,17 @@
+(library
+ (name memoria_l1)
+ (public_name cristales.memoria-l1)
+ (libraries agencia agencia_mcp forja forja_http yojson uri))
+
+; Las instrucciones de los dos agentes de la agencia van dentro del binario.
+
+(rule
+ (with-stdout-to
+  prompts.ml
+  (progn
+   (echo "let atomos = {memoria|")
+   (cat %{project_root}/prompts/memoria-atomos.md)
+   (echo "|memoria}\n")
+   (echo "let dedup = {memoria|")
+   (cat %{project_root}/prompts/memoria-dedup.md)
+   (echo "|memoria}\n"))))
