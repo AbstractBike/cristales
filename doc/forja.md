@@ -101,6 +101,11 @@ objeto que impone el esquema, que pasa a la plantilla como la herramienta en
 Anthropic. Mismo prompt por las dos APIs es otra tarea: el contrato es otro.
 Sin `FORJA_UPSTREAM_OPENAI`, la ruta pasa a `FORJA_UPSTREAM` sin tocar.
 
+Con `x-forja-tarea` explícita, los turnos previos usuario/asistente (alternos,
+de texto, acabados en usuario) son ejemplos few-shot, como los que pone la
+[agencia](agencia.md#ejemplos-y-advertencias): la entrada es el último turno y
+la plantilla no cambia. Sin tarea explícita, varios turnos son una conversación.
+
 Lo demás (conversaciones, agentes con herramientas libres, streaming) pasa al LLM
 sin tocar, con `x-forja-fuente: paso`. Es lo que [`concepto.md`](concepto.md)
 llama abierto por naturaleza: la forja no intenta cristalizarlo.
