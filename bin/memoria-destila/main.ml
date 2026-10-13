@@ -170,7 +170,7 @@ let () =
       juzgar_mal = (fun e nota -> archivo.juzgar e.agente e.id Agencia.Mal nota);
       candidatos = Memoria_l1.Almacen.candidatos almacen;
       escrito = (fun ~sesion ~hasta -> if o.seco then Ok false else Memoria_l1.Almacen.escrito almacen ~sesion ~hasta);
-      escribir = (fun ~hasta filas -> if o.seco then Ok () else Memoria_l1.Almacen.escribir almacen ~hasta filas);
+      escribir = (fun ~hasta filas -> if o.seco then Ok () else Memoria_l1.Almacen.escribir almacen ~escrito:(ahora ()) ~hasta filas);
       guardar_cursor =
         (fun ~sesion c -> if o.seco then Ok () else Memoria_l1.Almacen.guardar_cursor almacen ~ts:(ahora ()) ~sesion c);
       avisar }

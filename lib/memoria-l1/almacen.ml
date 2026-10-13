@@ -28,7 +28,9 @@ let crear g =
     (ejecutar g
        "CREATE TABLE IF NOT EXISTS memoria_l1 (ts TIMESTAMP(3) TIME INDEX, \"id\" STRING PRIMARY KEY, \"version\" INT, \
         vigente BOOLEAN, tipo STRING, prioridad INT, escena STRING, contenido STRING FULLTEXT INDEX WITH (analyzer = \
-        'English', case_sensitive = 'false'), proyecto STRING, origen STRING, fechas STRING)");
+        'English', case_sensitive = 'false'), proyecto STRING, origen STRING, fechas STRING, escrito TIMESTAMP(3) NULL)");
+  (* Las de antes no tenían [escrito]: sus filas quedan con null. *)
+  avisar (ejecutar g "ALTER TABLE memoria_l1 ADD COLUMN IF NOT EXISTS escrito TIMESTAMP(3)");
   avisar
     (ejecutar g
        "CREATE TABLE IF NOT EXISTS memoria_cursor (ts TIMESTAMP(3) TIME INDEX, sesion STRING PRIMARY KEY, hasta BIGINT, \
@@ -85,8 +87,8 @@ let atomo = function
       | _ -> None)
   | _ -> None
 
-let valores ~ts (a : Atomo.t) =
-  Printf.sprintf "(%d, %s, %d, %b, %s, %d, %s, %s, %s, %s, %s)" ts (literal a.id) a.version a.vigente
+let valores ~ts ~escrito (a : Atomo.t) =
+  Printf.sprintf "(%d, %d, %s, %d, %b, %s, %d, %s, %s, %s, %s, %s)" ts escrito (literal a.id) a.version a.vigente
     (literal (Atomo.tipo_a_texto a.tipo))
     a.prioridad (literal a.escena) (literal a.contenido) (literal a.proyecto)
     (literal (json_lista a.origen))
@@ -191,12 +193,12 @@ let escrito g ~sesion ~hasta =
 
 (* {1 Escritura} *)
 
-let escribir g ~hasta = function
+let escribir g ~escrito ~hasta = function
   | [] -> Ok ()
   | filas ->
       ejecutar g
-        (Printf.sprintf "INSERT INTO memoria_l1 (ts, %s) VALUES %s" columnas_l1
-           (String.concat ", " (List.mapi (fun i a -> valores ~ts:(hasta + i) a) filas)))
+        (Printf.sprintf "INSERT INTO memoria_l1 (ts, escrito, %s) VALUES %s" columnas_l1
+           (String.concat ", " (List.mapi (fun i a -> valores ~ts:(hasta + i) ~escrito a) filas)))
 
 let guardar_cursor g ~ts ~sesion (c : Lote.cursor) =
   ejecutar g

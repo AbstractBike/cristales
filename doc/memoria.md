@@ -52,7 +52,7 @@ y `vigente = true`.
 
 | Columna | Tipo | Nota |
 |---|---|---|
-| `ts` | TIMESTAMP TIME INDEX | cuándo se escribió esta versión |
+| `ts` | TIMESTAMP TIME INDEX | el `ts` del último mensaje de L0 del lote que la escribió, más su orden (0, 1…): determinista, para que reescribir un lote sea idempotente. **No** es la hora de escritura |
 | `id` | STRING PRIMARY KEY | `a-<hex12>` estable entre versiones |
 | `version` | INT | |
 | `vigente` | BOOLEAN | `false` = absorbido por un merge o descartado |
@@ -63,6 +63,7 @@ y `vigente = true`.
 | `proyecto` | STRING | |
 | `origen` | STRING | JSON: ids de L0 (`sesion/uuid`) de los que sale |
 | `fechas` | STRING | JSON: unión ordenada de las fechas de actividad (historia del átomo) |
+| `escrito` | TIMESTAMP | hora real de escritura de esta versión (null en filas anteriores a la columna). **Los consumidores incrementales avanzan por `escrito`, no por `ts`**: un lote de una sesión vieja destilado hoy lleva un `ts` viejo. Reescribir un lote cambia `escrito` (se reconsolida) |
 
 ## Lo que se copia de Tencent, y por qué
 

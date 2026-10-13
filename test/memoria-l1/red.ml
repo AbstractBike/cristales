@@ -282,7 +282,7 @@ let () =
          [ `String "a-1"; `Int 1; `Bool true; `String "hecho"; `Int 70; `String "e"; `String "con 'comillas'"; `String "p";
            `String {|["s0/a-1"]|}; `String {|["2026-09-01"]|} ])
     = Some a);
-  comprueba "valores" (String.starts_with ~prefix:"(5, 'a-1', 1, true, 'hecho', 70" (Almacen.valores ~ts:5 a))
+  comprueba "valores" (String.starts_with ~prefix:"(5, 7, 'a-1', 1, true, 'hecho', 70" (Almacen.valores ~ts:5 ~escrito:7 a))
 
 let () =
   let c = Almacen.cursor_de_fila (`List [ `String "s"; `Int 20; `String "b"; `Null ]) in

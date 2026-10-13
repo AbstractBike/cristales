@@ -23,7 +23,15 @@
     Las filas de [memoria_l1] que escribe un lote llevan [ts = hasta + i]
     (el [ts] del último mensaje del lote, más su orden), no la hora de
     escritura: así reescribir un lote cuyo cursor no llegó a guardarse cae
-    en las mismas claves ([id], [ts]) y {!escrito} lo reconoce. *)
+    en las mismas claves ([id], [ts]) y {!escrito} lo reconoce.
+
+    Por eso [ts] no dice cuándo se escribió una versión: un lote de una
+    sesión vieja destilado hoy lleva un [ts] viejo. Para eso está la
+    columna [escrito] (TIMESTAMP, la hora real de escritura de esa
+    versión; null en las filas anteriores a ella). {b Un consumidor
+    incremental (la consolidación L2) tiene que avanzar por [escrito], no
+    por [ts]}, o se saltaría esos lotes. Al reescribir un lote, [escrito]
+    cambia: se reconsolida, que es lo correcto. *)
 
 type t
 
@@ -47,8 +55,9 @@ val atomo : Yojson.Safe.t -> Atomo.t option
 val columnas_l1 : string
 (** Las columnas de [memoria_l1] (sin [ts]), en el orden de {!atomo}. *)
 
-val valores : ts:int -> Atomo.t -> string
-(** La tupla [(...)] de un INSERT en [memoria_l1] con [ts] y {!columnas_l1}. *)
+val valores : ts:int -> escrito:int -> Atomo.t -> string
+(** La tupla [(...)] de un INSERT en [memoria_l1] con [ts], [escrito] (ms) y
+    {!columnas_l1}. *)
 
 val cursor_de_fila : Yojson.Safe.t -> (string * Lote.cursor) option
 (** Una fila de la consulta de {!cursores}. *)
@@ -80,7 +89,8 @@ val escrito : t -> sesion:string -> hasta:int -> (bool, string) result
 
 (** {1 Escritura} *)
 
-val escribir : t -> hasta:int -> Atomo.t list -> (unit, string) result
-(** Un INSERT con todas las filas, la [i]-ésima con [ts = hasta + i]. *)
+val escribir : t -> escrito:int -> hasta:int -> Atomo.t list -> (unit, string) result
+(** Un INSERT con todas las filas, la [i]-ésima con [ts = hasta + i] y
+    [escrito] (ms, la hora de ahora). *)
 
 val guardar_cursor : t -> ts:int -> sesion:string -> Lote.cursor -> (unit, string) result
