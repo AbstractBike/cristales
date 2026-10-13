@@ -285,6 +285,9 @@ let () =
     (match c.pares with
     | [ (e, "ok") ] -> String.length e < 60 && String.starts_with ~prefix:(String.make 20 'a') e
     | _ -> false);
+  comprueba "entrada y salida largas: se salta"
+    (Ejemplos.es_vacio
+       (elige ~parametros [ con ~veredicto:Bien ~salida:(Ok (String.make 30 't')) (String.make 40 'a') ] "aaa"));
   comprueba "sin partir un carácter"
     (match (elige ~parametros:{ parametros with max_entrada = 52 } largos "aaa").pares with
     | [ (e, _) ] -> String.length (List.hd (String.split_on_char '\n' e)) = 51

@@ -298,9 +298,14 @@ module Ejemplos = struct
         | [] -> acc
         | _ when k = 0 -> acc
         | (sim, i, (en, s)) :: l ->
+            (* Una entrada larga solo se corta si la salida es corta (una
+               extracción, una etiqueta): con una salida larga (traducir,
+               reescribir) el ejemplo cortado enseñaría a inventar lo que
+               falta, y se salta. *)
+            let cabe_entera = String.length en <= parametros.max_entrada in
             let en = recortar_entrada parametros.max_entrada en in
             let coste = String.length en + String.length s in
-            if coste <= quedan then tomar (quedan - coste) (k - 1) ((sim, i, (en, s)) :: acc) l
+            if (cabe_entera || String.length s <= parametros.max_entrada) && coste <= quedan then tomar (quedan - coste) (k - 1) ((sim, i, (en, s)) :: acc) l
             else tomar quedan k acc l
       in
       (* [acc] queda del menos parecido al más: el más parecido, junto a la

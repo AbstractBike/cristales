@@ -207,7 +207,9 @@ module Ejemplos : sig
       encargo nuevo: hasta [Agente.ejemplos] pares de los encargos de la
       versión actual con salida y veredicto [bien], los más parecidos a la
       entrada y, a igualdad, los más recientes, sin repetir entrada; uno que
-      no cabe en lo que queda del presupuesto se salta. Y hasta
+      no cabe en lo que queda del presupuesto se salta. Una entrada de más de
+      [max_entrada] se corta si la salida es corta (no más de [max_entrada]);
+      si las dos son largas (traducir, reescribir), el ejemplo se salta. Y hasta
       [max_advertencias] notas no vacías de veredictos [mal], recientes y
       sin repetir. Determinista. Con [Agente.ejemplos = 0], {!vacio}. *)
 
