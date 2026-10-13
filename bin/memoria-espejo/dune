@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name memoria-espejo)
+ (package cristales)
+ (libraries memoria_recall forja_http str eio eio_main mirage-crypto-rng.unix yojson uri))

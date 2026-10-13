@@ -113,6 +113,13 @@ salida de las herramientas. Una prueba por patrón.
   repo, no escribe nada. `MEMORIA_REPO` cambia el checkout.
 - `memoria-mcp`: `memoria_buscar`, `memoria_conversacion`, `memoria_escena`.
   `MEMORIA_GREPTIME`, `MEMORIA_GREPTIME_DB`, `MEMORIA_TABLA_L0`/`_L1`.
+- `memoria-espejo`: el repo memoria solo vive en el nodo de la tubería (a1). Allí
+  `memoria-espejo publicar` sube `persona.md` y `escenas/*.md` a la tabla
+  `memoria_espejo` (una fila por fichero, con la huella y el total de la
+  publicación) cuando cambian; en los demás nodos `memoria-espejo bajar DIR`
+  deja en DIR la última publicación completa, con la forma del repo, y el hook
+  y `memoria_escena` leen de ahí. Sin secretos ni repos nuevos: la misma
+  GreptimeDB.
 
 Lo que se aprendió de GreptimeDB 1.2 al escribirlo, y vale para A y B:
 
