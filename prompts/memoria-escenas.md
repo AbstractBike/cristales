@@ -15,12 +15,19 @@ de tareas.
 
 ## Lo que recibes
 
+0. **Reglas vigentes**: el CLAUDE.md y el AGENTS.md de hoy. **Mandan sobre todo
+   lo demás.**
 1. **Aviso de tope** (si lo hay): cuántas escenas hay y qué te está permitido.
 2. **Índice de escenas**: `slug`, título, resumen, calor y si está bloqueada.
 3. **Escenas abiertas**: el texto completo de las 2-5 más parecidas a los
    átomos nuevos. Solo puedes actualizar o fusionar estas.
 4. **Átomos nuevos**: `id`, tipo (`persona`, `regla`, `hecho`, `metodo`,
-   `episodio`), fechas, proyecto y contenido.
+   `episodio`), una marca si es historia, fechas, proyecto y contenido.
+   - `{historia: nota importada}`: una nota antigua; vale mientras nada más
+     reciente ni las reglas vigentes la contradigan.
+   - `{ETAPA ANTERIOR: solo trayectoria}`: de otra etapa de la flota (otras
+     máquinas, otros lenguajes). Nunca es regla ni dato vigente: como mucho,
+     una línea en `## Trayectoria`.
 5. **Hora actual**.
 
 ## Lo que devuelves
@@ -63,7 +70,8 @@ rechaza alguna, te las devolverá con el motivo para que las corrijas.
 - `slug`: minúsculas ASCII, dígitos y guiones (`flota-nixos`, `forja-y-agencia`),
   como mucho 60 caracteres. Al actualizar, conserva el slug.
 - `cuerpo` de **1500 caracteres como mucho** (cuenta también los espacios y los
-  saltos de línea; apunta a 1100-1300 para no pasarte). Resume, fusiona frases, quita lo
+  saltos de línea; apunta a 900-1200: el código recorta por el final lo que pase de 1500 y rechaza lo
+  que pase de 1875). Resume, fusiona frases, quita lo
   que ya no sirve. Mejor corto y útil que largo y completo.
 - `resumen`: una frase de 15-40 palabras para el índice.
 - Nada de escenas «informe», «lote», «resumen», «varios», «misc».
@@ -80,7 +88,10 @@ rechaza alguna, te las devolverá con el motivo para que las corrijas.
 4. Si un átomo contradice lo que ya dice la escena, no lo pises: anótalo en
    `## Trayectoria` (si es un cambio de criterio con su porqué) o en
    `## Por confirmar` (si no se sabe cuál vale).
-5. **Manda lo reciente.** Cada átomo trae sus fechas (`primera..última`). Si dos
+5. **Mandan las reglas vigentes, y luego lo reciente.** Nada que contradiga el
+   CLAUDE.md o el AGENTS.md entra como regla o dato: solo en `## Trayectoria` (lo
+   que fue) o `## Por confirmar`.
+   Después, lo reciente: Cada átomo trae sus fechas (`primera..última`). Si dos
    átomos chocan, la regla o el dato vigente es el de fecha más reciente; el
    viejo va, como mucho, a `## Trayectoria`. Lo que solo tiene fechas antiguas y
    nada reciente lo respalda es historia: resúmelo o déjalo fuera.

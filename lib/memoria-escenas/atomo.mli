@@ -31,5 +31,14 @@ val vigentes : t list -> t list
 val fechas : t -> string list
 (** Las fechas del JSON [fechas]; ninguna si no se entiende. *)
 
-val linea : t -> string
-(** Una línea para el prompt: id, tipo, fechas, proyecto y contenido. *)
+val historia : t -> bool
+(** Sale de una nota importada ([origen] con [nota:]): historia, no regla
+    vigente; manda lo más reciente y el CLAUDE.md. *)
+
+val anterior : anteriores:string list -> t -> bool
+(** Su proyecto empieza por alguno de esos prefijos: una etapa anterior de
+    la flota, que solo puede ir a la trayectoria. *)
+
+val linea : ?anteriores:string list -> t -> string
+(** Una línea para el prompt: id, tipo, marca de historia o de etapa
+    anterior, primera..última fecha, proyecto y contenido. *)

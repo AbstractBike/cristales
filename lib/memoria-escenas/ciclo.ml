@@ -40,7 +40,39 @@ let contar (e : Agencia.Encargo.t) resumen =
   { agente = (e.agente :> string); id = e.id; modelo = e.modelo; ms = e.ms;
     tokens = e.tokens_entrada + e.tokens_salida; resumen }
 
-let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona escenas atomos =
+(* «2026-10-13T20:37:06Z» en ms (calendario civil, sin zona: siempre UTC). *)
+let ms_de_iso s =
+  try
+    Scanf.sscanf s "%d-%d-%dT%d:%d:%d" (fun y m d hh mm ss ->
+        let y = if m <= 2 then y - 1 else y in
+        let era = (if y >= 0 then y else y - 399) / 400 in
+        let yoe = y - (era * 400) in
+        let mp = (m + 9) mod 12 in
+        let doy = ((153 * mp) + 2) / 5 + d - 1 in
+        let doe = (yoe * 365) + (yoe / 4) - (yoe / 100) + doy in
+        let dias = (era * 146097) + doe - 719468 in
+        Some ((((dias * 24 + hh) * 60 + mm) * 60 + ss) * 1000))
+  with _ -> None
+
+let ya_aplicados escenas atomos =
+  List.filter
+    (fun (a : Atomo.t) ->
+      not
+        (List.exists
+           (fun (e : Escena.t) ->
+             List.mem a.id e.atomos
+             && match ms_de_iso e.actualizada with Some t -> t >= a.ts | None -> false)
+           escenas))
+    atomos
+
+let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = []) ?(lote = 30) ~estado ~persona
+    escenas atomos =
+  (* Lo que ya integró una pasada anterior (que no movió el cursor porque
+     algún otro lote falló) no se vuelve a aplicar. *)
+  let todos = atomos in
+  let atomos = ya_aplicados escenas atomos in
+  if List.length atomos < List.length todos then
+    ef.log (Printf.sprintf "%d átomos ya estaban en sus escenas: no se repiten" (List.length todos - List.length atomos));
   let encargos = ref [] in
   let anotar e r = encargos := contar e r :: !encargos in
   (* Pide y entiende; un JSON que no se entiende se juzga mal ya. *)
@@ -62,12 +94,13 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
   let resumen (r : Consolidacion.resultado) =
     String.concat "; "
       (List.map Operacion.describir r.aplicadas
+      @ List.map (fun s -> "RECORTADA " ^ s) r.recortadas
       @ List.map (fun (o, m) -> Printf.sprintf "RECHAZADA %s (%s)" (Operacion.describir o) m) r.rechazos)
   in
   let un_lote (escenas, escritas, borradas, senal) atomos =
     let ahora = ef.ahora () in
     let abiertas = Consolidacion.abiertas escenas atomos in
-    let entrada = Consolidacion.entrada ~ahora ~escenas ~abiertas atomos in
+    let entrada = Consolidacion.entrada ~reglas ~anteriores ~ahora ~escenas ~abiertas atomos in
     let aplicar ops = Consolidacion.aplicar ~ahora ~abiertas ~nuevos:atomos escenas ops in
     let final, senal' =
       (* Si la salida no sirve (error, o no es JSON), una vez más con el
@@ -121,7 +154,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
   let estado =
     if !fallidos > 0 then estado
     else
-      let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.ts) estado.Estado.cursor atomos in
+      let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.ts) estado.Estado.cursor todos in
       { estado with cursor; atomos_desde_persona = estado.atomos_desde_persona + n }
   in
   let motivo =
@@ -134,7 +167,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
         ef.log ("persona: " ^ motivo);
         let cambiadas = Persona.cambiadas ~ultima:estado.persona escenas' in
         let resto = List.filter (fun e -> not (List.memq e cambiadas)) escenas' in
-        let entrada = Persona.entrada ~actual:persona ~motivo ~cambiadas ~resto in
+        let entrada = Persona.entrada ~reglas ~actual:persona ~motivo ~cambiadas ~resto in
         let pedir_persona ?modelo entrada =
           let e = ef.encargar ?modelo persona_agente entrada in
           match e.salida with

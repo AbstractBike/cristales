@@ -59,7 +59,16 @@ let fechas a =
     | _ -> []
   with Yojson.Json_error _ -> []
 
-let linea a =
+let historia a =
+  let p = "\"nota:" in
+  let n = String.length p in
+  let rec ir i = i + n <= String.length a.origen && (String.sub a.origen i n = p || ir (i + 1)) in
+  ir 0
+
+let anterior ~anteriores a =
+  List.exists (fun p -> String.length a.proyecto >= String.length p && String.sub a.proyecto 0 (String.length p) = p) anteriores
+
+let linea ?(anteriores = []) a =
   (* La primera y la última fecha: lo que importa es desde cuándo y hasta
      cuándo valió. *)
   let f =
@@ -69,4 +78,9 @@ let linea a =
     | d :: r -> Printf.sprintf " %s..%s" d (List.nth r (List.length r - 1))
   in
   let p = if a.proyecto = "" then "" else Printf.sprintf " (%s)" a.proyecto in
-  Printf.sprintf "- `%s` [%s]%s%s: %s" a.id a.tipo f p (String.trim a.contenido)
+  let marca =
+    if anterior ~anteriores a then " {ETAPA ANTERIOR: solo trayectoria}"
+    else if historia a then " {historia: nota importada}"
+    else ""
+  in
+  Printf.sprintf "- `%s` [%s]%s%s%s: %s" a.id a.tipo marca f p (String.trim a.contenido)

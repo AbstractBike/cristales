@@ -104,3 +104,20 @@ let a_texto e =
   Buffer.add_string b (String.trim e.cuerpo);
   Buffer.add_char b '\n';
   Buffer.contents b
+
+let recortar ?(max = max_cuerpo) cuerpo =
+  let cuerpo = String.trim cuerpo in
+  if longitud cuerpo <= max then cuerpo
+  else
+    (* Se quitan líneas enteras desde el final, y los encabezados que se
+       queden sin nada debajo. *)
+    let rec quitar = function
+      | l :: r when String.trim l = "" || (String.length (String.trim l) > 0 && (String.trim l).[0] = '#') -> quitar r
+      | l -> l
+    in
+    let rec ir lineas_rev =
+      let t = String.concat "\n" (List.rev lineas_rev) in
+      if longitud t <= max then t
+      else match lineas_rev with [] -> "" | _ :: r -> ir (quitar r)
+    in
+    ir (quitar (List.rev (String.split_on_char '\n' cuerpo)))

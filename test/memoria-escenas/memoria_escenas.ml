@@ -132,8 +132,15 @@ let () =
     (List.length (aplicar ~abiertas:[ "b" ] [ Actualizar (contenido "a") ]).rechazos = 1);
   comprueba "actualizar una que no existe" (List.length (aplicar [ Actualizar (contenido "nop") ]).rechazos = 1);
   let largo = String.concat "" (List.init 1501 (fun _ -> "ñ")) in
-  comprueba "cuerpo de más de 1500 caracteres"
+  comprueba "una línea de 1501: no se recorta, se rechaza"
     (List.length (aplicar [ Actualizar (contenido ~cuerpo:largo "a") ]).rechazos = 1);
+  let lineas n = String.concat "\n" (List.init n (fun i -> Printf.sprintf "- línea %03d %s" i (String.make 80 'x'))) in
+  let r = aplicar [ Actualizar (contenido ~cuerpo:(lineas 17 ^ "\n\n## Por confirmar\n\n- algo") "a") ] in
+  comprueba "un 10 % de más: se recorta por líneas"
+    (r.rechazos = [] && r.recortadas = [ "a" ]
+    && let e = busca "a" r in
+       Escena.longitud e.cuerpo <= 1500 && not (contiene "## Por confirmar" e.cuerpo));
+  comprueba "un 30 % de más: se rechaza" (List.length (aplicar [ Actualizar (contenido ~cuerpo:(lineas 22) "a") ]).rechazos = 1);
   comprueba "cuerpo de 1500 caracteres"
     ((aplicar [ Actualizar (contenido ~cuerpo:(String.sub largo 0 3000) "a") ]).rechazos = []);
   comprueba "slug inválido" (List.length (aplicar [ Crear (contenido "Mal Slug") ]).rechazos = 1);
@@ -295,6 +302,50 @@ let () =
   in
   comprueba "lote fallido: cursor quieto" (s.fallidos = 1 && s.estado.cursor = 0 && s.estado.atomos_desde_persona = 0);
   comprueba "lotes por escena" (List.map List.length (Ciclo.lotes 2 [ atomo "a" "x"; atomo "b" "y"; atomo "c" "z" ]) = [ 2; 1 ])
+
+let () =
+  (* Ronda 2: redacción, exclusión, marcas de historia, fechas, repetidos y
+     escenas mal formadas. *)
+  let n = Nota.de_texto "---\ndescription: la clave es sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789\ntype: reference\n---\nANTHROPIC_API_KEY=abcdef0123456789abcdef\n" in
+  comprueba "nota: descripción redactada" (not (contiene "AbCdEfGh" n.descripcion) && contiene "[redactado:" n.descripcion);
+  comprueba "nota: cuerpo redactado" (not (contiene "abcdef0123456789" n.cuerpo));
+  comprueba "nota: cuenta las redacciones" (n.redacciones >= 2);
+  comprueba "nota delicada" (Nota.excluida "x/reference_cn1_root_password.md" && Nota.excluida "reference_oracle_auth_token.md");
+  comprueba "nota normal" (not (Nota.excluida "feedback_pin_ca_keys_in_repo.md"));
+  let a = Nota.atomo ~ts:1 ~ruta:"r" ~proyecto:"/home/digger" ~escena:"digger" ~fecha:"2026-03-01" n in
+  comprueba "marca de etapa anterior" (contiene "ETAPA ANTERIOR" (Atomo.linea ~anteriores:[ "/home/digger" ] a));
+  comprueba "marca de historia" (contiene "{historia" (Atomo.linea { a with proyecto = "/p" }));
+  comprueba "sin marca" (not (contiene "{" (Atomo.linea (atomo "a-1" "x"))));
+  comprueba "fechas en rango" (contiene "2026-03-01" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} })
+    && contiene "2026-03-01..2026-10-13" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} }));
+  comprueba "ms_de_iso" (Ciclo.ms_de_iso "1970-01-02T00:00:01Z" = Some 86401000 && Ciclo.ms_de_iso "2026-10-13T20:37:06Z" = Some 1791923826000);
+  comprueba "reglas en la entrada"
+    (contiene "Reglas vigentes" (Consolidacion.entrada ~reglas:"Python prohibido" ~ahora ~escenas:[] ~abiertas:[] []));
+  (* Un átomo que ya está en una escena actualizada después no se repite. *)
+  let pedidos = ref 0 in
+  let ef =
+    { Ciclo.encargar = (fun ?modelo:_ _ _ -> incr pedidos; failwith "no debería pedir");
+      juzgar_mal = (fun _ _ -> ()); ahora = (fun () -> ahora); log = (fun _ -> ()) }
+  in
+  let escalera = [ Result.get_ok (Agencia.Modelo.de_texto "claude-haiku-5-5") ] in
+  let e = { (escena ~atomos:[ "a-1" ] "x") with actualizada = "2026-10-13T00:00:00Z"; cuerpo = "" } in
+  let s =
+    Ciclo.consolidar ef ~escenas_agente:(Agentes.escenas ~escalera) ~persona_agente:(Agentes.persona ~escalera)
+      ~estado:{ Estado.inicial with persona = Some "2027-01-01T00:00:00Z" } ~persona:"" [ e ] [ atomo ~ts:1000 "a-1" "uno" ]
+  in
+  comprueba "ya aplicado: no se repite" (!pedidos = 0 && s.consolidados = 0 && s.estado.cursor = 1000);
+  (* Una escena mal formada se salta, bloqueada. *)
+  let d = Filename.concat (Filename.get_temp_dir_name ()) (Printf.sprintf "memoria-c-%d" (Unix.getpid ())) in
+  Sys.mkdir d 0o755;
+  Sys.mkdir (Filename.concat d "escenas") 0o755;
+  Repo.escribir_fichero d "escenas/mala.md" "---\ncalor: mucho\n---\nx\n";
+  Repo.escribir_fichero d "escenas/buena.md" (Escena.a_texto (escena "buena"));
+  let es, avisos = Repo.escenas d in
+  comprueba "mal formada: aviso y bloqueada"
+    (List.length avisos = 1 && List.exists (fun (e : Escena.t) -> e.slug = "mala" && e.bloqueada) es && List.length es = 2);
+  Repo.escribir d ~escenas:[ { (escena "mala") with bloqueada = false } ] ~escritas:[ "mala" ] ~borradas:[] ~persona:None Estado.inicial;
+  comprueba "mal formada: no se pisa" (contiene "calor: mucho" (In_channel.with_open_bin (Filename.concat d "escenas/mala.md") In_channel.input_all));
+  ignore (Sys.command ("rm -rf " ^ Filename.quote d))
 
 let () =
   if !fallos > 0 then (

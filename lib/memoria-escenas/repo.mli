@@ -4,9 +4,10 @@
 (** Un checkout del repo memoria (E/S): [persona.md], [escenas/<slug>.md],
     [atomos-importados/] y [.estado]. Git lo pone quien llama. *)
 
-val escenas : string -> (Escena.t list, string) result
-(** Las de [escenas/*.md], por slug. Un fichero que no se entiende es un
-    error: mejor parar que reescribirlo. *)
+val escenas : string -> Escena.t list * string list
+(** Las de [escenas/*.md], por slug, y un aviso por cada una que no se
+    entiende. Esas no paran la pasada: entran como bloqueadas (cuentan para
+    el tope, salen en el índice y nadie las reescribe ni las borra). *)
 
 val persona : string -> string
 (** [persona.md], o vacía. *)

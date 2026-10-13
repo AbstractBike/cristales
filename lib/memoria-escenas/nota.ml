@@ -1,7 +1,7 @@
 (* © 2026 Silvio Macías Sánchez. Todos los derechos reservados.
    Libre para investigación; uso comercial: ver COPYRIGHT.md. *)
 
-type t = { nombre : string; descripcion : string; tipo : string; cuerpo : string }
+type t = { nombre : string; descripcion : string; tipo : string; cuerpo : string; redacciones : int }
 
 let valor v =
   let v = String.trim v in
@@ -23,8 +23,8 @@ let valor v =
     Buffer.contents b
   else v
 
-let de_texto texto =
-  let vacia = { nombre = ""; descripcion = ""; tipo = ""; cuerpo = String.trim texto } in
+let de_texto_crudo texto =
+  let vacia = { nombre = ""; descripcion = ""; tipo = ""; cuerpo = String.trim texto; redacciones = 0 } in
   match String.split_on_char '\n' texto with
   | p :: resto when String.trim p = "---" ->
       let rec ir n acc = function
@@ -45,7 +45,26 @@ let de_texto texto =
       ir vacia () resto
   | _ -> vacia
 
+(* Todo lo que sale de una nota pasa por la redacción de L0. *)
+let de_texto texto =
+  let n = de_texto_crudo texto in
+  let red s = Memoria_l0.Redaccion.redactar s in
+  let descripcion, r1 = red n.descripcion and cuerpo, r2 = red n.cuerpo in
+  let cuenta = List.fold_left (fun s (_, k) -> s + k) 0 in
+  { n with descripcion; cuerpo; redacciones = cuenta r1 + cuenta r2 }
+
 let es_indice ruta = Filename.basename ruta = "MEMORY.md"
+
+let delicadas = [ "password"; "passwd"; "contrasena"; "contraseña"; "credencial"; "credential"; "secret"; "token" ]
+
+let excluida ruta =
+  let b = String.lowercase_ascii (Filename.basename ruta) in
+  List.exists
+    (fun p ->
+      let n = String.length p in
+      let rec ir i = i + n <= String.length b && (String.sub b i n = p || ir (i + 1)) in
+      ir 0)
+    delicadas
 
 let tipo_atomo = function "feedback" -> "regla" | "user" -> "persona" | _ -> "hecho"
 
