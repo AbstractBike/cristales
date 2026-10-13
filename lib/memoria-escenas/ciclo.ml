@@ -127,7 +127,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
           | `Mal (texto, err) -> (
               match
                 pedir_persona
-                  (Printf.sprintf "%s\n## Tu respuesta anterior\n\n%s\n\n## Rechazo\n\n%s\n" entrada texto err)
+                  (Printf.sprintf "%s\n## Tu respuesta anterior\n\n%s\n\n## Rechazo\n\n%s. Devuelve la persona entera otra vez, por debajo de 1700 caracteres: quita secciones enteras antes que dejarla larga.\n" entrada texto err)
               with
               | `Bien p -> Some p
               | `Fallo | `Mal _ -> None)

@@ -62,7 +62,8 @@ rechaza alguna, te las devolverá con el motivo para que las corrijas.
   delante): las demás no las ves y las romperías.
 - `slug`: minúsculas ASCII, dígitos y guiones (`flota-nixos`, `forja-y-agencia`),
   como mucho 60 caracteres. Al actualizar, conserva el slug.
-- `cuerpo` de **1500 caracteres como mucho**. Resume, fusiona frases, quita lo
+- `cuerpo` de **1500 caracteres como mucho** (cuenta también los espacios y los
+  saltos de línea; apunta a 1100-1300 para no pasarte). Resume, fusiona frases, quita lo
   que ya no sirve. Mejor corto y útil que largo y completo.
 - `resumen`: una frase de 15-40 palabras para el índice.
 - Nada de escenas «informe», «lote», «resumen», «varios», «misc».

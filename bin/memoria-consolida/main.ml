@@ -36,6 +36,7 @@ let importar = ref false
 let notas = ref (Filename.concat (entorno "HOME" "/root") ".claude/projects")
 let lote = ref 30
 let maximo = ref 0
+let solo_importar = ref false
 
 let opciones =
   [ ("--repo", Arg.Set_string repo, "RUTA checkout del repo memoria (.)");
@@ -46,7 +47,8 @@ let opciones =
     ("--importar", Arg.Set importar, " antes, las notas de --notas como átomos L1");
     ("--notas", Arg.Set_string notas, "RUTA raíz de los proyectos de Claude Code (~/.claude/projects)");
     ("--lote", Arg.Set_int lote, "N átomos por encargo (30)");
-    ("--maximo", Arg.Set_int maximo, "N consolidar como mucho N átomos (0: todos)") ]
+    ("--maximo", Arg.Set_int maximo, "N consolidar como mucho N átomos (0: todos)");
+    ("--solo-importar", Arg.Set solo_importar, " importar las notas y nada más") ]
 
 (* {1 Importación} *)
 
@@ -85,7 +87,11 @@ let notas_atomos raiz =
       let mem = Filename.concat dir "memory" in
       if not (Sys.file_exists mem && Sys.is_directory mem) then []
       else
-        let proyecto = Option.value ~default:p (cwd_de dir) in
+        (* Sin JSONL, la ruta deshaciendo la codificación de Claude Code (que
+           cambia «/» y «.» por «-»: con pérdida, pero legible). *)
+        let proyecto =
+          match cwd_de dir with Some c -> c | None -> String.map (function '-' -> '/' | c -> c) p
+        in
         let escena = Filename.basename proyecto in
         Sys.readdir mem |> Array.to_list |> List.sort compare
         |> List.filter (fun f -> Filename.check_suffix f ".md" && not (Nota.es_indice f))
@@ -195,6 +201,7 @@ let () =
       | Ok n -> log (Printf.sprintf "%d átomos escritos en %s.memoria_l1" n !db)
       | Error e -> failwith e);
       Repo.escribir_fichero !repo "atomos-importados/notas.md" (registro_importados todas)));
+  if !solo_importar then exit 0;
   (* Consolidación. *)
   let estado = Repo.estado !repo in
   let escenas = match Repo.escenas !repo with Ok e -> e | Error e -> failwith e in

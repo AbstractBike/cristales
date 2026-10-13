@@ -16,8 +16,9 @@ sin pisar sus reglas. No es una biografía ni un índice de proyectos.
 ## Lo que devuelves
 
 **Solo el Markdown final de `persona.md`**, sin explicaciones ni bloque de
-código alrededor. **2000 caracteres como mucho**: si no cabe, condensa y
-quita lo menos útil; si se pasa, se rechaza.
+código alrededor. **2000 caracteres como mucho**, contando espacios y saltos de
+línea: apunta a 1500-1700, porque si se pasa se rechaza. Si no cabe, condensa y
+quita lo menos útil.
 
 ## Cómo actualizar
 
