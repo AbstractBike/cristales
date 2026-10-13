@@ -211,7 +211,11 @@ let () =
     else atomos
   in
   log (Printf.sprintf "%d átomos nuevos desde %d; %d escenas" (List.length atomos) estado.cursor (List.length escenas));
-  if atomos = [] && not !importar then exit 0;
+  (* Sin átomos nuevos solo se sigue si la persona va atrasada (una pasada
+     anterior no logró escribirla). *)
+  if atomos = [] && (not !importar)
+     && Persona.disparo ~ultima:estado.persona ~escenas ~senal:None ~atomos_desde:estado.atomos_desde_persona = None
+  then exit 0;
   let ciclo =
     { Ciclo.encargar = (fun ?modelo a entrada -> Agencia_mcp.encargar efectos a ?modelo entrada);
       juzgar_mal = (fun e nota -> archivo.juzgar e.agente e.id Agencia.Mal nota);

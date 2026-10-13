@@ -31,6 +31,11 @@ let lotes n atomos =
 
 let union a b = a @ List.filter (fun x -> not (List.mem x a)) b
 
+(* El modelo de un encargo, para repetirle a él; y el más capaz del agente. *)
+let mismo (e : Agencia.Encargo.t) = Result.to_option (Agencia.Modelo.de_texto e.modelo)
+
+let mas_capaz (a : Agencia.Agente.t) = List.nth a.escalera (List.length a.escalera - 1)
+
 let contar (e : Agencia.Encargo.t) resumen =
   { agente = (e.agente :> string); id = e.id; modelo = e.modelo; ms = e.ms;
     tokens = e.tokens_entrada + e.tokens_salida; resumen }
@@ -78,19 +83,28 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
           incr fallidos;
           ef.log (Printf.sprintf "lote de %d átomos SIN HACER: el cursor no avanza" (List.length atomos));
           (None, None)
-      | e, Ok (texto, s) -> (
+      | e, Ok (texto, s) ->
           let r = aplicar s.operaciones in
           anotar e (resumen r);
-          if r.rechazos = [] then (Some r, s.persona)
-          else
-            let motivos = List.map (fun (o, m) -> Operacion.describir o ^ ": " ^ m) r.rechazos in
-            ef.log ("rechazos, se repite: " ^ String.concat " | " motivos);
-            match pedir (Consolidacion.reintento ~entrada ~salida:texto motivos) with
-            | e2, Ok (_, s2) ->
-                let r2 = aplicar s2.operaciones in
-                anotar e2 (resumen r2);
-                (Some r2, match s2.persona with Some _ as p -> p | None -> s.persona)
-            | _, Error _ -> (Some r, s.persona))
+          (* Hasta dos correcciones: con el mismo modelo (que vea sus
+             rechazos) y, si sigue, con el más capaz de la escalera. *)
+          let rec corregir intentos (e : Agencia.Encargo.t) texto (s : Operacion.salida) r =
+            match intentos with
+            | [] -> (Some r, s.persona)
+            | _ when r.Consolidacion.rechazos = [] -> (Some r, s.persona)
+            | modelo :: resto -> (
+                let motivos = List.map (fun (o, m) -> Operacion.describir o ^ ": " ^ m) r.rechazos in
+                ef.log ("rechazos, se repite: " ^ String.concat " | " motivos);
+                let modelo = modelo e in
+                match pedir ?modelo (Consolidacion.reintento ~entrada ~salida:texto motivos) with
+                | e2, Ok (texto2, s2) ->
+                    let r2 = aplicar s2.operaciones in
+                    anotar e2 (resumen r2);
+                    let s2 = { s2 with persona = (match s2.persona with Some _ as p -> p | None -> s.persona) } in
+                    corregir resto e2 texto2 s2 r2
+                | _, Error _ -> (Some r, s.persona))
+          in
+          corregir [ mismo; (fun _ -> Some (mas_capaz escenas_agente)) ] e texto s r
     in
     match final with
     | None -> (escenas, escritas, borradas, senal)
@@ -135,20 +149,27 @@ let consolidar ef ~escenas_agente ~persona_agente ?(lote = 30) ~estado ~persona 
               | Error err ->
                   ef.juzgar_mal e err;
                   anotar e ("rechazada: " ^ err);
-                  `Mal (texto, err))
+                  `Mal (e, texto, err))
+        in
+        let corregir modelo texto err =
+          pedir_persona ?modelo
+            (Printf.sprintf
+               "%s\n## Tu respuesta anterior\n\n%s\n\n## Rechazo\n\n%s. Devuelve la persona entera otra vez, por \
+                debajo de 1700 caracteres: quita secciones enteras antes que dejarla larga.\n"
+               entrada texto err)
         in
         let resultado =
           match pedir_persona entrada with
           | `Bien p -> Some p
           | `Fallo -> (
               match pedir_persona ~modelo:persona_agente.defecto entrada with `Bien p -> Some p | _ -> None)
-          | `Mal (texto, err) -> (
-              match
-                pedir_persona
-                  (Printf.sprintf "%s\n## Tu respuesta anterior\n\n%s\n\n## Rechazo\n\n%s. Devuelve la persona entera otra vez, por debajo de 1700 caracteres: quita secciones enteras antes que dejarla larga.\n" entrada texto err)
-              with
+          | `Mal (e, texto, err) -> (
+              (* Como en las escenas: el mismo modelo y luego el más capaz. *)
+              match corregir (mismo e) texto err with
               | `Bien p -> Some p
-              | `Fallo | `Mal _ -> None)
+              | `Fallo -> None
+              | `Mal (_, texto, err) -> (
+                  match corregir (Some (mas_capaz persona_agente)) texto err with `Bien p -> Some p | _ -> None))
         in
         match resultado with
         | Some p -> (Some p, { estado with persona = Some (ef.ahora ()); atomos_desde_persona = 0 })
