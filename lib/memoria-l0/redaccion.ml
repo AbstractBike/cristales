@@ -37,13 +37,34 @@ let entropia s =
       0. cuenta
 
 let existe f s = String.exists f s
+let re_separador = Re.compile (Re.set "_.=-")
 
+let clase c =
+  if c >= 'a' && c <= 'z' then 1 else if c >= 'A' && c <= 'Z' then 2 else if c >= '0' && c <= '9' then 3 else 0
+
+(* Saltos entre minúscula, mayúscula y dígito por par de vecinos: unos 0,6
+   en una cadena al azar, menos de 0,25 en un identificador CamelCase. *)
+let saltos s =
+  let n = ref 0 in
+  for i = 1 to String.length s - 1 do
+    if clase s.[i] <> clase s.[i - 1] then incr n
+  done;
+  float !n /. float (String.length s - 1)
+
+let al_azar s =
+  String.length s >= 16
+  && existe (fun c -> clase c = 1) s
+  && existe (fun c -> clase c = 2) s
+  && existe (fun c -> clase c = 3) s
+  && saltos s >= 0.45 && entropia s >= 3.5
+
+(* Un trozo al azar entre separadores basta: así las rutas, los nombres de
+   variable o los de fichero (palabras unidas por [/], [_], [.], [-], [=])
+   no cuentan, y una clave sí aunque lleve alguno. Los ids de invocación de
+   Restate ([inv_…]) son al azar pero no son secretos. *)
 let parece_secreto s =
-  String.length s >= 32
-  && existe (fun c -> c >= 'A' && c <= 'Z') s
-  && existe (fun c -> c >= 'a' && c <= 'z') s
-  && existe (fun c -> c >= '0' && c <= '9') s
-  && entropia s >= 4.3
+  (not (String.starts_with ~prefix:"inv_" s))
+  && List.exists al_azar (String.split_on_char '/' s |> List.concat_map (fun t -> Re.split re_separador t))
 
 let perl ?(opts = []) p = Re.compile (Re.Perl.re ~opts p)
 
@@ -64,7 +85,16 @@ let reglas =
       re = perl {|-----BEGIN[A-Z0-9 ]*KEY[A-Z ]*-----(.|\n)*?(-----END[A-Z0-9 ]*-----|\z)|};
       sustituto = entero Pem };
     { tipo = Anthropic; re = perl (ini ^ {|sk-ant-[A-Za-z0-9_-]{16,}|}); sustituto = con_frontera Anthropic };
-    { tipo = Openai; re = perl (ini ^ {|sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}|}); sustituto = con_frontera Openai };
+    { tipo = Openai;
+      re = perl (ini ^ {|sk-(proj-|svcacct-)?[A-Za-z0-9_-]{20,}|});
+      (* [sk-] es un prefijo corriente (rutas, slugs): solo si lo que sigue
+         mezcla mayúsculas, minúsculas y dígitos. *)
+      sustituto =
+        (fun g ->
+          let s = Re.Group.get g 0 in
+          if existe (fun c -> clase c = 1) s && existe (fun c -> clase c = 2) s && existe (fun c -> clase c = 3) s
+          then con_frontera Openai g
+          else None) };
     { tipo = Github;
       re = perl (ini ^ {|(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})|});
       sustituto = con_frontera Github };
@@ -100,10 +130,19 @@ let reglas =
           then None
           else Some (Re.Group.get g 1 ^ marca Clave)) };
     { tipo = Entropia;
-      re = perl {|[A-Za-z0-9+/_=-]{32,}|};
+      re = perl {|[A-Za-z0-9+/_.-]{20,}|};
       sustituto = (fun g -> if parece_secreto (Re.Group.get g 0) then Some (marca Entropia) else None) } ]
 
-let redactar texto =
+let forma s =
+  String.map
+    (fun c ->
+      if c >= 'a' && c <= 'z' then 'a'
+      else if c >= 'A' && c <= 'Z' then 'A'
+      else if c >= '0' && c <= '9' then '9'
+      else c)
+    s
+
+let redactar ?(al_redactar = fun _ ~antes:_ _ -> ()) texto =
   List.fold_left
     (fun (texto, cuentas) r ->
       let n = ref 0 in
@@ -112,6 +151,9 @@ let redactar texto =
             match r.sustituto g with
             | Some s ->
                 incr n;
+                let i = Re.Group.start g 0 in
+                let k = min i 24 in
+                al_redactar r.tipo ~antes:(String.sub texto (i - k) k) (forma (Re.Group.get g 0));
                 s
             | None -> Re.Group.get g 0)
       in

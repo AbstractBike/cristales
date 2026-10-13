@@ -28,10 +28,17 @@ let jsonl d =
       |> List.filter (fun f -> Filename.check_suffix f ".jsonl")
       |> List.map (Filename.concat d)
 
+(* Los de los subagentes, también los de los workflows
+   ([subagents/workflows/wf_*/agent-*.jsonl]; su [journal.jsonl] no es un
+   transcript). *)
+let rec agentes d =
+  List.filter (fun f -> String.starts_with ~prefix:"agent-" (Filename.basename f)) (jsonl d)
+  @ List.concat_map agentes (directorios d)
+
 let ficheros raiz =
   directorios raiz
   |> List.concat_map (fun p ->
-         jsonl p @ List.concat_map (fun s -> jsonl (Filename.concat s "subagents")) (directorios p))
+         jsonl p @ List.concat_map (fun s -> agentes (Filename.concat s "subagents")) (directorios p))
 
 let lineas_desde f desde =
   In_channel.with_open_bin f (fun ic ->
@@ -44,7 +51,7 @@ let lineas_desde f desde =
       | Some i ->
           (String.split_on_char '\n' (String.sub s 0 i) |> List.filter (( <> ) ""), desde + i + 1))
 
-let pasar ~raiz ~cursor ?escribir ?(al_fichero = ignore) () =
+let pasar ~raiz ~cursor ?escribir ?(al_fichero = ignore) ?al_redactar () =
   let e =
     { ficheros = 0; bytes = 0; lineas = 0; mensajes = 0; usuario = 0; asistente = 0; de_subagentes = 0;
       truncados = 0; fallidos = 0; redacciones = Hashtbl.create 16; mensajes_redactados = ref 0 }
@@ -59,7 +66,7 @@ let pasar ~raiz ~cursor ?escribir ?(al_fichero = ignore) () =
           e.ficheros <- e.ficheros + 1;
           e.bytes <- e.bytes + (hasta - desde);
           e.lineas <- e.lineas + List.length lineas;
-          let ms = List.filter_map Transcript.de_linea lineas in
+          let ms = List.filter_map (Transcript.de_linea ?al_redactar:(Option.map (fun a -> a f) al_redactar)) lineas in
           List.iter
             (fun (m : Transcript.mensaje) ->
               e.mensajes <- e.mensajes + 1;

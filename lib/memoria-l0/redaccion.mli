@@ -24,17 +24,27 @@ type tipo =
   | Clave  (** [*_TOKEN=], [*_KEY=], [*SECRET*=], [api_key: …] *)
   | Password  (** [password=], [passwd:], [pwd=] *)
   | Entropia
-      (** Cadena de 32 o más caracteres con mayúsculas, minúsculas y
-          dígitos, y entropía de Shannon ≥ 4,3 bits por carácter (un hash
-          hexadecimal o uno de Nix no llega: no se tocan). *)
+      (** Una cadena de 20 o más caracteres de token con algún trozo (entre
+          [/], [_], [.], [-], [=]) de 16 o más que parece al azar:
+          mayúsculas, minúsculas y dígitos, que cambian de clase en al
+          menos el 45 % de los pares de vecinos, y entropía ≥ 3,5 bits por
+          carácter. Un hash hexadecimal o de Nix (sin mayúsculas), una ruta
+          o un identificador CamelCase no llegan. *)
 
 val todos : tipo list
 val nombre : tipo -> string
 (** El que aparece en [[redactado:<nombre>]]. *)
 
-val redactar : string -> string * (tipo * int) list
+val redactar :
+  ?al_redactar:(tipo -> antes:string -> string -> unit) -> string -> string * (tipo * int) list
 (** El texto redactado y cuántas sustituciones de cada tipo (solo los que
-    tienen alguna). *)
+    tienen alguna). [al_redactar] ve cada sustitución, para auditarla sin
+    enseñar el secreto: lo que lo precede (hasta 24 bytes, ya redactado por
+    las reglas anteriores) y su {!forma}. *)
+
+val forma : string -> string
+(** Las minúsculas a [a], las mayúsculas a [A] y los dígitos a [9]: la
+    silueta de un acierto, no su contenido. *)
 
 val entropia : string -> float
 (** Bits por carácter (Shannon, sobre bytes). *)

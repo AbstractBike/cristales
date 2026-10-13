@@ -76,6 +76,12 @@ let () =
   intacto "referencia a variable" "GITHUB_TOKEN=$GITHUB_TOKEN";
   intacto "prosa" "la key del problema es el token de sesión";
   intacto "sk- corto" "usa la opción sk-learn";
+  intacto "sk- en una ruta" "https://tienda.de/sk-nvme-2tb-pcie-gen4-ssd-modelo-nuevo";
+  intacto "CamelCase" "test VolumeOscillatorRanker10Test y ComprehensiveIndicator_10_20Test";
+  intacto "ruta con hash" "export NODE_PATH=/nix/store/9abc1defgh2ijkl3mnop4qrst5uvwx6yz-node/lib";
+  intacto "id de invocación" "inv_1abcDEF234ghiJKL567mnoPQR890stu";
+  let k = "client=" ^ "aZ3" ^ "-" ^ alnum in
+  redacta "entropía con separador" ~queda:[ "client=" ] Entropia k alnum;
   (* La marca no se vuelve a redactar. *)
   let r1, _ = Redaccion.redactar ("A_TOKEN=" ^ gh) in
   let r2, c2 = Redaccion.redactar r1 in

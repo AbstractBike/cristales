@@ -83,7 +83,7 @@ let texto_de_bloques rol bloques =
 
 let verdad j k = match Yojson.Safe.Util.member k j with `Bool b -> b | _ -> false
 
-let de_linea linea =
+let de_linea ?al_redactar linea =
   match Yojson.Safe.from_string linea with
   | exception Yojson.Json_error _ -> None
   | j -> (
@@ -102,7 +102,7 @@ let de_linea linea =
         let ts = campo "timestamp" and sesion = campo "sessionId" and uuid = campo "uuid" in
         if ruido texto || ts = "" || sesion = "" || uuid = "" then None
         else
-          let texto, redacciones = Redaccion.redactar texto in
+          let texto, redacciones = Redaccion.redactar ?al_redactar texto in
           let texto, truncado = truncar texto in
           Some
             { ts; sesion; uuid; agente = campo "agentId"; proyecto = campo "cwd"; rol; texto; redacciones;

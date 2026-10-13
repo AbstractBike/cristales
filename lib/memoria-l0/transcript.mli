@@ -43,5 +43,6 @@ val truncar : string -> string * bool
 val herramienta : string -> Yojson.Safe.t -> string
 (** La línea de un [tool_use] a partir de su nombre y su [input]. *)
 
-val de_linea : string -> mensaje option
-(** [None] si la línea no es JSON, no es un mensaje o queda vacía. *)
+val de_linea : ?al_redactar:(Redaccion.tipo -> antes:string -> string -> unit) -> string -> mensaje option
+(** [None] si la línea no es JSON, no es un mensaje o queda vacía.
+    [al_redactar], como en {!Redaccion.redactar}. *)

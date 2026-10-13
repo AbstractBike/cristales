@@ -22,7 +22,8 @@ type estadisticas = {
 }
 
 val ficheros : string -> string list
-(** [<raiz>/*/*.jsonl] y [<raiz>/*/*/subagents/*.jsonl], ordenados. *)
+(** [<raiz>/*/*.jsonl] y los [agent-*.jsonl] bajo [<raiz>/*/<sesion>/subagents/]
+    (también los de [workflows/wf_*/]), ordenados. *)
 
 val lineas_desde : string -> int -> string list * int
 (** Las líneas completas desde ese desplazamiento y el desplazamiento tras
@@ -34,10 +35,12 @@ val pasar :
   cursor:Cursor.t ->
   ?escribir:(Transcript.mensaje list -> (unit, string) result) ->
   ?al_fichero:(string -> unit) ->
+  ?al_redactar:(string -> Redaccion.tipo -> antes:string -> string -> unit) ->
   unit ->
   estadisticas
 (** [al_fichero] se llama tras cada fichero cuyo cursor avanzó (para
-    guardarlo). *)
+    guardarlo); [al_redactar], con cada redacción y su fichero
+    ({!Redaccion.redactar}). *)
 
 val informe : estadisticas -> string
 (** Las cifras, en texto, una por línea. *)
