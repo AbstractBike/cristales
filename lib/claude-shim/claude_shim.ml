@@ -120,7 +120,13 @@ let mensaje ~id ~modelo ~bloque ~stop ~uso =
         ("content", `List [ bloque ]);
         ("model", `String modelo);
         ("stop_reason", `String stop);
-        ("usage", `Assoc [ ("input_tokens", `Int (entero uso "input_tokens")); ("output_tokens", `Int (entero uso "output_tokens")) ]) ])
+        (* Con los de la caché: el CLI cachea el system, y sin ellos la entrada
+           de un encargo largo salía en 2 tokens. *)
+        ( "usage",
+          `Assoc
+            (List.map
+               (fun k -> (k, `Int (entero uso k)))
+               [ "input_tokens"; "cache_creation_input_tokens"; "cache_read_input_tokens"; "output_tokens" ]) ) ])
 
 let respuesta p ~id salida =
   match Yojson.Safe.from_string salida with

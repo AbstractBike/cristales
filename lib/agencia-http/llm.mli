@@ -22,7 +22,8 @@ val peticion :
     marcado con [cache_control]. Sin él (o vacío), la petición de siempre. *)
 
 val leer : Agencia.Modelo.api -> Yojson.Safe.t -> (string * int * int, string) result
-(** Texto, tokens de entrada y tokens de salida de una respuesta 200. *)
+(** Texto, tokens de entrada (con los de la caché de prompts, leídos o
+    escritos) y tokens de salida de una respuesta 200. *)
 
 val llamar :
   _ Eio.Time.clock ->
