@@ -41,9 +41,9 @@ Session: 39dfdb59-6748-440d-8d1b-fb089f2fe82d
 
 | Trailer | Qué dice | Si no se sabe |
 |---|---|---|
-| `Model` | El id exacto del modelo (`claude-opus-5-5`, no «Opus»). Una línea por modelo si la sesión usó varios (un subagente en otro modelo, un encargo a la agencia, una llamada que pasó por la forja) | Nunca falta: el agente sabe qué modelo es |
+| `Model` | El id exacto del modelo (`claude-opus-5-5`, no «Opus»). Si la sesión usó varios modelos (un subagente en otro modelo, un encargo a la agencia, una llamada que pasó por la forja), cada uno abre su bloque: `Model`, `Effort`, `Tokens` y `Cost` | Nunca falta: el agente sabe qué modelo es |
 | `Effort` | El nivel de razonamiento con que corrió la sesión | Se omite |
-| `Tokens` | `<input>, <output>, <cache write>, <cache read>`, en ese orden, sin separador de miles. Si hay varios `Model`, una línea `Tokens` por modelo y en el mismo orden | `n/d` |
+| `Tokens` | `<input>, <output>, <cache write>, <cache read>`, en ese orden, sin separador de miles | `n/d` |
 | `Cost` | El coste en USD que calcula el propio agente con la tarifa de cada modelo, con dos decimales | `n/d` |
 | `Session` | El id de la sesión, para volver a la telemetría y a la transcripción | Se omite |
 
@@ -64,6 +64,10 @@ sumar el historial cuenta lo mismo varias veces. Por eso cada commit lleva
 lo gastado **desde el commit anterior de la misma sesión** (o desde su
 inicio, si es el primero), y lo dice («del commit»). Así la suma de los
 trailers de una rama es exactamente lo que costó la rama.
+
+Si la sesión commitea en varios repos, «el commit anterior» es el último
+de la sesión en cualquiera de ellos: lo que contó un commit en un repo no lo
+vuelve a contar el siguiente en otro.
 
 El trabajo que no acaba en commit (una investigación, una respuesta, un
 intento descartado) no aparece en el historial. Es deliberado: el historial
@@ -150,11 +154,26 @@ Con eso se responde, sin infraestructura nueva:
 
 ## Configurarlo
 
-En Claude Code, el texto de atribución de los commits es una plantilla
-(`attribution.commit` en `~/.claude/settings.json`, declarada en
-`modules/core/claude-code.nix` de la flota) que el agente rellena al
-commitear con las consultas de arriba. Las instrucciones del agente le
-dicen que nunca invente un valor.
+En la flota lo hace `claude-costes` (OCaml, en el flake de la flota:
+`claude-costes/` y `pkgs/ocaml/claude-costes.nix`). Se corre en el repo
+justo antes de commitear y escribe los trailers tal como van:
+
+```bash
+claude-costes [session_id]
+```
+
+- Sin argumento, la sesión es la transcripción más reciente del proyecto
+  del directorio actual.
+- Hace las consultas de arriba desde el commit anterior de la sesión, que
+  busca por su trailer `Session` en todos los repos donde la sesión lo ha
+  corrido (los apunta en `~/.local/state/claude-costes/<sesión>`).
+- Sin telemetría, o sin nada desde el commit anterior, escribe `n/d` y
+  sale con error.
+
+En Claude Code, el texto de atribución de los commits
+(`attribution.commit` en `~/.claude/settings.json`, declarado en
+`modules/core/claude-code.nix`) es una plantilla que pide pegar esa salida,
+y el `CLAUDE.md` de la flota dice que nunca se invente un valor.
 
 ## Límites
 
