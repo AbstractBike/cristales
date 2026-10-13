@@ -1,0 +1,4 @@
+(library
+ (name memoria_recall)
+ (public_name cristales.memoria-recall)
+ (libraries mcp_rpc yojson unix))

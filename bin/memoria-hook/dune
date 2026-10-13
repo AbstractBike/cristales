@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name memoria-hook)
+ (package cristales)
+ (libraries memoria_recall))

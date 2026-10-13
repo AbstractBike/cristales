@@ -1,0 +1,3 @@
+(test
+ (name memoria_recall)
+ (libraries memoria_recall yojson))
