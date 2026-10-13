@@ -40,11 +40,12 @@ la flota; cliente: `Forja_http.Greptime`).
 |---|---|---|
 | `ts` | TIMESTAMP TIME INDEX | el `timestamp` del mensaje en el JSONL |
 | `sesion` | STRING PRIMARY KEY | `sessionId` |
-| `uuid` | STRING | `uuid` del mensaje (clave de idempotencia junto a `sesion` y `ts`) |
+| `uuid` | STRING PRIMARY KEY | `uuid` del mensaje; clave `(sesion, "uuid")`: el motor deduplica por clave + `ts`. Palabra reservada: citarla siempre, `"uuid"` |
+| `agente` | STRING | `agentId` del subagente (su `sesion` es la del padre); `''` en la sesión principal. Los `user` de un subagente los escribió el agente padre, no el usuario |
 | `proyecto` | STRING | el `cwd` de la sesión |
 | `nodo` | STRING | hostname |
 | `rol` | STRING | `user` \| `assistant` |
-| `texto` | STRING FULLTEXT | limpio y **redactado** (sin secretos) |
+| `texto` | STRING FULLTEXT | limpio y **redactado** (sin secretos); índice tantivy, `matches(texto, '…')` |
 
 `memoria_l1` — append-only; la vigente de cada `id` es la de `version` mayor
 y `vigente = true`.
