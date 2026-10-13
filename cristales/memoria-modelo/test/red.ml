@@ -119,6 +119,32 @@ let () =
   (match (leer "DDR5 32GB on-die ECC").especificacion.ecc with None -> () | Some b -> falla "on-die ECC: %b" b);
   match (leer "Tags: DDR4, ECC, non-ECC, RGB").especificacion.ecc with None -> () | Some b -> falla "ECC y non-ECC: %b" b
 
+(* La revisión del 2026-10-13: part numbers de OEM con ECC UDIMM, MB tras la
+   barra, la cuenta no es la capacidad, «Dual Rank» no es un kit, «ECC: Nein»,
+   el voltaje que el part number no dice y la lista de velocidades de una tienda. *)
+let () =
+  pn "KTH-PL424E/16G" "ddr4 ecc-udimm 16x1 2400 -Rx-";
+  pn "KTD-PE426E/16G" "ddr4 ecc-udimm 16x1 2666 -Rx-";
+  pn "KTD-PE432E/32G" "ddr4 ecc-udimm 32x1 3200 -Rx-";
+  pn "KTD-PE432/64G" "ddr4 rdimm 64x1 3200 -Rx-";
+  pn "Synology D4ECSO-2666-16G" "ddr4 ecc-sodimm 16x1 2666 -Rx-";
+  pn "KVR400X64C3A/512" "ddr udimm 0.50x1 400 -Rx-";
+  pn "IBM 00D5038" "ddr3 rdimm 8x1 1600 -Rx-";
+  (match (leer "256GB Kingston KSM32RD4 4x64GB DDR4 3200 ECC RDIMM").modulos with
+   | [ (m, _) ] when m.pn = "KSM32RD4" && m.capacidad = None -> ()
+   | _ -> falla "KSM32RD4 4x64GB: la cuenta no es la capacidad de detrás de la barra");
+  esp "Necesito un UDIMM de 32 GB DDR4-3200 dual rank para mi B565D4-V1L" "ddr4 udimm 32x-=- 3200 cl- 2Rx-";
+  esp "Busco RDIMM de 64GB DDR4-3200 dual rank para ROME2D16-2T" "ddr4 rdimm 64x-=- 3200 cl- 2Rx-";
+  (match (leer "Raspberry Pi 4 8GB").especificacion.modulos with Some 4 -> falla "Raspberry Pi 4: cuatro módulos" | _ -> ());
+  (match (leer "ECC: Nein").especificacion.ecc with Some false -> () | e -> falla "«ECC: Nein»: %s" (o string_of_bool e));
+  (match (leer "DDR3 ECC no registrada").especificacion.ecc with Some true -> () | e -> falla "«ECC no registrada»: %s" (o string_of_bool e));
+  esp "Samsung DDR4 REG ECC 32G 1Rx4 Velocidades: 2133P/2400T/2666V/2933Y/3200AA/4800/5600/6000" "ddr4 rdimm 32x-=- - cl- 1Rx4";
+  let v t esperado = match (leer t).modulos with [ (m, _) ] when m.voltaje = esperado -> () | _ -> falla "voltaje del part number %S" t in
+  v "M393B2G70BH0" None;
+  v "M393B2G70BH0-YH9" (Some 1.35);
+  v "M393B2G70DB0-YK0Q" (Some 1.35);
+  v "M393B2G70BH0-CK0" (Some 1.5)
+
 (* El voltaje. *)
 let () =
   let v t esperado = let got = (leer t).especificacion.voltaje in if got <> esperado then falla "voltaje %S: %s" t (o string_of_float got) in

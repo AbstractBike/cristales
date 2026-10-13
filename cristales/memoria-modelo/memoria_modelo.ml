@@ -14,7 +14,9 @@ type especificacion = {
   formato : formato option;
   formato_dicho : bool;  (** El formato lo dice el texto o su etiqueta; si no, se ha deducido (y un part number manda). *)
   ecc : bool option;
+  ecc_dicho : bool;  (** El ECC lo dice el texto («ECC», «non-ECC»); si no, sale del formato. *)
   registrada : bool option;
+  registrada_dicha : bool;  (** El registro lo dice el texto («REG», «unbuffered»). *)
   capacidad : int option;  (** MB por módulo. *)
   modulos : int option;
   total : int option;  (** MB. *)
@@ -121,7 +123,8 @@ let modulos_de ws =
     ECC, el de ECC. El del part number lo pone [combinar]. *)
 let resolver_formato ~dicho ~etiqueta ~ecc ~registrada ~anchura ~portatil ~sobremesa ~juego =
   let base =
-    match (dicho, etiqueta) with
+    (* La letra de la etiqueta («PC4-2400T-RD1», «-LA0») está en el módulo: gana a la palabra de quien vende. *)
+    match (etiqueta, dicho) with
     | Some f, _ | None, Some f -> Some f
     | None, None ->
       if registrada = Some true || anchura = Some 4 then Some Rdimm
@@ -146,7 +149,10 @@ let leer texto =
   let portatil = Texto.hay ws Texto.de_portatil || de_portatil_linea ws in
   let sobremesa = Texto.hay ws Texto.de_sobremesa in
   let juego = de_juego ws in
-  let vels = sin_repetir (List.map fst (Texto.velocidades_dichas ~contexto ws gens)) in
+  let dichas = Texto.velocidades_dichas ~contexto ws gens in
+  (* «Velocidades: 2133P/2400T/2666V/2933Y/3200AA»: la lista de una tienda no es la velocidad del módulo. *)
+  let en_lista (v, i) = List.length (sin_repetir (List.filter_map (fun (w, j) -> if w <> v && abs (j - i) <= 2 then Some w else None) dichas)) >= 2 in
+  let vels = sin_repetir (List.map fst (List.filter (fun x -> not (en_lista x)) dichas)) in
   (* La generación que se dice; si no, la de la velocidad cuando solo una la tiene (2933, 3200: DDR4). *)
   let generacion = match (gens, vels) with g :: _, _ -> Some g.gen | [], v :: _ -> generacion_de_velocidad v | [], [] -> None in
   let rangos, anchura = Texto.rangos ws in
@@ -167,7 +173,9 @@ let leer texto =
       formato;
       formato_dicho = dicho <> None || etiqueta <> None;
       ecc = (match ecc_t with Some _ -> ecc_t | None -> Option.bind formato ecc_de);
+      ecc_dicho = ecc_t <> None;
       registrada = (match reg_t with Some _ -> reg_t | None -> Option.bind formato registrada_de);
+      registrada_dicha = reg_t <> None;
       capacidad = cuenta.capacidad;
       modulos = cuenta.modulos;
       total = cuenta.total_mb;
@@ -204,30 +212,58 @@ let leer texto =
 
 (** La especificación del texto completada con la del part number (el texto
     manda; el part number da lo que el texto calla). *)
-let combinar (e : especificacion) (m : modulo option) =
+let combinar ?(desglose = false) (e : especificacion) (m : modulo option) =
   match m with
   | None -> e
   | Some m ->
     let o a b = match a with Some _ -> a | None -> b in
-    (* El formato que dice el texto manda; el deducido («para portátil», una
-       línea de juego) cede ante el del part number. *)
-    let formato = match (e.formato, m.formato) with Some f, _ when e.formato_dicho -> Some f | _, Some f -> Some f | f, None -> f in
-    let formato = match (formato, e.ecc) with Some f, Some true -> Some (con_ecc f) | f, _ -> f in
-    (* «8x M393A8G40AB2-CWE 64GB»: el texto leyó los 64 GB como el total de los
-       ocho; el part number dice que son los de cada módulo. *)
-    let capacidad, total =
-      match (e.capacidad, e.total, e.modulos, m.capacidad) with
-      | Some c, Some t, Some k, Some mc when k > 1 && c <> mc && t = mc && e.iguales <> Some false -> (Some mc, Some (mc * k))
-      | _ -> (o e.capacidad m.capacidad, e.total)
+    (* El formato que dice el texto (o su etiqueta) manda; el deducido («para
+       portátil», una línea de juego, «DIMM») cede ante el del part number. Un
+       part number de LRDIMM o 3DS gana siempre: quien vende llama «RDIMM» a
+       todo lo registrado. *)
+    let formato =
+      match (e.formato, m.formato) with
+      | _, Some ((Lrdimm | Rdimm_3ds) as f) -> Some f
+      | Some f, _ when e.formato_dicho -> Some f
+      | _, Some f -> Some f
+      | f, None -> f
     in
+    (* El ECC y el registro que el texto dice mandan; los que solo deduce («Bauform:
+       DIMM» → sobremesa → sin ECC), no: los del part number, o los del formato
+       final. *)
+    let segun deduce dicho valor del_pn =
+      if dicho then valor else match del_pn with Some _ -> del_pn | None -> (match Option.bind formato deduce with Some b -> Some b | None -> valor)
+    in
+    let ecc = segun ecc_de e.ecc_dicho e.ecc m.ecc in
+    let registrada = segun registrada_de e.registrada_dicha e.registrada m.registrada in
+    let formato = match (formato, ecc) with Some f, Some true -> Some (con_ecc f) | f, _ -> f in
+    (* «8x M393A8G40AB2-CWE 64GB»: el texto leyó los 64 GB como el total de los
+       ocho; el part number dice que son los de cada módulo (salvo que el texto
+       desglose la cuenta: [desglose], «2×16 GB»). «32GB …
+       CMK32GX4M2E3200C16»: el part number es de un kit de 2×16, y los 32 GB son
+       de los dos. «64GB … M393A4K40CB2» (de 32), sin decir cuántos: dos. *)
+    let sin_cuenta = match e.modulos with None | Some 1 -> true | Some _ -> false in
+    let capacidad, total, modulos =
+      match (e.capacidad, e.total, e.modulos, m.capacidad) with
+      | Some c, Some t, Some k, Some mc when (not desglose) && k > 1 && c <> mc && t = mc && e.iguales <> Some false -> (Some mc, Some (mc * k), e.modulos)
+      | Some c, _, _, Some mc when sin_cuenta && m.modulos > 1 && c = mc * m.modulos -> (Some mc, Some c, Some m.modulos)
+      | None, Some t, _, Some mc when sin_cuenta && m.modulos > 1 && t = mc * m.modulos -> (Some mc, Some t, Some m.modulos)
+      | None, Some t, None, Some mc when m.modulos = 1 && mc > 0 && t > mc && t mod mc = 0 && t / mc <= 16 && e.iguales <> Some false ->
+        (Some mc, Some t, Some (t / mc))
+      (* En un lote mezclado, la capacidad del part number no es la de todos. *)
+      | _ -> ((if e.iguales = Some false then e.capacidad else o e.capacidad m.capacidad), e.total, e.modulos)
+    in
+    let iguales = if modulos <> e.modulos then Some true else e.iguales in
     {
       e with
       generacion = o e.generacion m.generacion;
       formato;
-      ecc = o e.ecc (match m.ecc with Some _ -> m.ecc | None -> Option.bind formato ecc_de);
-      registrada = o e.registrada (match m.registrada with Some _ -> m.registrada | None -> Option.bind formato registrada_de);
+      ecc;
+      registrada;
       capacidad;
       total;
+      modulos;
+      iguales;
       velocidad = o e.velocidad m.velocidad;
       cas = o e.cas m.cas;
       rangos = o e.rangos m.rangos;

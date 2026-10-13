@@ -133,8 +133,10 @@ let () =
   mira hpe "precioModulo" "800";
   mira hpe "disponibles" "32";
   mira hpe "oem" "hpe";
+  (* Fusión (revisión del 2026-10-13): «600 € VB pro Riegel» y «2.000 € für alle vier zusammen»: comprando
+     los cuatro, 500 cada uno (antes 600, el de uno suelto). *)
   mira "Título: 4× Samsung 64GB DDR4-3200 ECC REG RDIMM RAM M393A8G40AB2-CWECO\nPrecio: 600\nDescripción: Preis\n600 € VB pro Riegel\n2.000 € für alle vier zusammen"
-    "precioModulo" "600";
+    "precioModulo" "500";
   mira "Título: Samsung M393A8G40AB2-CWECO 64GB DDR4 3200 ECC REG Speichermodul\nDescripción: Speichermodul, gebraucht, getestet , technisch ok.\nFestpreis / Stk. 400,- ( max. 4 Stk. ) , Abholung/Bar"
     "precioModulo" "400";
   mira "Título: 10x 4GB DDR3 SO-DIMM RAM Konvolut Arbeitsspeicher Laptop\nPrecio: 55\nDescripción: Die 55€ (5,50€ pro Stück) sind ein Top Preis"
@@ -163,6 +165,85 @@ let () =
   (* las palabras clave de una tienda no dicen nada del anuncio *)
   mira "Título: ‼️ MEMORIA RAM DDR5 32GB 2X16 ACER RGB CL30 ‼️️\nDescripción: Abiertas y sin usar.\n Tags: DDR4, DDR5, ECC, non-ECC, 1.35V" "ecc" "-"
 
+(* La revisión del 2026-10-13: un kit no es un módulo del total, el part number
+   frente al texto, los precios por unidad y de todos, la garantía negada y las
+   cuentas que no lo son. Casos de la semilla (con su número) y construidos. *)
+let () =
+  let resume entrada esperado =
+    match lee entrada with
+    | Ok j -> if resumen j <> esperado then falla "%S: %s, se esperaba %s" entrada (resumen j) esperado
+    | Error m -> falla "%S: defecto «%s», se esperaba %s" entrada m esperado
+  in
+  let mira entrada k esperado =
+    match lee entrada with
+    | Ok j -> if texto j k <> esperado then falla "%s de %S: %s, se esperaba %s" k entrada (texto j k) esperado
+    | Error m -> falla "%S: defecto %s" entrada m
+  in
+  let defecto entrada = match Memoria_anuncio.aplicar entrada with Error _ -> () | Ok s -> falla "%S debía ser defecto: %s" entrada s in
+  (* Un kit no es un módulo del total: la descripción lo desglosa (#300, #396, #861) o lo dice el part number. *)
+  resume
+    "Título: Crucial 32gb DDR4 RAM\nPrecio: 140\nDescripción: 32GB Crucial DDR4 3200 MHz RAM – 2x16GB – PC4-25600 – UDIMM – CL22\nVerkaufe hier ein 32 GB DDR4 RAM Kit von Crucial, bestehend aus 2x 16 GB Arbeitsspeicher-Modulen."
+    "kit 2x16 ddr4 udimm 3200";
+  resume "Título: DDR4 32GB 3200Mhz Arbeitsspeicher RAM\nPrecio: 150\nDescripción: Verkauft wird dieses 32GB RAM-Kit von Samsung, bestehend aus 2x 16GB DDR4 3200Mhz Modulen."
+    "kit 2x16 ddr4 - 3200";
+  resume "Título: 4 Módulos RAM HyperX 32GB 3200MHz\nPrecio: 180\nDescripción: 4 módulos de 8 GB cada uno. Capacidad total de 32GB." "kit 4x8 ddr4 udimm 3200";
+  resume "Título: Corsair Vengeance LPX 32GB DDR4 3200MHz CL16 CMK32GX4M2E3200C16\nPrecio: 120" "kit 2x16 ddr4 udimm 3200";
+  resume "Título: Kingston FURY Beast 32GB DDR4 3200 KF432C16BBK2/32\nPrecio: 110" "kit 2x16 ddr4 udimm 3200";
+  resume "Título: Crucial 32GB DDR4-3200 UDIMM\nPrecio: 120\nDescripción: Kit de 2x16GB, CT2K16G4DFRA32A" "kit 2x16 ddr4 udimm 3200";
+  resume "Título: Corsair Vengeance RGB PRO 64GB DDR4 3200MHz RAM CMW64GX4M2E3200C16\nPrecio: 400" "kit 2x32 ddr4 udimm 3200";
+  mira "Título: Corsair Vengeance LPX 32GB DDR4 3200MHz CL16 CMK32GX4M2E3200C16\nPrecio: 120" "precioModulo" "60";
+  (* Lo que el título ya desglosa no se relee con la descripción. *)
+  resume "Título: 64GB DDR4 RDIMM (4x 16GB) - Micron - Server / Workstation RAM\nDescripción: Zum Verkauf steht ein gebrauchtes RAM-Konvolut bestehend aus 4 Micron 16GB DDR4-2133 ECC RDIMM-Modulen."
+    "lote 4x16 ddr4 rdimm 2133";
+  (* El part number contra el texto: no se afirma ninguno (#487, #128). *)
+  defecto "Título: 32GB Samsung ECC Server RAM DDR3 M393B1K70CH0-CH9\nPrecio: 25";
+  defecto "Título: Samsung 64GB (2x32GB) DDR4 2400MHz PC4-2400T-LA0-11-MC0 M393A4K40BB1-CRC0Q";
+  (* Un part number de LRDIMM gana a la palabra «RDIMM» (#468); la etiqueta, a la palabra (#705). *)
+  mira "Título: Samsung 64GB DDR4-3200 ECC REG RDIMM Server RAM HMAA8GL7CPR4N-XN\nPrecio: 380" "formato" "lrdimm";
+  mira "Título: 32GB Samsung DDR4 ECC Server RAM 2400 MHz RDIMM M386A4G40DM0-CRC" "formato" "lrdimm";
+  mira "Título: Memoria RAM Micron 8GB PC4-2400T ECC\nDescripción: Tipo: PC4-2400T-RD1-11\nFormato: ECC UDIMM" "formato" "rdimm";
+  mira "Título: 8 GB 2x4 GB Samsung DDR4 3200AA PC4-25600 SO-DIMM" "formato" "sodimm";
+  (* «Dual Rank» es un módulo de dos rangos, no un kit de dos. *)
+  resume "Título: Memoria RAM Samsung 64GB DDR4 3200 RDIMM Dual Rank\nPrecio: 420" "modulo 1x64 ddr4 rdimm 3200";
+  resume "Título: Crucial 32GB DDR4 3200 UDIMM Dual Rank CT32G4DFD832A\nPrecio: 120" "modulo 1x32 ddr4 udimm 3200";
+  (* «Bauform: DIMM» no le quita al part number el ECC ni el registro; el formato manda sobre ellos. *)
+  mira "Título: Samsung 64GB DDR4 3200 Server RAM M393A8G40AB2-CWE\nPrecio: 380\nDescripción: Modell: M393A8G40AB2-CWE\nBauform: DIMM" "ecc" "true";
+  mira "Título: Samsung 64GB DDR4 3200 Server RAM M393A8G40AB2-CWE\nPrecio: 380\nDescripción: Modell: M393A8G40AB2-CWE\nBauform: DIMM" "registrada" "true";
+  mira "Título: SKhynix HP Arbeitsspeicher 16GB DDR4 3200MHz ECC RDIMM Unbuffered" "registrada" "true";
+  (* Precios: por unidad dichos de otras formas, el de todos, el total de «N Stock», y la capacidad no es un precio. *)
+  mira "Título: 8x Samsung 64GB DDR4-3200 ECC REG RDIMM M393A8G40AB2-CWE\nPrecio: 650\nDescripción: 8 Stück X 650€ VB" "precioModulo" "650";
+  mira "Título: 4x 64GB DDR5 4800MHz ECC RDIMM RAM\nPrecio: 1500\nDescripción: 1 St. = 1550€, 2 St. = 3000€, 4 St. = 5800€" "precioModulo" "1550";
+  mira "Título: 4x Kingston DDR3 8GB KTH-PL313/8G RAM\nPrecio: 20\nDescripción: Il prezzo è inteso per ogni singolo banco" "precioModulo" "20";
+  mira "Título: Sk Hynix 64GB DDR4 2RX4 2933Y RAM REG ECC 02 Stock\nPrecio: 800\nDescripción: Dos unidades por 800 €, cada una por 400 €" "precioModulo" "400";
+  mira "Título: SK Hynix 8GB DDR4 2666MHz Módulo RAM\nPrecio: 28\nDescripción: Stock: 2 uds" "precioModulo" "28";
+  let micron = "Título: Micron 64GB DDR4 ECC RAM 2 Stock\nPrecio: 880\nDescripción: Dos módulos de memoria RAM DDR4 ECC de 64GB cada uno.\nMemoria Micron DDR4 64G 2rx4 3200A-RB3-12\n- Capacidad total: 128GB." in
+  resume micron "lote 2x64 ddr4 rdimm 3200";
+  mira micron "precioModulo" "440";
+  mira "Título: 8 Módulos RAM DDR4 64GB 3200 ECC RDIMM (512GB Total) M393A8G40AB2-CWE\nPrecio: 2400\nDescripción: 64GB por módulo. SOLO VENDO LAS 8 A LA VEZ"
+    "precioModulo" "300";
+  mira "Título: Corsair Vengeance RGB PRO 64GB (2x32GB) DDR4-3200 CL16\nPrecio: 400\nDescripción: 10 RGB-LEDs pro Modul" "precioModulo" "200";
+  mira "Título: Pack Memoria RAM 16GB (2x8GB) DDR4 3200MHz Samsung\nPrecio: 115\nDescripción: 65€ --> 1 modulo 8GB 115€ --> 2 modulos 8GB" "precioModulo" "57.5";
+  (* La garantía negada no es garantía (#617). *)
+  mira "Título: DDR 4 32 GB Kingston Fury 3200 MHz\nPrecio: 170\nDescripción: Unter Ausschluß jeglicher Gewährleistung\nDa Privatverkauf keine Garantie" "garantia" "no";
+  (* Lo que no es una cuenta: la organización del chip, «(16x2)», el número de un modelo (#18, #948). *)
+  resume "Título: 8 Arbeitsspeicher (RAM): 32GB Nanya DDR4-2933 CL21 (2Gx4) ECC reg\nPrecio: 190" "lote 8x32 ddr4 rdimm 2933";
+  resume "Título: Kingston Fury DDR4 32GB (16x2) 3200MHz SO-DIMM\nPrecio: 135" "kit 2x16 ddr4 sodimm 3200";
+  resume "Título: Patriot Viper 4 32GB DDR4 3200MHz\nPrecio: 120" "modulo 1x32 ddr4 udimm 3200";
+  (* «ECC: No», «ECC: Nein»: sin ECC (#1194, #66). *)
+  mira "Título: Memoria RAM Crucial 4GB DDR4 2666MHz\nDescripción: Modelo: CT4G4DFS8266. Tipo de módulo: UDIMM, sin búfer. ECC: No" "formato" "udimm";
+  mira "Título: SK Hynix 64GB (4x16GB) DDR4 SD-RAM\nDescripción: Formfaktor: DIMM\nECC: Nein" "ecc" "false";
+  (* Quien compra lo dice a veces solo en la descripción, o en italiano (#140, #1508). *)
+  mira "Título: Server RAM Arbeitsspeicher DDR4 RDIMM, LRDIMM ab 32GB 2666 Speed\nDescripción: Ich suche Speicherriegel ab 32GB" "tipo" "busca";
+  mira "Título: Acquisto RAM Server DDR4 e DDR5" "tipo" "busca";
+  (* Lotes mezclados y capacidades que no son de un módulo (#1168, #1123). *)
+  mira "Título: Lote 7 Módulos RAM SODIMM DDR3 12GB" "iguales" "false";
+  mira "Título: Lote 7 Módulos RAM SODIMM DDR3 12GB" "capacidad" "-";
+  mira "Título: Lote de 14gb de Memorias RAM 1333MHz ddr3" "tipo" "lote";
+  (* La lista de velocidades de una tienda no es la del módulo (#1364). *)
+  mira "Título: Samsung DDR4 32GB ECC RAM 4 Stock\nDescripción: Samsung DDR4 REG ECC 32G 1Rx4\nVelocidades: 2133P/2400T/2666V/2933Y/3200AA/4800/5600/6000" "velocidad" "-";
+  (* Las etiquetas de Kingston con «E»: ECC UDIMM. *)
+  mira "Título: Kingston 32GB DDR4 3200 ECC Unbuffered KTD-PE432E/32G\nPrecio: 120" "formato" "ecc-udimm"
+
 (* Lo que no sabe: defecto. *)
 let () =
   let defecto entrada = match Memoria_anuncio.aplicar entrada with Error _ -> () | Ok s -> falla "%S debía ser defecto: %s" entrada s in
@@ -172,7 +253,8 @@ let () =
   defecto "Título: 32GB 64GB 128GB 256 GB 2666 Mhz SK Hynix Micron DDR4 ECC Ram";
   defecto ""
 
-(* Invariantes: el tipo es uno de los once; fuera de la memoria, sus campos van a null; capacidad × módulos = total. *)
+(* Invariantes: el tipo es uno de los once; fuera de la memoria, sus campos van a null; capacidad × módulos = total;
+   un RDIMM o un LRDIMM es registrado, un UDIMM o un SO-DIMM no. *)
 let () =
   let tipos = [ "modulo"; "kit"; "lote"; "pc"; "portatil"; "servidor"; "placa"; "cpu"; "componente"; "busca"; "otro" ] in
   let formatos = [ "udimm"; "sodimm"; "rdimm"; "lrdimm"; "3ds-rdimm"; "ecc-udimm"; "ecc-sodimm"; "cudimm"; "csodimm"; "camm2"; "mrdimm"; "fbdimm" ] in
@@ -185,11 +267,17 @@ let () =
         if not (List.mem tp tipos) then falla "%S: tipo %s" t tp;
         (match campo j "formato" with `String f when not (List.mem f formatos) -> falla "%S: formato %s" t f | _ -> ());
         if (not (List.mem tp [ "modulo"; "kit"; "lote" ])) && campo j "capacidad" <> `Null then falla "%S: %s con capacidad" t tp;
+        (match (campo j "formato", campo j "registrada") with
+         | `String ("rdimm" | "lrdimm" | "3ds-rdimm"), `Bool false | `String ("udimm" | "ecc-udimm" | "sodimm" | "ecc-sodimm"), `Bool true ->
+           falla "%S: formato y registro no casan" t
+         | _ -> ());
         match (campo j "capacidad", campo j "modulos", campo j "total") with
         | `Int c, `Int k, `Int total when c * k <> total -> falla "%S: %d x %d no es %d" t k c total
         | _ -> ()))
     [ "Corsair Vengeance LPX 64GB (2x32GB) DDR4-3200 CL16"; "HP Z440 Workstation 128GB RAM"; "4× Samsung 64GB DDR4-3200 ECC REG RDIMM";
-      "Lote 11 Memorias RAM DDR2 DDR3 DDR3L DDR4"; "Suche DDR4 RAM"; "16GB DDR3 ECC REG Server-RAM – 4 Stück verfügbar" ]
+      "Lote 11 Memorias RAM DDR2 DDR3 DDR3L DDR4"; "Suche DDR4 RAM"; "16GB DDR3 ECC REG Server-RAM – 4 Stück verfügbar";
+      "Lote 7 Módulos RAM SODIMM DDR3 12GB"; "Corsair Vengeance LPX 32GB DDR4 3200MHz CL16 CMK32GX4M2E3200C16"; "Corsair Vengeance RGB PRO 64GB DDR4 3200MHz RAM CMW64GX4M2E3200C16";
+      "SKhynix HP Arbeitsspeicher 16GB DDR4 3200MHz ECC RDIMM Unbuffered"; "17x RAM Speicher Konvolut 512 MB–4 GB – Retro PC" ]
 
 let () =
   if !fallos > 0 then (

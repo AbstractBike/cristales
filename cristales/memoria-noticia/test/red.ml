@@ -73,6 +73,24 @@ let () =
   comprueba "11.109 Teile, über einen Meter lang: Lego-Rivale Bluebrixx zeigt berühmte DDR‑Lok" ("otro", "otro");
   comprueba "GTA 6: Rockstar gibt neue Einblicke in Jason, Lucia und Leonida" ("otro", "otro")
 
+(* La revisión del 2026-10-13: el precio de un aparato no es el de su memoria;
+   la memoria que adjetiva un aparato («DDR5 gaming PC»), tampoco; la capacidad
+   de un equipo no es la de una fábrica; «Impact» sin marca no es un modelo. *)
+let () =
+  comprueba "A pesar de su alto precio, la Surface Laptop Ultra de Microsoft con 128 GB de RAM se ha agotado en unos días" ("hardware", "otro");
+  comprueba "$899 gets you a fully fledged DDR5 gaming PC in Best Buy's Labor Day sales — save $300 off the iBuypower Slate PC" ("hardware", "otro");
+  comprueba "ASUS ExpertCenter PN55 Review: Ryzen AI 7 450, Dual 2.5GbE, and 64GB of DDR5 in 0.57 Liters" ("hardware", "otro");
+  comprueba "32GB dethrones 16GB as top RAM capacity in gaming rigs despite memory shortage" ("memoria", "mercado");
+  comprueba "CXMT close to matching Micron's memory capacity in 2026, research claims" ("memoria", "fabrica");
+  comprueba "Get 32GB of RAM for only $241 in this 3-item gaming combo from Newegg" ("memoria", "precio");
+  comprueba "DDR5 laptop memory prices surge 6X in 12 months" ("memoria", "precio");
+  (match Memoria_noticia.aplicar "Título: MSI brings DDR4 back to gaming laptops amidst DRAM crisis\nResumen: to reduce the impact of soaring memory prices" with
+   | Ok s -> if lista (Yojson.Safe.from_string s) "modelos" <> [] then falla "«the impact of»: %s" s
+   | Error m -> falla "MSI DDR4: %s" m);
+  match Memoria_noticia.aplicar "Título: Just $284.99 for 32GB of Team T-Create Classic DDR5-6000 RAM is the cheapest going right now" with
+  | Ok s -> if lista (Yojson.Safe.from_string s) "modelos" <> [ "T-Create" ] then falla "T-Create: %s" s
+  | Error m -> falla "T-Create: %s" m
+
 (* Fuera de la memoria, listas vacías y segmento «?»; sin «Título:», el titular entero; «Speicher» solo, defecto. *)
 let () =
   (match Memoria_noticia.aplicar "Título: Seagate CCO says storage price hikes are ‘the new normal’" with

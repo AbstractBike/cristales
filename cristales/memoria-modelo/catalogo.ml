@@ -234,7 +234,10 @@ let samsung ws i =
       let velocidad = velocidad_samsung g suf in
       let toma = if velocidad <> None && not pegado then 2 else 1 in
       let base = String.sub w 0 (min n 12) in
-      let voltaje = if g = Ddr3 && String.length suf > 0 && suf.[0] = 'y' then Some 1.35 else voltaje_jedec g in
+      (* DDR3: 1,35 V con el sufijo «Y…» (DDR3L), 1,5 con otro; sin sufijo, no se sabe. *)
+      let voltaje =
+        if g = Ddr3 then (if String.length suf >= 3 && suf.[0] = 'y' then Some 1.35 else if velocidad <> None then Some 1.5 else None) else voltaje_jedec g
+      in
       let pn = String.uppercase_ascii (if toma = 2 then w ^ "-" ^ suf else w) in
       Some
         ( mk ~fabricante:"samsung" ~generacion:g ~formato:f ~capacidad:mb ?velocidad ?anchura ?voltaje
@@ -489,11 +492,13 @@ let ballistix ws i =
 
 (* --- Kingston: KSM32RD4/64HAR, KVR32N22D8/32, KF432C16BBK2/32, KCP424SD8/16 ---------- *)
 
-(* La capacidad de detrás de la barra: la palabra siguiente («64har», «32», «16g»). *)
+(* La capacidad de detrás de la barra: la palabra siguiente («64har», «32», «16g»);
+   no una cuenta («KSM32RD4 4x64GB»: cuatro de 64, no la barra). *)
 let tras_barra ws i =
   let s = palabra ws (i + 1) in
+  let cuenta = match cifras_desde s 0 with d, j -> d <> "" && j < String.length s && s.[j] = 'x' in
   match numero_inicial s with
-  | Some c when c >= 1 && c <= 512 && String.length s <= 8 -> (Some c, 2)
+  | Some c when c >= 1 && c <= 512 && String.length s <= 8 && not cuenta -> (Some c, 2)
   | _ -> (None, 1)
 
 let rango_letra = function 's' -> Some 1 | 'd' -> Some 2 | 'q' -> Some 4 | _ -> None
@@ -533,7 +538,8 @@ let kvr ws i w =
   let n = String.length w in
   let letras, k = letras_desde w j in
   let cap, toma = tras_barra ws (i + extra) in
-  let capacidad = Option.map gb cap in
+  (* Los de antes (KVR400X64C3A/512, KVR667D2S8P5/256): detrás de la barra van MB si pasa de 64. *)
+  let capacidad = match cap with Some c when String.length v >= 3 && c > 64 -> Some c | c -> Option.map gb c in
   let toma = toma + extra in
   let pn = String.uppercase_ascii (if toma - extra = 2 then w ^ "/" ^ palabra ws (i + extra + 1) else w) in
   let hecho ?formato ?rangos ?anchura ?cas ?voltaje ?registrada ?ecc g vel =
@@ -622,7 +628,8 @@ let kcp ws i w =
 
 (* KTH-PL426/32G, KTD-PE432/64G, KTL-TS421/16G: los de Kingston para los
    servidores de HP (ProLiant), Dell (PowerEdge) y Lenovo (ThinkSystem):
-   RDIMM, con la generación y la velocidad en las cifras. *)
+   RDIMM, con la generación y la velocidad en las cifras; con «E» detrás
+   (KTH-PL432E/32G), ECC UDIMM. *)
 let kingston_oem ws i w =
   let oem = match w with "kth" -> Some "hpe" | "ktd" -> Some "dell" | "ktl" -> Some "lenovo" | "ktm" -> Some "ibm" | _ -> None in
   let s = palabra ws (i + 1) in
@@ -632,10 +639,12 @@ let kingston_oem ws i w =
     let gen = match d.[0] with '3' -> Some Ddr3 | '4' -> Some Ddr4 | '5' -> Some Ddr5 | _ -> None in
     match (gen, if String.length d = 3 then velocidad_corta (int_of_string (String.sub d 1 2)) else None) with
     | Some g, Some vel ->
-      let rangos, anchura = if j + 1 < String.length s then (rango_letra s.[j], anchura_cifra s.[j + 1]) else (None, None) in
+      (* La «E» detrás de la velocidad (KTH-PL432E/32G, KTD-PE426E/16G): ECC UDIMM, no RDIMM. *)
+      let ecc_udimm = j < String.length s && s.[j] = 'e' in
+      let rangos, anchura = if (not ecc_udimm) && j + 1 < String.length s then (rango_letra s.[j], anchura_cifra s.[j + 1]) else (None, None) in
       let cap, toma = tras_barra ws (i + 1) in
       let pn = String.uppercase_ascii (w ^ "-" ^ s ^ if toma = 2 then "/" ^ palabra ws (i + 2) else "") in
-      Some (mk ~fabricante:"kingston" ~oem:o ~generacion:g ~formato:Rdimm ?capacidad:(Option.map gb cap) ~velocidad:vel ?rangos ?anchura ?voltaje:(voltaje_jedec g) pn, toma + 1)
+      Some (mk ~fabricante:"kingston" ~oem:o ~generacion:g ~formato:(if ecc_udimm then Ecc_udimm else Rdimm) ?capacidad:(Option.map gb cap) ~velocidad:vel ?rangos ?anchura ?voltaje:(voltaje_jedec g) pn, toma + 1)
     | _ -> None)
   | _ -> None
 
@@ -727,7 +736,8 @@ let gskill ws i =
 let synology ws i =
   let w = palabra ws i in
   let formato =
-    if empieza w "d4ec" || empieza w "d4eu" then Some Ecc_udimm
+    if empieza w "d4ecso" then Some Ecc_sodimm
+    else if empieza w "d4ec" || empieza w "d4eu" then Some Ecc_udimm
     else if empieza w "d4rd" then Some Rdimm
     else if empieza w "d4es" then Some Ecc_sodimm
     else if empieza w "d4ns" then Some Sodimm
@@ -789,7 +799,8 @@ let oem =
     (* IBM *)
     m ~oem:"ibm" ~gen:Ddr3 ~fmt:Rdimm ~rangos:2 ~anchura:4 ~velocidad:1066 ~voltaje:1.35 "49y1418" "49Y1418" 16;
     m ~oem:"ibm" ~gen:Ddr3 ~fmt:Rdimm ~velocidad:1333 ~voltaje:1.35 "49y1415" "49Y1415" 8;
-    m ~oem:"ibm" ~gen:Ddr3 ~fmt:Rdimm ~rangos:2 ~anchura:8 ~velocidad:1600 ~voltaje:1.35 "00d5038" "00D5038" 8 ]
+    (* Lleva módulos de 1Rx4 y de 2Rx8 según la tirada: sin rangos ni anchura. *)
+    m ~oem:"ibm" ~gen:Ddr3 ~fmt:Rdimm ~velocidad:1600 ~voltaje:1.35 "00d5038" "00D5038" 8 ]
 
 let por_oem ws i =
   let uno = palabra ws i and dos = palabra ws i ^ " " ^ palabra ws (i + 1) in

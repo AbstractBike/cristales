@@ -13,7 +13,9 @@ type especificacion = {
   formato : Catalogo.formato option;
   formato_dicho : bool;  (** El formato lo dice el texto o su etiqueta JEDEC; si no, se ha deducido. *)
   ecc : bool option;
+  ecc_dicho : bool;  (** El ECC lo dice el texto («ECC», «non-ECC»); si no, sale del formato. *)
   registrada : bool option;
+  registrada_dicha : bool;  (** El registro lo dice el texto («REG», «unbuffered»). *)
   capacidad : int option;  (** MB por módulo. *)
   modulos : int option;
   total : int option;  (** MB. *)
@@ -45,9 +47,12 @@ type lectura = {
 val leer : string -> lectura
 (** Pura: lo que dice el texto, sin decidir nada. *)
 
-val combinar : especificacion -> Catalogo.modulo option -> especificacion
+val combinar : ?desglose:bool -> especificacion -> Catalogo.modulo option -> especificacion
 (** La especificación completada con la del part number: el texto manda; el
-    part number da lo que el texto calla (y su formato, al deducido). *)
+    part number da lo que el texto calla (y su formato, al deducido; el de un
+    LRDIMM o un 3DS, siempre), y la cuenta de un kit. [desglose]: el texto
+    desglosa la cuenta («2×16 GB»): no se relee con la capacidad del part
+    number. *)
 
 val sin_repetir : 'a list -> 'a list
 val gb_json : int -> Yojson.Safe.t

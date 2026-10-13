@@ -105,6 +105,8 @@ Kleinanzeigen.
 
 ## Fuera de dominio (defecto)
 
+- El part number contra el texto (otra capacidad, o un formato de otra familia):
+  «el part number M393B1K70CH0-CH9 es de 8 GB y el anuncio dice 32 GB».
 - Memoria sin capacidad en el título ni en la descripción: «no dice la
   capacidad».
 - Una capacidad que puede ser de un módulo o de un kit, sin cuántos («Ddr4
@@ -113,6 +115,46 @@ Kleinanzeigen.
 - Varias capacidades sueltas en el título (una tienda): «varias capacidades:
   16, 32, 64 GB».
 
+
+## Revisión del 2026-10-13
+
+Lo que encontró la revisión de memorias.email sobre la semilla, y cómo se lee
+ahora (los casos, en la red):
+
+- **Un kit no es un módulo del total.** «Crucial 32gb DDR4 RAM» con «2x16GB»
+  en la descripción (#300, #396) es un kit de 2 × 16; «4 Módulos … 32GB» con
+  «4 módulos de 8 GB cada uno» (#861), 4 × 8. El part number de un kit
+  (CMK32GX4M2E3200C16, KF432C16BBK2/32, CT2K16G4DFRA32A) dice la cuenta:
+  «32GB» son los dos. Lo que el título ya desglosa («64GB (4x 16GB)») no se
+  relee con la descripción.
+- **El part number contra el texto, defecto.** Si su capacidad no es la que
+  dice el anuncio (M393B1K70CH0, de 8 GB, en «32GB Samsung … DDR3») o su
+  formato es de otra familia que el dicho (M393 con la etiqueta «LA0»), no se
+  afirma ninguno: «el part number … es de 8 GB y el anuncio dice 32 GB». Un
+  part number de LRDIMM o 3DS gana a la palabra «RDIMM» (#468); la letra de
+  la etiqueta JEDEC, a la palabra («PC4-2400T-RD1» y «Formato: ECC UDIMM»:
+  RDIMM, #705).
+- **El formato manda sobre el ECC y el registro**: un RDIMM es registrado y
+  con ECC aunque diga «Unbuffered»; el ECC deducido de «Bauform: DIMM» no
+  gana al del part number (#464). Un lote mezclado no tiene capacidad por
+  módulo.
+- **Precios.** Por unidad también «8 Stück X 399€» (#185), «1 St. = 1550€»
+  (#167), «gilt für jeweils» (#149), «per ogni singolo banco» (#1470), «cada
+  una por 400 €» (#809, antes que el «800 €» de los dos); «Stock: 2 uds» no
+  es un precio (#900). La capacidad («16 GB pro Riegel», «64GB por módulo») y
+  los LEDs («10 RGB-LEDs pro Modul») no hacen del precio uno por módulo
+  (#460, #1074, #323). El precio de todos («2.000 € für alle vier zusammen»)
+  da el de cada uno comprando el lote; y si el anuncio es un pack más barato
+  por módulo que el precio de uno («65€ 1 módulo, 115€ 2 módulos»), el del
+  pack. «N Stock» con «Capacidad total» de los N y sin precio de cada uno
+  (#1362): un lote de N al precio del anuncio.
+  - Fusión: el anuncio de Langgöns («600 € VB pro Riegel / 2.000 € für alle
+    vier zusammen»), que la red daba a 600 por módulo, ahora da 500: lo que
+    sale cada uno comprando los cuatro, que es lo que se compra.
+- **Garantía negada**: «Unter Ausschluss jeglicher Gewährleistung», «keine
+  Garantie» son `no` aunque luego la nombren (#617).
+- **Compradores**: «Ich suche …» al principio de la descripción, sin que el
+  título diga que vende (#140), y «Acquisto» (#1508).
 
 ---
 

@@ -44,7 +44,7 @@ let almacenamiento =
 let aparato =
   [ "laptop"; "laptops"; "notebook"; "notebooks"; "portatil"; "portatiles"; "macbook"; "mac studio"; "mac mini"; "imac"; "surface";
     "smartphone"; "iphone"; "galaxy"; "pixel"; "phone"; "tablet"; "ipad"; "console"; "ps5"; "xbox"; "switch"; "steam deck"; "steam machine";
-    "mini pc"; "workstation"; "gpu"; "gpus"; "graphics card"; "grafikkarte"; "rtx"; "radeon"; "geforce"; "rdna"; "accelerator"; "chip";
+    "mini pc"; "expertcenter"; "nuc"; "workstation"; "gpu"; "gpus"; "graphics card"; "grafikkarte"; "rtx"; "radeon"; "geforce"; "rdna"; "accelerator"; "chip";
     "maia"; "crescent island"; "gorgon"; "strix halo"; "raspberry"; "gaming pc"; "prebuilt"; "handheld"; "vram"; "gddr6"; "gddr6x"; "gddr7" ]
 
 (* Lo que hace de la noticia de un aparato una de memoria: su precio, su escasez. *)
@@ -76,9 +76,9 @@ let tipos =
     ("precio",
      [ "price"; "prices"; "pricing"; "priced"; "cost"; "costs"; "deal"; "deals"; "discount"; "sale"; "cheapest"; "cheaper"; "expensive";
        "off"; "cheap"; "precio"; "precios"; "preis"; "preise"; "teurer"; "gunstiger"; "spot"; "contract prices"; "price hike"; "hikes"; "abnormally";
-       "oferta"; "ofertas"; "rebaja"; "angebot"; "euro"; "euros"; "dollar"; "free"; "savings"; "barato"; "barata"; "coste"; "costo" ]);
+       "oferta"; "ofertas"; "rebaja"; "angebot"; "euro"; "euros"; "dollar"; "free"; "savings"; "barato"; "barata"; "coste"; "costo"; "for only" ]);
     ("fabrica",
-     [ "fab"; "fabs"; "plant"; "factory"; "wafer"; "wafers"; "mass production"; "production"; "risk production"; "capacity"; "breaks ground";
+     [ "fab"; "fabs"; "plant"; "factory"; "wafer"; "wafers"; "mass production"; "production"; "risk production"; "production capacity"; "wafer capacity"; "capacity expansion"; "memory capacity"; "dram capacity"; "breaks ground";
        "strike"; "fabrica"; "werk"; "fertigung"; "produktion"; "yield"; "euv"; "process tech"; "12nm"; "1c"; "1 gamma"; "node"; "nodes";
        "manufacturing"; "produccion"; "toxic gas"; "fire" ]);
     ("mercado",
@@ -144,8 +144,22 @@ let tema ws =
   let empresa = T.hay ws empresas_memoria in
   let p_mem = primera [ pos memoria; p_gen; pos memoria_debil ] in
   let p_aparato = pos aparato in
-  (* El aparato va antes que la memoria y la noticia no es de su precio: va del aparato. *)
-  let de_aparato = (match (p_aparato, p_mem) with Some a, Some m -> a < m | Some _, None -> true | None, _ -> false) && not (T.hay ws mercado_memoria) in
+  (* El precio o la escasez de la memoria: la palabra junto a la de la memoria («precios de la RAM», «RAM
+     prices», «DDR5 shortage»), no la del aparato («a pesar de su alto precio, la Surface Laptop … con 128 GB
+     de RAM»). *)
+  let n = Array.length ws in
+  let de_memoria i = List.exists (T.encaja ws i) memoria || List.exists (T.encaja ws i) memoria_debil || List.mem ws.(i) gens in
+  let mercado_de_la_memoria =
+    List.exists
+      (fun i -> List.exists (T.encaja ws i) mercado_memoria && List.exists (fun d -> i + d >= 0 && i + d < n && de_memoria (i + d)) [ -3; -2; -1; 1; 2; 3 ])
+      (List.init n Fun.id)
+  in
+  (* El aparato va antes que la memoria, o justo detrás de ella («DDR5 gaming PC»), y la noticia no es del
+     precio de la memoria: va del aparato. *)
+  let de_aparato =
+    (match (p_aparato, p_mem) with Some a, Some m -> a < m || a <= m + 2 | Some _, None -> true | None, _ -> false)
+    && not mercado_de_la_memoria
+  in
   let de_disco = T.hay ws almacenamiento in
   let solo_speicher = debil && (not fuerte) && T.hay ws [ "speicher" ] && not (T.hay ws [ "memory"; "memories"; "memoria"; "memorias" ]) in
   if T.hay ws fuera then Some "otro"
@@ -191,9 +205,11 @@ let aplicar entrada : (string, string) result =
         @ List.filter_map (fun (w, m) -> if T.hay todo [ w ] then Some m else None) otras_marcas
       in
       let gens = generaciones todo in
-      let modelos =
-        sin_repetir (List.map (fun ((m : Catalogo.modulo), _) -> m.pn) lr.modulos @ lr.lineas)
-      in
+      (* Las líneas que son palabras corrientes («Impact», «Elite», «Shadow»), solo con una marca de memoria:
+         «the impact of soaring memory prices» no es la Fury Impact. *)
+      let corrientes = [ "Impact"; "Elite"; "Shadow"; "Delta"; "Ares"; "Predator"; "Lancer"; "Redline"; "Game Pro"; "Fury" ] in
+      let lineas = List.filter (fun l -> marcas <> [] || not (List.mem l corrientes)) lr.lineas in
+      let modelos = sin_repetir (List.map (fun ((m : Catalogo.modulo), _) -> m.pn) lr.modulos @ lineas) in
       let nuevos = sin_repetir (List.filter (fun w -> List.mem w por_venir) (Array.to_list todo) @ lt.desconocidos) in
       let lista xs = `List (List.map (fun s -> `String s) (if dentro then xs else [])) in
       Ok

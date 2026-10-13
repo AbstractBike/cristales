@@ -110,6 +110,31 @@ TRX40, WRX80, WRX90).
   Es la semilla de la versión siguiente.
 
 
+## Revisión del 2026-10-13
+
+- El part number de un kit se reconcilia con el texto: «32GB …
+  CMK32GX4M2E3200C16» son 2 × 16; «64GB … M393A4K40CB2» (de 32), sin decir
+  cuántos, 2 × 32. El ECC y el registro que el texto dice mandan; los que
+  solo deduce (de «DIMM», de una línea de juego) ceden ante los del part
+  number. Un part number de LRDIMM o 3DS gana al formato dicho; la letra de
+  la etiqueta JEDEC gana a la palabra («RD1» frente a «ECC UDIMM»), y no es
+  etiqueta «PC4» detrás de «3200AA».
+- «Dual Rank» es un módulo de dos rangos, no un kit de dos.
+- «ECC: Nein», «ECC: No», «ECC: No disponible»: sin ECC (no «ECC no
+  registrada», que es ECC).
+- No son cuentas la organización del chip («(2Gx4)»), el número de un modelo
+  («Aegis 5», «Viper 4», «Pi 4»), ni «(16x2)» junto a 32 GB (dos de 16). Una
+  capacidad que no es la de ningún módulo («7 Módulos … 12GB», «Lote de
+  14gb») es el total de un lote mezclado.
+- La lista de velocidades de una tienda («Velocidades: 2133P/2400T/…») no es
+  la del módulo.
+- Catálogo: KTH-/KTD-/KTL-…E (KTD-PE432E/32G) son ECC UDIMM; Synology D4ECSO,
+  ECC SO-DIMM; «/512» de un KVR de DDR o DDR2 son MB; «KSM32RD4 4x64GB» es la
+  cuenta, no la capacidad tras la barra; IBM 00D5038, sin rangos ni anchura
+  (lleva módulos distintos); un Samsung DDR3 sin sufijo, sin voltaje. Sin
+  resolver: HPE P03053-0A1 como 3200 (un anuncio lo da como 2933 junto a
+  P00930-B21); se deja hasta tener una fuente.
+
 ---
 
 © 2026 Silvio Macías Sánchez. Todos los derechos reservados. Libre para investigación y docencia sin ánimo de lucro, citando al autor; para uso comercial, escríbeme a silvio.macias.sanchez@abstract.bike o info@abstractarchitectures.ltd. Ver [COPYRIGHT.md](../../COPYRIGHT.md).

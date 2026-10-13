@@ -122,10 +122,10 @@ let partes entrada =
 
 let busca =
   [ "busco"; "compro"; "buscando"; "suche"; "sucht"; "suchen"; "gesucht"; "gesuch"; "ankauf"; "kaufe"; "wtb"; "cerco"; "procuro";
-    "compramos"; "wir kaufen"; "we buy"; "interesado"; "interesada"; "precio mas alto"; "looking for"; "compro tu" ]
+    "compramos"; "wir kaufen"; "we buy"; "interesado"; "interesada"; "precio mas alto"; "looking for"; "compro tu"; "acquisto"; "acquistiamo" ]
 
 let ram =
-  [ "ram"; "rams"; "memoria"; "memorias"; "memorie"; "arbeitsspeicher"; "arbeitspeicher"; "speicher"; "serverspeicher"; "ramspeicher";
+  [ "ram"; "rams"; "memoria"; "memorias"; "memorie"; "memorram"; "arbeitsspeicher"; "arbeitspeicher"; "speicher"; "serverspeicher"; "ramspeicher";
     "speicherriegel"; "ramriegel"; "riegel"; "speichermodul"; "premier"; "modul"; "module"; "modulo"; "modulos"; "moduli"; "dimm"; "dimms"; "udimm";
     "rdimm"; "lrdimm"; "sodimm"; "so dimm"; "memory"; "banchi"; "simm"; "edo"; "sdram"; "ramkit"; "sd ram" ]
 
@@ -359,6 +359,9 @@ let estado (a : anuncio) =
 let tri = function G.Si -> "si" | G.No -> "no" | G.No_dice -> "?"
 
 let garantia = [ "garantia"; "garantie"; "warranty"; "garanzia"; "gewahrleistung"; "herstellergarantie" ]
+let sin_garantia =
+  [ "ausschluss jeglicher"; "unter ausschluss"; "keine garantie"; "keine gewahrleistung"; "ohne garantie"; "ohne gewahrleistung"; "sin garantia";
+    "senza garanzia"; "no garantia"; "no doy garantia"; "without warranty"; "no warranty"; "kein garantie"; "keine rucknahme" ]
 let factura = [ "factura"; "rechnung"; "invoice"; "fattura"; "ticket de compra"; "kaufbeleg"; "receipt"; "kassenbon"; "mwst"; "iva" ]
 let cambio = [ "cambio"; "cambiaria"; "intercambio"; "tausch"; "tausche"; "swap"; "trade"; "scambio"; "troca" ]
 let envio = [ "envio"; "envios"; "envio gratis"; "versand"; "versandkostenfrei"; "spedizione"; "spedisco"; "shipping"; "envoi"; "porto"; "dhl"; "hermes"; "correos"; "seur" ]
@@ -409,20 +412,27 @@ let divisible_texto todo = if G.contiene todo divisible_no then "no" else if G.d
 (* El precio por módulo que dice el texto: «55€/ud», «600 € VB pro Riegel», «Festpreis / Stk. 400,-», «350 €/u». *)
 let por_unidad = [ "ud"; "uds"; "u"; "unidad"; "stk"; "stuck"; "riegel"; "modul"; "module"; "cada"; "each"; "pz"; "pezzo"; "unit"; "piece"; "stick" ]
 let marca_unidad = [ "pro"; "por"; "per"; "je"; "cada"; "each"; "a" ]
+let monedas = [ "eur"; "euro"; "euros"; "e" ]
+
+(* Las piezas de una cuenta: «8 Stück X 399€», «1 St. = 1550€». *)
+let piezas = [ "stuck"; "stk"; "st"; "uds"; "unidades"; "unidad"; "ud"; "pcs"; "pc"; "pz"; "pezzi"; "modulos"; "modulo"; "riegel"; "units"; "unit"; "piece"; "pieces" ]
+
+(** Un precio en la palabra [i]: «400», «5,50» (la coma decimal queda como «d»:
+    «5d50»), «2.000» («2d000»: el punto de los miles). *)
+let valor ws i =
+  if i < 0 || i >= Array.length ws then None
+  else
+    match T.trozos ws.(i) with
+    | [ d ] when C.todo_cifras d && String.length d <= 5 -> float_of_string_opt d
+    | [ a; "d"; b ] when C.todo_cifras a && C.todo_cifras b && String.length a <= 5 && String.length b <= 2 -> float_of_string_opt (a ^ "." ^ b)
+    | [ a; "d"; b ] when C.todo_cifras a && C.todo_cifras b && String.length a <= 2 && String.length b = 3 -> float_of_string_opt (a ^ b)
+    | _ -> None
 
 let precio_dicho todo =
   let ws = T.palabras todo in
   let n = Array.length ws in
-  (* «400», «5,50» (la coma decimal queda como «d»: «5d50»). *)
-  let valor i =
-    if i < 0 || i >= n then None
-    else
-      match T.trozos ws.(i) with
-      | [ d ] when C.todo_cifras d && String.length d <= 5 -> float_of_string_opt d
-      | [ a; "d"; b ] when C.todo_cifras a && C.todo_cifras b && String.length a <= 5 && String.length b <= 2 -> float_of_string_opt (a ^ "." ^ b)
-      | _ -> None
-  in
-  let es_precio i = valor i <> None in
+  let es_precio i = valor ws i <> None in
+  let palabra i = if i >= 0 && i < n then ws.(i) else "" in
   let rec mira i =
     if i >= n then None
     else
@@ -437,24 +447,79 @@ let precio_dicho todo =
             | ("eur" | "euro" | "euros" | "e" | "vb") :: m :: u :: _ when List.mem m marca_unidad && List.mem u por_unidad -> true
             | ("eur" | "euro" | "euros" | "e") :: "vb" :: m :: u :: _ when List.mem m marca_unidad && List.mem u por_unidad -> true
             | m :: u :: _ when List.mem m marca_unidad && List.mem u por_unidad -> true
-            | u :: _ when List.mem u [ "ud"; "uds" ] -> true
             | _ -> false
           in
-          if unidad then valor i else None
-        else if List.mem w [ "stk"; "stuck" ] && i > 0 && List.mem ws.(i - 1) [ "pro"; "je"; "festpreis" ] && es_precio (i + 1) then valor (i + 1)
+          (* «8 Stück X 399€»: la cuenta, «x» y el precio de cada una. *)
+          let por_pieza = palabra (i - 1) = "x" && List.mem (palabra (i - 2)) piezas && List.mem (palabra (i + 1)) monedas in
+          (* «1 St. = 1550€», «1 ud 90 €»: el precio de una (no «20€ 1 unidad 120€ 8 unidades»). *)
+          let de_una =
+            (palabra (i - 2) = "1" && List.mem (palabra (i - 1)) piezas && List.mem (palabra (i + 1)) monedas && not (List.mem (palabra (i - 3)) monedas))
+            (* «20€ 1 unidad», «30 € la unidad» *)
+            || (List.mem (palabra (i + 1)) monedas && List.mem (palabra (i + 2)) [ "1"; "la"; "por" ] && List.mem (palabra (i + 3)) piezas)
+          in
+          if unidad || por_pieza || de_una then valor ws i else None
+        else if List.mem w [ "stk"; "stuck" ] && i > 0 && List.mem ws.(i - 1) [ "pro"; "je"; "festpreis" ] && es_precio (i + 1) then valor ws (i + 1)
         (* «Precio unitario: 90 €», «Stückpreis 400» *)
-        else if List.mem w [ "unitario"; "unitaria"; "stuckpreis"; "einzelpreis"; "cadauno" ] && es_precio (i + 1) then valor (i + 1)
+        else if List.mem w [ "unitario"; "unitaria"; "stuckpreis"; "einzelpreis"; "cadauno" ] && es_precio (i + 1) then valor ws (i + 1)
         else None
       in
       match r with Some _ -> r | None -> mira (i + 1)
   in
+  (* «cada una por 400 €», «cada uno a 50 €», «je 400 €», «jeweils 35 €», «each for 400 €»: la unidad
+     delante, antes que nada («Dos unidades por 800 €, cada una por 400 €»: 400). *)
+  let rec delante i =
+    if i >= n then None
+    else
+      let w = ws.(i) in
+      let r =
+        if List.mem w [ "je"; "jeweils" ] && es_precio (i + 1) && List.mem (palabra (i + 2)) monedas then valor ws (i + 1)
+        else if List.mem w [ "cada"; "each" ] then
+          let k = if List.mem (palabra (i + 1)) [ "una"; "uno"; "one"; "modulo"; "unidad"; "stick"; "piece" ] then i + 2 else i + 1 in
+          if List.mem (palabra k) [ "por"; "a"; "for"; "at"; "zu" ] && es_precio (k + 1) && List.mem (palabra (k + 2)) monedas then valor ws (k + 1) else None
+        else None
+      in
+      match r with Some _ -> r | None -> delante (i + 1)
+  in
+  match delante 0 with Some p -> Some p | None -> mira 0
+
+(* «2.000 € für alle vier zusammen», «1.800 € los cuatro juntos», «el lote por 900 €»: el precio de todos. *)
+let juntos = [ "alle"; "zusammen"; "komplett"; "todos"; "todas"; "juntos"; "juntas"; "junto"; "lote"; "all"; "together"; "tutti"; "insieme"; "conjunto" ]
+
+let precio_lote todo =
+  let ws = T.palabras todo in
+  let n = Array.length ws in
+  let rec mira i =
+    if i >= n then None
+    else
+      match valor ws i with
+      | Some v when i + 1 < n && List.mem ws.(i + 1) monedas && List.exists (fun d -> i + d < n && List.mem ws.(i + d) juntos) [ 2; 3; 4 ] -> Some v
+      | _ -> mira (i + 1)
+  in
   mira 0
 
+(* Frases que dicen que el precio es el de un módulo. La de una capacidad («16 GB pro
+   Riegel», «64GB por módulo») o la de unos LEDs («10 RGB-LEDs pro Modul») no. *)
+let frases_por_unidad =
+  [ "price for 1"; "price per module"; "price per unit"; "price per piece"; "price each"; "preis pro modul"; "preis pro stuck"; "preis pro riegel";
+    "preis je"; "pro modul"; "pro riegel"; "pro stuck"; "je stuck"; "per module"; "per stick"; "precio por unidad"; "precio por modulo"; "precio unidad";
+    "precio unitario"; "por unidad"; "por modulo"; "a unidad"; "la unidad"; "stuckpreis"; "einzelpreis"; "prezzo cadauno"; "cadauno";
+    "gilt fur jeweils"; "fur jeweils"; "per ogni singolo"; "ogni singolo"; "precio individual"; "precio es unitario"; "precio es por unidad";
+    "precio es por modulo"; "inteso per ogni" ]
+
 let precio_es_por_unidad todo =
-  G.contiene todo
-    [ "price for 1"; "price per module"; "price per unit"; "price per piece"; "price each"; "preis pro modul"; "preis pro stuck"; "preis pro riegel";
-      "preis je"; "pro modul"; "pro riegel"; "pro stuck"; "per module"; "per stick"; "precio por unidad"; "precio por modulo"; "precio unidad";
-      "precio unitario"; "por unidad"; "por modulo"; "a unidad"; "la unidad"; "stuckpreis"; "einzelpreis"; "prezzo cadauno"; "cadauno" ]
+  let ws = T.palabras todo in
+  let n = Array.length ws in
+  let de_capacidad i =
+    i > 0
+    && (let w = ws.(i - 1) in
+        List.mem w [ "gb"; "mb"; "tb"; "gib"; "g"; "led"; "leds" ]
+        || match T.trozos w with [ d; u ] -> C.todo_cifras d && List.mem u [ "gb"; "mb"; "tb"; "gib"; "g"; "leds" ] | _ -> false)
+  in
+  List.exists
+    (fun f ->
+      let rec mira i = i < n && ((T.encaja ws i f && not (de_capacidad i)) || mira (i + 1)) in
+      mira 0)
+    frases_por_unidad
 
 (* --- leer ------------------------------------------------------------------------------- *)
 
@@ -463,31 +528,57 @@ let fabricante_de (l : lectura) (pn : C.modulo option) =
   | Some m when not (List.mem m.fabricante C.oems) -> Some m.fabricante
   | _ -> List.find_opt (fun m -> not (List.mem m C.oems)) l.marcas
 
+(* Las cuentas con capacidad de unas palabras («2x16GB», «2 x 16 GB»), y la capacidad «de cada uno» («de 8 GB cada uno»). *)
+let productos ws = let _, ps, _, _ = T.leer_tokens ws in List.filter (fun (p : T.producto) -> p.c > 0) ps
+let de_cada ws = let cs, _, _, _ = T.leer_tokens ws in List.find_map (fun (c : T.cantidad) -> if c.cada then Some c.mb else None) cs
+
 (** Lo que el título calla, de la descripción: la generación, el formato, la
-    velocidad, los rangos; la cuenta solo si el título no dice capacidad. *)
-let completar (t : especificacion) (d : especificacion) =
+    velocidad, los rangos; la cuenta solo si el título no dice capacidad, o si
+    la descripción desglosa la capacidad del título («Crucial 32gb DDR4» y
+    «2x16GB»: un kit de dos de 16). *)
+let completar ?(ws_t = [||]) ?(ws_d = [||]) (t : especificacion) (d : especificacion) =
   let o a b = match a with Some _ -> a | None -> b in
   let sin_cuenta = t.capacidad = None && t.total = None in
   (* El formato dicho en el título; si no, el dicho en la descripción; si no, el deducido. *)
   let formato, formato_dicho =
     if t.formato_dicho then (t.formato, true) else if d.formato_dicho then (d.formato, true) else (o t.formato d.formato, false)
   in
+  (* El ECC y el registro del título; si no, los de la descripción (y si los dice o los deduce). *)
+  let ecc, ecc_dicho = match t.ecc with Some _ -> (t.ecc, t.ecc_dicho) | None -> (d.ecc, d.ecc_dicho) in
+  let registrada, registrada_dicha = match t.registrada with Some _ -> (t.registrada, t.registrada_dicha) | None -> (d.registrada, d.registrada_dicha) in
   let total = if sin_cuenta then d.total else t.total in
   let modulos =
     match t.modulos with Some _ -> t.modulos | None -> if sin_cuenta || (t.total <> None && d.total = t.total) then d.modulos else None
   in
-  (* «64GB» en el título y «2 x 32 GB» en la descripción: dos de 32. *)
+  (* «64GB» en el título y «2 x 32 GB» en la descripción: dos de 32 (en un lote mezclado, ninguna). *)
+  let iguales = if sin_cuenta then o t.iguales d.iguales else match t.iguales with Some _ -> t.iguales | None -> if modulos = d.modulos then d.iguales else None in
   let capacidad =
     match ((if sin_cuenta then d.capacidad else t.capacidad), total, modulos) with
-    | None, Some t, Some k when k > 0 && t mod k = 0 -> Some (t / k)
+    | None, Some t, Some k when k > 0 && t mod k = 0 && iguales <> Some false -> Some (t / k)
     | c, _, _ -> c
   in
-  {
+  let capacidad, total, modulos, desglosado =
+    match (t.capacidad, t.total, t.modulos) with
+    (* «Crucial 32gb DDR4 RAM» y, en la descripción, «2x16GB»: un kit de dos de 16. *)
+    | Some c, None, None -> (
+      match productos ws_d with
+      | p :: _ when p.n >= 2 && p.n * p.c = c -> (Some p.c, Some c, Some p.n, true)
+      | _ -> (capacidad, total, modulos, false))
+    (* «4 Módulos … 32GB» (la cuenta y la capacidad sueltas) y «4 módulos de 8 GB cada uno»: los 32 son de los cuatro. *)
+    | Some c, _, Some k when k >= 2 && productos ws_t = [] -> (
+      match de_cada ws_d with
+      | Some dc when k * dc = c -> (Some dc, Some c, Some k, true)
+      | _ -> (capacidad, total, modulos, false))
+    | _ -> (capacidad, total, modulos, false)
+  in
+  ( {
     generacion = o t.generacion d.generacion;
     formato;
     formato_dicho;
-    ecc = o t.ecc d.ecc;
-    registrada = o t.registrada d.registrada;
+    ecc;
+    ecc_dicho;
+    registrada;
+    registrada_dicha;
     velocidad = o t.velocidad d.velocidad;
     cas = o t.cas d.cas;
     rangos = o t.rangos d.rangos;
@@ -497,9 +588,10 @@ let completar (t : especificacion) (d : especificacion) =
     total;
     modulos;
     (* Si el título dice cuánto, la descripción no lo mezcla. *)
-    iguales = (if sin_cuenta then o t.iguales d.iguales else t.iguales);
+    iguales = (if desglosado then Some true else iguales);
     disponibles = o t.disponibles d.disponibles;
-  }
+  },
+    desglosado )
 
 
 (* La memoria del anuncio: lo que dice el título, completado con la
@@ -512,20 +604,65 @@ let memoria_de (a : anuncio) =
   let ws = palabras_titulo a.titulo in
   (* El part number del título; si no, el de la descripción, si da uno solo. *)
   let pn = match (lt.modulos, ld) with (m, _) :: _, _ -> Some m | [], Some { modulos = [ (m, _) ]; _ } -> Some m | _ -> None in
-  let esp = match ld with Some d -> completar lt.especificacion d.especificacion | None -> lt.especificacion in
+  let ws_t = T.palabras a.titulo in
+  let esp, desglosado = match ld with Some d -> completar ~ws_t ~ws_d:(T.palabras a.descripcion) lt.especificacion d.especificacion | None -> (lt.especificacion, false) in
   (* Un lote mezclado lo es antes de mirar el part number: su capacidad no es la de ese módulo. *)
   let esp = if List.length lt.generaciones >= 2 || T.hay ws mezcla then { esp with iguales = Some false } else esp in
-  let esp = combinar esp pn in
+  let esp = combinar ~desglose:(desglosado || productos ws_t <> []) esp pn in
+  (* «Micron 64GB … 2 Stock», 880 €, y «Capacidad total: 128GB» (dos de 64) sin precio de cada uno: el
+     precio es el de los dos, que se venden juntos. *)
+  let esp =
+    match (lt.especificacion, ld) with
+    | { capacidad = Some c; modulos = None; total = None; disponibles = Some k; _ }, Some _
+      when k >= 2 && k <= 4 && esp.capacidad = Some c
+           && (let cs, _, _, _ = T.leer_tokens (T.palabras a.descripcion) in List.exists (fun (q : T.cantidad) -> q.total && q.mb = k * c) cs)
+           && precio_dicho (a.titulo ^ "\n" ^ a.descripcion) = None
+           && not (precio_es_por_unidad (a.titulo ^ "\n" ^ a.descripcion)) ->
+      { esp with modulos = Some k; total = Some (k * c); disponibles = None; iguales = Some true }
+    | _ -> esp
+  in
   (* El ECC del texto sobre un formato sin ECC: «UDIMM ECC». *)
   let esp = match (esp.formato, esp.ecc) with Some f, Some true -> { esp with formato = Some (C.con_ecc f) } | _ -> esp in
+  (* El formato manda sobre el ECC y el registro («ECC RDIMM Unbuffered»: registrado): un RDIMM es
+     registrado y con ECC; un UDIMM, sin registro. *)
+  let segun deduce v = match Option.bind esp.formato deduce with Some b -> Some b | None -> v in
+  let esp = { esp with ecc = segun C.ecc_de esp.ecc; registrada = segun C.registrada_de esp.registrada } in
+  (* Un lote mezclado no tiene una capacidad de cada módulo. *)
+  let esp = if esp.iguales = Some false then { esp with capacidad = None } else esp in
   { lt; esp; pn; ws }
 
 let gb_texto mb = Yojson.Safe.to_string (gb_json mb)
 
+(* Lo que dice el anuncio contra lo que dice su part number (la capacidad, o un
+   formato dicho de otra familia: «UDIMM» y un RDIMM, «LRDIMM» y un M393): no se
+   afirma ninguno. *)
+let contradiccion { esp; pn; _ } =
+  let familia = function
+    | C.Udimm | C.Ecc_udimm | C.Cudimm -> "udimm"
+    | C.Sodimm | C.Ecc_sodimm | C.Csodimm -> "sodimm"
+    | f -> C.formato_texto f
+  in
+  match pn with
+  | Some p when esp.iguales <> Some false -> (
+    match ((p : C.modulo).capacidad, esp.capacidad, p.formato, esp.formato) with
+    | Some pc, Some c, _, _ when pc <> c -> Some (Printf.sprintf "el part number %s es de %s GB y el anuncio dice %s GB" p.pn (gb_texto pc) (gb_texto c))
+    | _, _, Some pf, Some f when familia pf <> familia f ->
+      Some (Printf.sprintf "el part number %s es %s y el anuncio dice %s" p.pn (C.formato_texto pf) (C.formato_texto f))
+    | _ -> None)
+  | _ -> None
+
 (** Lo que es y, si es memoria, cuántos módulos y de cuánto (o el defecto). *)
+(* «Ich suche Speicherriegel ab 32GB» al principio de la descripción, y el título no dice que vende: un comprador. *)
+let busca_al_principio (a : anuncio) =
+  let ws = T.palabras a.descripcion in
+  let principio = Array.sub ws 0 (min 8 (Array.length ws)) in
+  T.hay principio [ "suche"; "busco"; "compro"; "cerco"; "acquisto"; "kaufe"; "compramos"; "wir kaufen"; "we buy"; "looking for"; "wtb" ]
+  && not (T.hay (T.palabras a.titulo) ([ "verkaufe"; "verkauf"; "vendo"; "venta"; "vendita"; "vendesi"; "sale"; "biete" ] @ cambio))
+
 let decidir (a : anuncio) =
   match que_es a (leer a.titulo) with
   | t when not (es_memoria t) -> (Decide t, None)
+  | _ when busca_al_principio a -> (Decide Busca, None)
   | _ ->
     let m = memoria_de a in
     let { lt; esp; ws; _ } = m in
@@ -536,6 +673,9 @@ let decidir (a : anuncio) =
         Defecto ("varias capacidades: " ^ String.concat ", " (List.map gb_texto lt.varias) ^ " GB")
       else if esp.iguales = Some false then Decide Lote
       else
+        match contradiccion m with
+        | Some motivo -> Defecto motivo
+        | None ->
         match (esp.modulos, esp.capacidad, esp.total) with
         | Some 1, None, _ when de_lote -> Decide Lote
         | Some 1, Some _, _ -> Decide Modulo
@@ -575,7 +715,9 @@ let con_disipador =
 let json (a : anuncio) (t : tipo) (m : memoria option) : Yojson.Safe.t =
   (* Plegado una vez: las búsquedas de palabras no lo repiten. *)
   let todo = G.pliega (a.titulo ^ "\n" ^ a.descripcion) in
-  let estado = estado a and garantia = tri (G.dice ~negaciones todo garantia) and factura = tri (G.dice ~negaciones todo factura) in
+  let estado = estado a and factura = tri (G.dice ~negaciones todo factura) in
+  (* «Unter Ausschluss jeglicher Gewährleistung», «keine Garantie oder Gewährleistung»: no, aunque luego la nombre. *)
+  let garantia = if G.contiene todo sin_garantia then "no" else tri (G.dice ~negaciones todo garantia) in
   let envio = envio_texto todo and cambio = tri (G.dice ~negaciones a.titulo cambio) in
   let comunes = [ ("estado", str estado); ("garantia", str garantia); ("factura", str factura); ("envio", str envio); ("cambio", str cambio); ("precio", opt numero a.precio) ] in
   let campos =
@@ -591,10 +733,20 @@ let json (a : anuncio) (t : tipo) (m : memoria option) : Yojson.Safe.t =
       in
       let precio_modulo =
         match (precio_dicho (a.titulo ^ "\n" ^ a.descripcion), a.precio, modulos) with
+        (* «65€ 1 módulo, 115€ 2 módulos» y 115 en el portal: lo anunciado es el pack, y sale más barato por módulo. *)
+        | Some p, Some precio, Some k when k >= 1 && precio <> p && precio /. float_of_int k < p && precio /. float_of_int k >= p /. 2. ->
+          Some (precio /. float_of_int k)
         | Some p, _, _ -> Some p
         | None, Some p, _ when precio_es_por_unidad todo -> Some p
         | None, Some p, Some k when k >= 1 -> Some (p /. float_of_int k)
         | _ -> None
+      in
+      (* «600 € pro Riegel» y «2.000 € für alle vier zusammen»: comprando el lote, lo que sale cada uno. *)
+      let precio_modulo =
+        let k = float_of_int (Option.value ~default:1 modulos) in
+        match (precio_modulo, precio_lote (a.titulo ^ "\n" ^ a.descripcion)) with
+        | Some p, Some l when k >= 2. && l > p && l /. k < p && l /. k >= p /. 2. -> Some (l /. k)
+        | pm, _ -> pm
       in
       [ ("modulos", opt (fun k -> `Int k) modulos);
         ("disponibles", opt (fun k -> `Int k) esp.disponibles);

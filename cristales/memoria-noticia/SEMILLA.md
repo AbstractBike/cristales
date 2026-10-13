@@ -80,6 +80,19 @@ hardware y 341 de otra cosa.
   «no sé si va de memoria o de almacenamiento».
 
 
+## Revisión del 2026-10-13
+
+- El precio de un aparato no hace de su noticia una de memoria: solo el
+  precio o la escasez junto a la memoria («precios de la RAM», «DDR5
+  shortage»); «A pesar de su alto precio, la Surface Laptop … con 128 GB de
+  RAM» es hardware. La memoria que adjetiva un aparato («DDR5 gaming PC»)
+  tampoco; «ExpertCenter» y «NUC» son aparatos.
+- «capacity» solo es de una fábrica con «production», «wafer», «memory» o
+  «DRAM» delante («top RAM capacity in gaming rigs» no).
+- Las líneas que son palabras corrientes («Impact», «Elite», «Shadow»…), solo
+  con una marca de memoria en el titular o el resumen.
+- «for only» es un precio.
+
 ---
 
 © 2026 Silvio Macías Sánchez. Todos los derechos reservados. Libre para investigación y docencia sin ánimo de lucro, citando al autor; para uso comercial, escríbeme a silvio.macias.sanchez@abstract.bike o info@abstractarchitectures.ltd. Ver [COPYRIGHT.md](../../COPYRIGHT.md).

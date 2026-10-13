@@ -196,7 +196,11 @@ let letra_formato = function
 let formato_de_etiqueta ws =
   let n = Array.length ws in
   let es_grado w = match trozos w with [ d; g ] when es_numero d && List.mem g grados -> int_of_string_opt d |> Option.fold ~none:false ~some:(fun v -> List.mem v todas_las_velocidades) | _ -> false in
-  let codigo w = String.length w >= 1 && String.length w <= 4 && es_letra w.[0] && (String.length w = 1 || es_letra w.[1] || es_cifra w.[1]) in
+  (* «RB2», «SA2», «LD2», «R»; no «PC4» ni «DDR4» (otra etiqueta detrás: «3200AA PC4-25600»). *)
+  let codigo w =
+    String.length w >= 1 && String.length w <= 4 && es_letra w.[0] && (String.length w = 1 || es_letra w.[1] || es_cifra w.[1])
+    && not (empieza w "pc" || empieza w "ddr")
+  in
   let rec busca i =
     if i >= n then None
     else
@@ -263,6 +267,13 @@ let ecc ws =
       (fun i ->
         let w = ws.(i) in
         let negado = List.exists (fun d -> i - d >= 0 && List.mem ws.(i - d) negaciones) [ 1; 2 ] in
+        (* «ECC: Nein», «ECC: No», «ECC: No disponible»: la negación detrás (no «ECC no registrada»: es ECC). *)
+        let sig_ k = if i + k < n then ws.(i + k) else "" in
+        let negado =
+          negado
+          || List.mem (sig_ 1) [ "nein"; "nao"; "kein"; "keine" ]
+          || (sig_ 1 = "no" && not (List.mem (sig_ 2) [ "reg"; "registrada"; "registrado"; "registradas"; "registrados"; "registered"; "buffered"; "bufferizada" ]))
+        in
         let on_die = i >= 2 && ws.(i - 2) = "on" && ws.(i - 1) = "die" in
         if w = "nonecc" || w = "noecc" then Some false
         else if on_die then None
@@ -376,6 +387,9 @@ type cuenta = {
   kit : bool;  (** Dice kit, dual, pareja… *)
 }
 
+(** Las capacidades de un módulo (MB): lo demás («12GB», «20GB», «6GB») es el total de varios. *)
+let estandar mb = List.mem mb [ 32; 64; 128; 256; 512; 1024; 2048; 4096; 8192; 16384; 24576; 32768; 49152; 65536; 98304; 131072; 196608; 262144 ]
+
 let a_mb unidad c = if List.mem unidad unidades_mb then Some c else if List.mem unidad unidades_gb then Some (gb c) else if unidad = "tb" then Some (gb (c * 1024)) else None
 
 let leer_tokens ws =
@@ -414,7 +428,8 @@ let leer_tokens ws =
         match a_mb sig_ b with Some mb -> producto i a mb | None -> producto i a (-b) (* sin unidad: se decide luego *))
       | _ -> ())
     (* 16gbx2, 8gbx2 *)
-    | [ c; u; k ] when es_numero c && es_numero k && String.length u > 1 && u.[String.length u - 1] = 'x' -> (
+    (* No «2Gx4», «4Gx8», «8Gx16»: la organización de los chips. *)
+    | [ c; u; k ] when es_numero c && es_numero k && String.length u > 1 && u.[String.length u - 1] = 'x' && not (u = "gx" && List.mem k [ "4"; "8"; "16" ]) -> (
       match (num c, num k, a_mb (String.sub u 0 (String.length u - 1)) 1) with
       | Some c, Some k, Some _ -> producto i k (Option.get (a_mb (String.sub u 0 (String.length u - 1)) c))
       | _ -> ())
@@ -459,7 +474,7 @@ let leer_tokens ws =
             let mb = Option.get (a_mb sig_ k) in
             if sig_ = "tb" && not (ram_cerca (i + 1)) then () else cantidad i mb ~cada:(List.mem sig2 tras_numero || (i > 0 && List.mem ws.(i - 1) [ "je"; "jeweils"; "cada"; "each" ])))
         else if k >= 2 && k <= 16 && (match tr with [ c; u ] -> es_numero c && List.mem u unidades_gb | _ -> false)
-                && not (i > 0 && List.mem ws.(i - 1) (cpu_palabras @ [ "ddr"; "pc"; "gen"; "ultra"; "core"; "serie"; "series"; "v"; "x"; "gb" ])) then
+                && not (i > 0 && List.mem ws.(i - 1) (cpu_palabras @ [ "ddr"; "pc"; "gen"; "ultra"; "core"; "serie"; "series"; "v"; "x"; "gb"; "aegis"; "viper"; "pi"; "elite"; "vulcan"; "ares" ])) then
           (* «(2 * 32GB)»: el asterisco se ha ido al plegar. *)
           producto i k (gb (int_of_string (List.hd tr)))
         else if List.mem sig_ tras_numero && k <= 512 && i > 0 then cantidad i (gb k) ~cada:true
@@ -480,7 +495,8 @@ let contar ?gen ?formato ?(servidor = false) ?(consumo = false) ws =
   (* Lo más grande que puede ser un módulo, sea lo que sea. *)
   let tope = match gen with Some g -> capacidad_maxima ?formato g true | None -> gb 256 in
   let kit_palabras = hay ws [ "kit"; "dual kit"; "dual channel"; "coppia"; "pareja"; "par"; "pair"; "2er set"; "2er kit"; "set"; "paar"; "dualkit"; "doppelpack" ] in
-  let dual = hay ws [ "dual kit"; "dual channel"; "coppia"; "pareja"; "pair"; "2er set"; "2er kit"; "dualkit"; "paar"; "doppelpack"; "dual" ] in
+  (* «dual» suelto no: «Dual Rank» es un módulo de dos rangos, no un kit de dos. *)
+  let dual = hay ws [ "dual kit"; "dual channel"; "coppia"; "pareja"; "pair"; "2er set"; "2er kit"; "dualkit"; "paar"; "doppelpack" ] in
   let multiplicador = match List.find_opt (fun (k, _) -> k < 0) cuentas with Some (k, _) -> -k | None -> 1 in
   let cuentas = List.filter (fun (k, _) -> k > 0) cuentas in
   let valores = List.sort_uniq compare (List.map (fun c -> c.mb) (List.filter (fun c -> not c.total) cantidades)) in
@@ -499,6 +515,8 @@ let contar ?gen ?formato ?(servidor = false) ?(consumo = false) ws =
           (* «(16x4)» junto a «16GB»: cuatro de 16, no dieciséis de 4. *)
           if List.mem en_gb valores then Some { p with c = en_gb }
           else if List.mem (gb p.n) valores && c <= 16 then Some { n = c; c = gb p.n; en_p = p.en_p }
+          (* «32GB (16x2)»: dos de 16, no dieciséis de 2. *)
+          else if c <= 2 && p.n > c && casa (c * gb p.n) then Some { n = c; c = gb p.n; en_p = p.en_p }
           else if casa (p.n * en_gb) then Some { p with c = en_gb }
           else if casa (p.n * en_mb) then Some { p with c = en_mb }
           else if c >= 128 then Some { p with c = en_mb }
@@ -530,7 +548,7 @@ let contar ?gen ?formato ?(servidor = false) ?(consumo = false) ws =
           { vacia with modulos = Some k; capacidad = Some (c / k); total_mb = Some c; iguales = Some true }
         else if total_dicho <> None && Option.get total_dicho = k * c then { vacia with modulos = Some k; capacidad = Some c; total_mb = total_dicho; iguales = Some true }
         (* «6x RAM DDR1 2.5GB»: más que ningún módulo y sin repartir a partes iguales: un lote mezclado. *)
-        else if c > tope then { vacia with modulos = Some k; total_mb = Some c; iguales = Some false }
+        else if c > tope || not (estandar c) then { vacia with modulos = Some k; total_mb = Some c; iguales = Some false }
         else { vacia with modulos = Some k; capacidad = Some c; total_mb = Some (k * c); iguales = Some true }
       | None, [ a; b ] when b = k * a -> { vacia with modulos = Some k; capacidad = Some a; total_mb = Some b; iguales = Some true }
       | None, [] -> (
@@ -550,7 +568,7 @@ let contar ?gen ?formato ?(servidor = false) ?(consumo = false) ws =
       | _, Some t when t > c && t mod c = 0 -> { vacia with modulos = Some (t / c); capacidad = Some c; total_mb = Some t; iguales = Some true }
       | _ ->
         if dual && c mod 2 = 0 then { vacia with modulos = Some 2; capacidad = Some (c / 2); total_mb = Some c; iguales = Some true }
-        else if c > maximo || hay ws [ "kit"; "set"; "dualkit"; "kit ram" ] then { vacia with total_mb = Some c }
+        else if c > maximo || (not (estandar c)) || hay ws [ "kit"; "set"; "dualkit"; "kit ram" ] then { vacia with total_mb = Some c }
         (* Un módulo, salvo que diga cuántos: lo decide quien lee. *)
         else { vacia with capacidad = Some c })
     | [], [ a; b ] when b mod a = 0 && b / a >= 2 && b / a <= 16 ->
