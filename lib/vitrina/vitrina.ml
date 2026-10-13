@@ -90,12 +90,10 @@ let vitrina =
             RAM: si va de memoria (DRAM, módulos, HBM), de almacenamiento, de otro hardware o de otra cosa; su tipo \
             (precio, mercado, fábrica, lanzamiento, análisis, estándar JEDEC), su segmento (consumo, servidor, móvil, \
             HBM/IA), fabricantes, generaciones, formatos, productos y lo que aún no se vende (DDR6, LPDDR6, HBM5…)."
-    (* La extracción de trabajo.email (2026-10-12), la tarea de su prompt: un
-       cristal parcial, da los campos que sabe y la forja le pide a gemma el resto. *)
-    |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal
-         ~descripcion:
-           "De una oferta de trabajo (el mensaje de la extracción de trabajo.email, con <posting> y \
-            sus líneas Title:, Location:, Description:), los campos que se deciden por reglas: \
-            salario null si no da dinero, años de experiencia null si no habla de años, Easy Apply, \
-            seniority por el título y onsite si no menciona remoto ni híbrido. Un objeto parcial: \
-            lo demás (habilidades, idiomas, contrato…) no lo da.")
+    (* La extracción de trabajo.email (2026-10-12; v2 2026-10-13), la tarea de su
+       prompt: un cristal parcial, da los campos que sabe y la forja le pide al
+       LLM el resto. t-cab6e50313a9 es la misma extracción con otra plantilla
+       (el mismo mensaje con <posting> y la misma herramienta extract_job, por
+       la Messages API): el mismo cristal la sirve. *)
+    |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal ~descripcion:Oferta_trabajo.descripcion
+    |> con (tarea "t-cab6e50313a9") `Mixta Oferta_trabajo.cristal ~descripcion:Oferta_trabajo.descripcion)
