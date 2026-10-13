@@ -27,7 +27,8 @@ let json_agente_con politica ?(instrucciones = false) (a : Agente.t) es =
        ("version", `String (Agente.version a));
        ("escalera", `List (List.map (fun m -> `String (Modelo.to_string m)) a.escalera));
        ("defecto", `String (Modelo.to_string a.defecto));
-       ("max_tokens", `Int a.max_tokens) ]
+       ("max_tokens", `Int a.max_tokens);
+       ("ejemplos", `Int a.ejemplos) ]
     @ (if instrucciones then [ ("instrucciones", `String a.instrucciones) ] else [])
     @ [ ( "siguiente",
           `Assoc

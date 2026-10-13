@@ -5,7 +5,11 @@ open Agencia
 
 (* Columnas y valores van juntos: la fila que se ingiere y la que se lee
    tienen el mismo orden. *)
-let columnas_agente = [ "nombre"; "descripcion"; "instrucciones"; "escalera"; "defecto"; "max_tokens" ]
+let columnas_agente = [ "nombre"; "descripcion"; "instrucciones"; "escalera"; "defecto"; "max_tokens"; "ejemplos" ]
+
+(* Las filas de antes de [ejemplos] no la tienen (ni la tabla, hasta que
+   se guarde el primer agente con ella: la ingesta añade la columna). *)
+let columnas_agente_viejas = List.filter (( <> ) "ejemplos") columnas_agente
 
 let fila_agente (a : Agente.t) =
   `List
@@ -14,18 +18,26 @@ let fila_agente (a : Agente.t) =
       `String a.instrucciones;
       `String (String.concat "," (List.map Modelo.to_string a.escalera));
       `String (Modelo.to_string a.defecto);
-      `Int a.max_tokens ]
+      `Int a.max_tokens;
+      `Int a.ejemplos ]
 
 let modelos s = List.filter_map (fun m -> Result.to_option (Modelo.de_texto m)) (String.split_on_char ',' s)
 
-let agente = function
+let agente fila =
+  let fila, ejemplos =
+    match fila with
+    | `List [ n; d; i; e; f; m; `Int k ] -> (`List [ n; d; i; e; f; m ], Some k)
+    | `List [ n; d; i; e; f; m; `Null ] | `List [ n; d; i; e; f; m ] -> (`List [ n; d; i; e; f; m ], None)
+    | f -> (f, None)
+  in
+  match fila with
   | `List [ `String nombre; `String descripcion; `String instrucciones; `String escalera; `String defecto; `Int max_tokens ]
     -> (
       match Modelo.de_texto defecto with
       | Error _ -> None
       | Ok defecto ->
           Result.to_option
-            (Agente.crear ~nombre ~descripcion ~instrucciones ~escalera:(modelos escalera) ~defecto ~max_tokens ()))
+            (Agente.crear ~nombre ~descripcion ~instrucciones ~escalera:(modelos escalera) ~defecto ~max_tokens ?ejemplos ()))
   | _ -> None
 
 let columnas_encargo =
@@ -80,9 +92,12 @@ let crear ~post ~url ?(db = "agencia") () =
   let de_agente t = Printf.sprintf " WHERE agente = '%s'" (Forja.Tarea.to_string t) in
   let agentes () =
     let ultimos = Hashtbl.create 16 in
-    List.iter
-      (fun f -> Option.iter (fun (a : Agente.t) -> Hashtbl.replace ultimos a.nombre a) (agente f))
-      (select columnas_agente "agencia_agentes" "");
+    let filas =
+      match select columnas_agente "agencia_agentes" "" with
+      | [] -> select columnas_agente_viejas "agencia_agentes" ""
+      | filas -> filas
+    in
+    List.iter (fun f -> Option.iter (fun (a : Agente.t) -> Hashtbl.replace ultimos a.nombre a) (agente f)) filas;
     Hashtbl.to_seq_values ultimos |> List.of_seq |> List.sort (fun (a : Agente.t) b -> compare a.nombre b.nombre)
   in
   let historial t =

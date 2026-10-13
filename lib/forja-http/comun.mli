@@ -24,3 +24,8 @@ val propiedades : Yojson.Safe.t -> string list
 
 val restringir_esquema : string list -> Yojson.Safe.t -> Yojson.Safe.t
 (** El esquema con solo esas propiedades (y obligatorias). *)
+
+val ultimo_de_ejemplos : Yojson.Safe.t list -> Yojson.Safe.t option
+(** Si los turnos son usuario/asistente alternos, todos de texto, y el
+    último es de usuario, ese último: los anteriores son ejemplos
+    (few-shot) de la misma tarea. *)

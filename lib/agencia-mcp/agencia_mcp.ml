@@ -91,7 +91,14 @@ let crear ef args =
     | Ok (Some _) -> invalido "max_tokens: entero"
     | Error e -> Error e
   in
-  match Agente.crear ~nombre ?descripcion ~instrucciones ~escalera ?defecto ?max_tokens () with
+  let* ejemplos =
+    match argumento args "ejemplos" with
+    | Ok None -> Ok None
+    | Ok (Some (`Int n)) -> Ok (Some n)
+    | Ok (Some _) -> invalido "ejemplos: entero"
+    | Error e -> Error e
+  in
+  match Agente.crear ~nombre ?descripcion ~instrucciones ~escalera ?defecto ?max_tokens ?ejemplos () with
   | Error e -> invalido e
   | Ok a ->
       ef.archivo.guardar a;
@@ -172,7 +179,10 @@ let fijas =
          prompt) y la escalera de modelos que puede usar, del más barato al más capaz \
          (\"claude-haiku-5-5\", \"openai:<modelo>\" para uno local). Sin escalera, la de la \
          agencia. defecto es a quién pedir mientras no se sepa más (el más capaz si no se dice). \
-         Redefinir las instrucciones empieza un histórico nuevo para elegir modelo.";
+         Redefinir las instrucciones empieza un histórico nuevo para elegir modelo. \
+         ejemplos (3 si no se dice, 0 los apaga) es cuántos encargos juzgados bien van como \
+         ejemplos en cada encargo nuevo, los más parecidos a su entrada; las notas de los mal van \
+         como advertencias.";
       esquema =
         esquema ~requeridos:[ "nombre"; "instrucciones" ]
           [ ("nombre", cadena);
@@ -180,7 +190,8 @@ let fijas =
             ("descripcion", cadena);
             ("escalera", `Assoc [ ("type", `String "array"); ("items", cadena) ]);
             ("defecto", cadena);
-            ("max_tokens", entero) ];
+            ("max_tokens", entero);
+            ("ejemplos", entero) ];
       llamar = crear };
     { nombre = "agencia_agentes";
       descripcion =

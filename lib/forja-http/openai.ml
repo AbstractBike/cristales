@@ -19,14 +19,24 @@ let forma_de j =
       | _ -> Error "json_schema sin esquema")
   | Some _ -> Error "response_format sin json_schema"
 
-(* Un mensaje de system (o developer) opcional y un turno de usuario. *)
-let turnos = function
+(* Un mensaje de system (o developer) opcional y un turno de usuario. Con
+   tarea explícita, también turnos previos usuario/asistente: son ejemplos
+   (few-shot, como los que pone la agencia), ni entrada ni plantilla. *)
+let turnos ~explicita = function
   | `List [ u ] -> Ok ("", u)
   | `List [ s; u ]
     when List.mem (campo "role" s) [ Some (`String "system"); Some (`String "developer") ] -> (
       match Option.bind (campo "content" s) Comun.solo_texto with
       | Some t -> Ok (t, u)
       | None -> Error "system que no es texto")
+  | `List (s :: (_ :: _ :: _ as resto))
+    when explicita && List.mem (campo "role" s) [ Some (`String "system"); Some (`String "developer") ] -> (
+      match (Option.bind (campo "content" s) Comun.solo_texto, Comun.ultimo_de_ejemplos resto) with
+      | Some t, Some u -> Ok (t, u)
+      | None, _ -> Error "system que no es texto"
+      | _, None -> Error "conversación de varios turnos")
+  | `List (_ :: _ :: _ as l) when explicita -> (
+      match Comun.ultimo_de_ejemplos l with Some u -> Ok ("", u) | None -> Error "conversación de varios turnos")
   | `List _ -> Error "conversación de varios turnos"
   | _ -> Error "sin messages"
 
@@ -47,7 +57,7 @@ let peticion ~tarea j =
     | Some _ -> Error "más de una respuesta (n)"
   in
   let* forma, esquema = forma_de j in
-  let* system, u = turnos (Option.value ~default:`Null (campo "messages" j)) in
+  let* system, u = turnos ~explicita:(Option.is_some tarea) (Option.value ~default:`Null (campo "messages" j)) in
   let* entrada =
     match (campo "role" u, Option.bind (campo "content" u) Comun.solo_texto) with
     | Some (`String "user"), Some t -> Ok t
