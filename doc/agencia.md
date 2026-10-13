@@ -131,7 +131,7 @@ GET /agencia/agentes/{agente}?encargos=20   uno, con instrucciones y últimos en
 
 | Variable | Por defecto |
 |---|---|
-| `AGENCIA_IP`, `AGENCIA_PUERTO` | `127.0.0.1`, `8091` |
+| `AGENCIA_IP`, `AGENCIA_PUERTO` | `127.0.0.1`, `8092` |
 | `AGENCIA_GREPTIME` | obligatoria |
 | `AGENCIA_GREPTIME_DB` | `agencia` |
 

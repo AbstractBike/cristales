@@ -7,7 +7,7 @@
    agencia.pin. No llama a ningún modelo ni escribe nada. Por entorno:
 
    AGENCIA_IP          dirección de escucha   (127.0.0.1)
-   AGENCIA_PUERTO      puerto                 (8091)
+   AGENCIA_PUERTO      puerto                 (8092)
    AGENCIA_GREPTIME    raíz HTTP de GreptimeDB (obligatoria)
    AGENCIA_GREPTIME_DB base de datos          (agencia) *)
 
@@ -53,7 +53,7 @@ let () =
     | Ok ip -> Eio_unix.Net.Ipaddr.of_unix (Ipaddr_unix.to_inet_addr ip)
     | Error (`Msg m) -> failwith m
   in
-  let puerto = int_of_string (entorno "AGENCIA_PUERTO" "8091") in
+  let puerto = int_of_string (entorno "AGENCIA_PUERTO" "8092") in
   Printf.eprintf "agencia-vista: escuchando en %s:%d\n%!" (entorno "AGENCIA_IP" "127.0.0.1") puerto;
   let socket = Eio.Net.listen net ~sw ~backlog:128 ~reuse_addr:true (`Tcp (ip, puerto)) in
   Cohttp_eio.Server.run socket (Cohttp_eio.Server.make ~callback ())
