@@ -56,7 +56,8 @@ let reglas_por_defecto =
 let reglas = ref []
 
 (* Etapas anteriores de la flota: sus notas solo valen como trayectoria. La
-   de /home/digger es la de marzo-abril (Scala, Temporal, hn1/cn1). *)
+   de /home/digger es la de marzo-abril (Scala, Temporal, hn1/cn1); y lo que
+   no se ha vuelto a tocar desde antes de junio es de la de /b1c1 y /pin. *)
 let anteriores = ref []
 
 let opciones =
@@ -73,8 +74,10 @@ let opciones =
     ("--solo-importar", Arg.Set solo_importar, " importar las notas y nada más");
     ("--reglas", Arg.String (fun f -> reglas := !reglas @ [ f ]),
      "FICHERO reglas vigentes que mandan (repetible; ~/.claude/CLAUDE.md y /logical-node/AGENTS.md)");
-    ("--etapa-anterior", Arg.String (fun p -> anteriores := !anteriores @ [ p ]),
-     "PREFIJO proyectos de una etapa anterior, solo trayectoria (repetible; /home/digger)") ]
+    ("--etapa-anterior", Arg.String (fun p -> anteriores := !anteriores @ [ Atomo.Proyecto p ]),
+     "PREFIJO proyectos de una etapa anterior, solo trayectoria (repetible; /home/digger)");
+    ("--etapa-hasta", Arg.String (fun f -> anteriores := !anteriores @ [ Atomo.Antes_de f ]),
+     "FECHA átomos cuya última fecha es anterior, solo trayectoria (2026-06-01)") ]
 
 let fallar fmt = Printf.ksprintf (fun s -> prerr_endline ("memoria-consolida: " ^ s); exit 2) fmt
 
@@ -228,7 +231,7 @@ let () =
   Arg.parse opciones (fun a -> raise (Arg.Bad ("sobra " ^ a))) "memoria-consolida [opciones]";
   preparar_repo ();
   if not !seco then sincronizar ();
-  if !anteriores = [] then anteriores := [ "/home/digger" ];
+  if !anteriores = [] then anteriores := [ Atomo.Proyecto "/home/digger"; Atomo.Antes_de "2026-06-01" ];
   let reglas =
     (if !reglas = [] then List.filter Sys.file_exists reglas_por_defecto else !reglas)
     |> List.map (fun f ->

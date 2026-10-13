@@ -40,7 +40,7 @@ val consolidar :
   escenas_agente:Agencia.Agente.t ->
   persona_agente:Agencia.Agente.t ->
   ?reglas:string ->
-  ?anteriores:string list ->
+  ?anteriores:Atomo.etapa list ->
   ?lote:int ->
   estado:Estado.t ->
   persona:string ->
@@ -49,7 +49,7 @@ val consolidar :
   salida
 (** [reglas]: el CLAUDE.md y el AGENTS.md vigentes, que mandan sobre los
     átomos (van en cada encargo, de escenas y de persona). [anteriores]:
-    prefijos de proyecto de una etapa anterior de la flota, cuyos átomos
+    cómo se reconoce una etapa anterior de la flota ({!Atomo.etapa}): sus átomos
     solo pueden ir a la trayectoria. Los átomos que ya están en los
     [atomos] de una escena actualizada después de escribirse no se
     repiten. [lote] por defecto 30. [persona] es el [persona.md] actual. El cursor

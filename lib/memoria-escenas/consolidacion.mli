@@ -34,7 +34,7 @@ val abiertas : Escena.t list -> Atomo.t list -> string list
 
 val entrada :
   ?reglas:string ->
-  ?anteriores:string list ->
+  ?anteriores:Atomo.etapa list ->
   ahora:string ->
   escenas:Escena.t list ->
   abiertas:string list ->

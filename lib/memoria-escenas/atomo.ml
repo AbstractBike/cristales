@@ -13,21 +13,26 @@ type t = {
   proyecto : string;
   origen : string;
   fechas : string;
+  escrito : int;
 }
 
 let columnas =
-  [ "ts"; "id"; "version"; "vigente"; "tipo"; "prioridad"; "escena"; "contenido"; "proyecto"; "origen"; "fechas" ]
+  [ "ts"; "id"; "version"; "vigente"; "tipo"; "prioridad"; "escena"; "contenido"; "proyecto"; "origen"; "fechas"; "escrito" ]
 
 let entero = function `Int i -> Some i | `Intlit s -> int_of_string_opt s | `Float f -> Some (int_of_float f) | _ -> None
 let texto = function `String s -> s | `Null -> "" | j -> Yojson.Safe.to_string j
 let booleano = function `Bool b -> b | `Int i -> i <> 0 | `String s -> s = "true" | _ -> false
 
-let de_fila = function
-  | `List [ ts; id; version; vigente; tipo; prioridad; escena; contenido; proyecto; origen; fechas ] -> (
+let rec de_fila = function
+  | `List [ _; _; _; _; _; _; _; _; _; _; _ ] as f -> (
+      (* Una fila sin [escrito] (tabla de antes): vale [ts]. *)
+      match f with `List l -> de_fila (`List (l @ [ `Null ])) | _ -> None)
+  | `List [ ts; id; version; vigente; tipo; prioridad; escena; contenido; proyecto; origen; fechas; escrito ] -> (
       match (entero ts, id) with
       | Some ts, `String id ->
           Some
             { ts;
+              escrito = Option.value ~default:ts (entero escrito);
               id;
               version = Option.value ~default:1 (entero version);
               vigente = booleano vigente;
@@ -46,11 +51,11 @@ let vigentes atomos =
   List.iter
     (fun a ->
       match Hashtbl.find_opt ultima a.id with
-      | Some b when (b.version, b.ts) >= (a.version, a.ts) -> ()
+      | Some b when (b.version, b.escrito, b.ts) >= (a.version, a.escrito, a.ts) -> ()
       | _ -> Hashtbl.replace ultima a.id a)
     atomos;
   Hashtbl.fold (fun _ a acc -> if a.vigente then a :: acc else acc) ultima []
-  |> List.sort (fun a b -> compare (a.ts, a.id) (b.ts, b.id))
+  |> List.sort (fun a b -> compare (a.escrito, a.ts, a.id) (b.escrito, b.ts, b.id))
 
 let fechas a =
   try
@@ -65,8 +70,15 @@ let historia a =
   let rec ir i = i + n <= String.length a.origen && (String.sub a.origen i n = p || ir (i + 1)) in
   ir 0
 
+type etapa = Proyecto of string | Antes_de of string
+
 let anterior ~anteriores a =
-  List.exists (fun p -> String.length a.proyecto >= String.length p && String.sub a.proyecto 0 (String.length p) = p) anteriores
+  let ultima = List.fold_left max "" (fechas a) in
+  List.exists
+    (function
+      | Proyecto p -> String.length a.proyecto >= String.length p && String.sub a.proyecto 0 (String.length p) = p
+      | Antes_de f -> ultima <> "" && ultima < f)
+    anteriores
 
 let linea ?(anteriores = []) a =
   (* La primera y la última fecha: lo que importa es desde cuándo y hasta

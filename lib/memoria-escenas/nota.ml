@@ -104,6 +104,7 @@ let atomo ~ts ~ruta ~proyecto ~escena ~fecha n =
   let tipo = tipo_atomo n.tipo in
   let fechas = List.sort_uniq compare ((if fecha = "" then [] else [ fecha ]) @ fechas_en (n.descripcion ^ "\n" ^ n.cuerpo)) in
   { Atomo.ts;
+    escrito = ts;
     id = id_de ruta;
     version = 1;
     vigente = true;

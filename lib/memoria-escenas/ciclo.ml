@@ -22,7 +22,7 @@ type salida = {
 }
 
 let lotes n atomos =
-  let ordenados = List.stable_sort (fun (a : Atomo.t) (b : Atomo.t) -> compare (a.escena, a.ts) (b.escena, b.ts)) atomos in
+  let ordenados = List.stable_sort (fun (a : Atomo.t) (b : Atomo.t) -> compare (a.escena, a.escrito) (b.escena, b.escrito)) atomos in
   let rec ir acc actual k = function
     | [] -> List.rev (if actual = [] then acc else List.rev actual :: acc)
     | a :: r -> if k = n then ir (List.rev actual :: acc) [ a ] 1 r else ir acc (a :: actual) (k + 1) r
@@ -61,7 +61,7 @@ let ya_aplicados escenas atomos =
         (List.exists
            (fun (e : Escena.t) ->
              List.mem a.id e.atomos
-             && match ms_de_iso e.actualizada with Some t -> t >= a.ts | None -> false)
+             && match ms_de_iso e.actualizada with Some t -> t >= a.escrito | None -> false)
            escenas))
     atomos
 
@@ -154,7 +154,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
   let estado =
     if !fallidos > 0 then estado
     else
-      let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.ts) estado.Estado.cursor todos in
+      let cursor = List.fold_left (fun m (a : Atomo.t) -> max m a.escrito) estado.Estado.cursor todos in
       { estado with cursor; atomos_desde_persona = estado.atomos_desde_persona + n }
   in
   let motivo =

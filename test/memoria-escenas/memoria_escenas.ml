@@ -19,7 +19,7 @@ let escena ?(calor = 1) ?(bloqueada = false) ?(atomos = []) slug =
     actualizada = "2026-10-01T00:00:00Z"; calor; bloqueada; atomos; extra = []; cuerpo = "## Datos clave\n\n- " ^ slug }
 
 let atomo ?(ts = 1000) ?(version = 1) ?(vigente = true) ?(escena = "flota") id contenido =
-  { Atomo.ts; id; version; vigente; tipo = "hecho"; prioridad = 50; escena; contenido; proyecto = "/p"; origen = "[]";
+  { Atomo.ts; escrito = ts; id; version; vigente; tipo = "hecho"; prioridad = 50; escena; contenido; proyecto = "/p"; origen = "[]";
     fechas = {|["2026-10-13"]|} }
 
 let contenido ?(cuerpo = "## Datos clave\n\n- nuevo") ?(atomos = []) slug =
@@ -243,7 +243,19 @@ let () =
   comprueba "vigentes" (List.map (fun (a : Atomo.t) -> a.contenido) (Atomo.vigentes l) = [ "v2" ]);
   let fila = `List [ `Int 7; `String "a-9"; `Int 1; `Bool true; `String "regla"; `Int 70; `String "e"; `String "c";
                      `String "p"; `String "[]"; `String "[]" ] in
-  comprueba "de_fila" ((Option.get (Atomo.de_fila fila)).tipo = "regla");
+  comprueba "de_fila sin escrito" (let a = Option.get (Atomo.de_fila fila) in a.tipo = "regla" && a.escrito = 7);
+  (match fila with
+  | `List l ->
+      comprueba "de_fila con escrito" ((Option.get (Atomo.de_fila (`List (l @ [ `Int 99 ])))).escrito = 99);
+      comprueba "de_fila con escrito nulo" ((Option.get (Atomo.de_fila (`List (l @ [ `Null ])))).escrito = 7)
+  | _ -> ());
+  comprueba "vigentes por escrito"
+    (List.map (fun (a : Atomo.t) -> a.contenido)
+       (Atomo.vigentes [ { (atomo ~ts:5 "a-1" "viejo") with escrito = 10 }; { (atomo ~ts:5 "a-1" "nuevo") with escrito = 20 } ])
+     = [ "nuevo" ]);
+  comprueba "etapa por fecha"
+    (Atomo.anterior ~anteriores:[ Atomo.Antes_de "2026-06-01" ] { (atomo "a" "x") with fechas = {|["2026-05-03"]|} }
+    && not (Atomo.anterior ~anteriores:[ Atomo.Antes_de "2026-06-01" ] (atomo "a" "x")));
   let sql = L1.insertar_sql [ atomo "a-'1" "it's" ] in
   comprueba "comillas escapadas"
     (contiene "'it''s'" sql)
@@ -313,7 +325,7 @@ let () =
   comprueba "nota delicada" (Nota.excluida "x/reference_cn1_root_password.md" && Nota.excluida "reference_oracle_auth_token.md");
   comprueba "nota normal" (not (Nota.excluida "feedback_pin_ca_keys_in_repo.md"));
   let a = Nota.atomo ~ts:1 ~ruta:"r" ~proyecto:"/home/digger" ~escena:"digger" ~fecha:"2026-03-01" n in
-  comprueba "marca de etapa anterior" (contiene "ETAPA ANTERIOR" (Atomo.linea ~anteriores:[ "/home/digger" ] a));
+  comprueba "marca de etapa anterior" (contiene "ETAPA ANTERIOR" (Atomo.linea ~anteriores:[ Atomo.Proyecto "/home/digger" ] a));
   comprueba "marca de historia" (contiene "{historia" (Atomo.linea { a with proyecto = "/p" }));
   comprueba "sin marca" (not (contiene "{" (Atomo.linea (atomo "a-1" "x"))));
   comprueba "fechas en rango" (contiene "2026-03-01" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} })
