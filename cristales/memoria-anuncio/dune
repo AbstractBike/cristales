@@ -1,0 +1,7 @@
+; Qué se vende en un anuncio de memoria RAM: la memoria la lee memoria-modelo;
+; la entrada, el estado y el plegado, de grafica-anuncio y grafica-modelo.
+
+(library
+ (name memoria_anuncio)
+ (public_name cristales.memoria-anuncio)
+ (libraries cristal memoria_modelo grafica_modelo grafica_anuncio yojson))

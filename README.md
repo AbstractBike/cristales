@@ -90,6 +90,9 @@ bien.
 | [`cristales/nvme-modelo/`](cristales/nvme-modelo/) | Los SSD que nombra un texto, con su catálogo (NVMe de consumo y enterprise: 990 Pro, SN850X, PM9A3, Micron 7450, P4510, Optane; y los SATA/SAS para descartarlos) |
 | [`cristales/nvme-anuncio/`](cristales/nvme-anuncio/) | Qué se vende en un anuncio de discos: un NVMe suelto (cuál, su capacidad y su salud) o un SATA, un disco duro, un PC, una caja, un adaptador, un lote |
 | [`cristales/nvme-noticia/`](cristales/nvme-noticia/) | De qué va una noticia de hardware para quien sigue los SSD y el almacenamiento |
+| [`cristales/memoria-modelo/`](cristales/memoria-modelo/) | La memoria RAM que nombra un texto: los part numbers leídos con las reglas de cada fabricante (Samsung, SK hynix, Micron, Crucial, Kingston, Corsair, G.Skill; etiquetas de HPE, Lenovo, IBM) y las placas y servidores con la memoria que admiten |
+| [`cristales/memoria-anuncio/`](cristales/memoria-anuncio/) | Qué se vende en un anuncio de memoria: un módulo, un kit o un lote (cuántos y de cuánto), o un equipo, una placa o una CPU que la lleva; su formato, velocidad, estado y precio por módulo |
+| [`cristales/memoria-noticia/`](cristales/memoria-noticia/) | De qué va una noticia de hardware para quien sigue la memoria RAM |
 
 ## Construir
 

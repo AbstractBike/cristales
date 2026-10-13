@@ -1,0 +1,8 @@
+; La memoria que nombra un texto: los part numbers y las placas (Catalogo),
+; la lectura (Texto) y el cristal. Lo usan memoria-anuncio y memoria-noticia.
+; El plegado y las listas de palabras son los de grafica-modelo.
+
+(library
+ (name memoria_modelo)
+ (public_name cristales.memoria-modelo)
+ (libraries cristal grafica_modelo yojson))

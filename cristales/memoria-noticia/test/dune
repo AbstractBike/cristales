@@ -1,0 +1,12 @@
+(test
+ (name red)
+ (modules red)
+ (libraries memoria_noticia cristal yojson))
+
+; Mide el cristal contra los titulares de la semilla (titulares.jsonl de
+; memorias.email): cuántos lee sin defecto y de qué tema. No es parte de la
+; red: las muestras no se commitean.
+(executable
+ (name medir)
+ (modules medir)
+ (libraries memoria_noticia yojson))

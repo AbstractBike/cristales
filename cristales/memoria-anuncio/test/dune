@@ -1,0 +1,18 @@
+(test
+ (name red)
+ (modules red)
+ (libraries memoria_anuncio cristal yojson))
+
+; Mide el cristal contra los anuncios de la semilla (anuncios.jsonl de
+; memorias.email): cuántos lee sin defecto y qué. No es parte de la red: las
+; muestras no se commitean.
+(executable
+ (name medir)
+ (modules medir)
+ (libraries memoria_anuncio memoria_modelo yojson))
+
+; Aplica un cristal a un texto, para depurar.
+(executable
+ (name probar)
+ (modules probar)
+ (libraries memoria_anuncio memoria_modelo))

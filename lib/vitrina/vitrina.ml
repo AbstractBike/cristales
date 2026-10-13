@@ -67,6 +67,29 @@ let vitrina =
             los SSD: si va de SSD y flash, de almacenamiento (discos duros, NAS, cabinas) o de otra \
             cosa; su tipo (análisis, rumor, precio, mercado, lanzamiento, anuncio, firmware), su \
             segmento, fabricantes, modelos y los SSD que aún no estaban en el catálogo."
+    (* memorias.email (2026-10-13): como nvme.email, en cada anuncio de memoria y cada titular. *)
+    |> con (tarea "memoria-modelo") `Mixta Memoria_modelo.cristal
+         ~descripcion:
+           "La memoria RAM que nombra un texto: los part numbers (\"M393A8G40AB2-CWE\", \"HMAA8GR7AJR4N-XN\", \
+            \"CT32G4DFD832A\", \"KSM32RD4/64HAR\", \"CMK32GX4M2E3200C16\", etiquetas de HPE…), leídos con las reglas de \
+            cada fabricante: generación, formato (UDIMM, SO-DIMM, RDIMM, LRDIMM, 3DS, ECC UDIMM, CUDIMM…), ECC, registro, \
+            capacidad, velocidad, CAS, rangos y anchura; lo que el texto dice de la memoria (\"8 RDIMM de 64GB DDR4-3200 \
+            2Rx4\", \"2x32GB\", \"PC4-2933Y\"); y las placas y servidores que nombra (ROME2D16-2T, H12SSL, R740, AM4…) con la \
+            memoria que admiten. Defecto si no nombra nada de la memoria."
+    |> con (tarea "memoria-anuncio") `Mixta Memoria_anuncio.cristal
+         ~descripcion:
+           "Qué se vende en un anuncio de segunda mano de memoria RAM (líneas Título:, Categoría:, Precio:, \
+            Descripción:; o solo el título): un módulo, un kit o un lote (cuántos y de cuánto: \"2x32GB\" son dos de 32), \
+            o un PC, un portátil, un servidor, una placa o una CPU que la llevan, otra pieza o alguien que busca; de la \
+            memoria, generación, formato, ECC, registro, velocidad, CAS, rangos, voltaje, fabricante y part number; y \
+            su estado, procedencia, si está probada (memtest), garantía, factura, envío, si se vende por separado, \
+            unidades disponibles y precio por módulo. Defecto si no sabe cuánta memoria es."
+    |> con (tarea "memoria-noticia") `Mixta Memoria_noticia.cristal
+         ~descripcion:
+           "De qué va una noticia de hardware (Título:, Resumen:; o solo el titular) para quien sigue la memoria \
+            RAM: si va de memoria (DRAM, módulos, HBM), de almacenamiento, de otro hardware o de otra cosa; su tipo \
+            (precio, mercado, fábrica, lanzamiento, análisis, estándar JEDEC), su segmento (consumo, servidor, móvil, \
+            HBM/IA), fabricantes, generaciones, formatos, productos y lo que aún no se vende (DDR6, LPDDR6, HBM5…)."
     (* La extracción de trabajo.email (2026-10-12), la tarea de su prompt: un
        cristal parcial, da los campos que sabe y la forja le pide a gemma el resto. *)
     |> con (tarea "t-a9fd1c2e9324") `Mixta Oferta_trabajo.cristal

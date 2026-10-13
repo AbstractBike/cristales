@@ -1,0 +1,3 @@
+(test
+ (name red)
+ (libraries memoria_modelo cristal yojson))
