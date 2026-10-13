@@ -116,16 +116,16 @@ let mensaje = function
   | _ -> None
 
 let mensajes g ~sesion ~cursor ~fondo =
-  let columnas = "SELECT ts, sesion, uuid, proyecto, rol, texto FROM memoria_l0 WHERE sesion = " ^ literal sesion in
+  let columnas = "SELECT ts, sesion, \"uuid\", proyecto, rol, texto FROM memoria_l0 WHERE sesion = " ^ literal sesion in
   let leer c = List.filter_map mensaje (G.leer g c) in
   match cursor with
-  | None -> leer (columnas ^ " ORDER BY ts, uuid")
+  | None -> leer (columnas ^ " ORDER BY ts, \"uuid\"")
   | Some c ->
       (* El ts de L0 puede no ser de milisegundos: se compara con la función
          de GreptimeDB, que entiende ms. *)
       let corte = Printf.sprintf "to_timestamp_millis(%d)" c in
       leer (Printf.sprintf "%s AND ts <= %s ORDER BY ts DESC LIMIT %d" columnas corte fondo)
-      @ leer (Printf.sprintf "%s AND ts > %s ORDER BY ts, uuid" columnas corte)
+      @ leer (Printf.sprintf "%s AND ts > %s ORDER BY ts, \"uuid\"" columnas corte)
 
 let candidatos g ?(n = 5) ?(por_termino = 20) (nuevo : Atomo.nuevo) =
   let por_termino_filas t =

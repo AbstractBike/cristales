@@ -29,7 +29,7 @@ val literal : string -> string
 
 val ms : Yojson.Safe.t -> int option
 (** Un timestamp de [/v1/sql] en milisegundos: entero en ms, µs o ns (por
-    magnitud), o texto ISO 8601 no; [None] si no se entiende. *)
+    magnitud); [None] si no es un número. *)
 
 val atomo : Yojson.Safe.t -> Atomo.t option
 (** Una fila de {!columnas_l1}. *)

@@ -7,8 +7,9 @@ let indice s sub desde =
   let rec ir i = if i + m > n then None else if String.sub s i m = sub then Some i else ir (i + 1) in
   ir desde
 
-(* Quita los <think>…</think> cerrados; uno sin cerrar se queda (y el JSON
-   no aparecerá: mejor un error que leer el razonamiento). *)
+(* Quita los <think>…</think> cerrados. Uno sin cerrar (cortado por
+   max_tokens) se queda: lo que se lea de él casi seguro no será el JSON
+   pedido y el encargo saldrá mal, que es lo que fue. *)
 let sin_pensar s =
   let abre = "<think>" and cierra = "</think>" in
   let rec quitar s =
