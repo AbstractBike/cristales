@@ -98,4 +98,15 @@ let vitrina =
             sus líneas Title:, Location:, Description:), los campos que se deciden por reglas: \
             salario null si no da dinero, años de experiencia null si no habla de años, Easy Apply, \
             seniority por el título y onsite si no menciona remoto ni híbrido. Un objeto parcial: \
-            lo demás (habilidades, idiomas, contrato…) no lo da.")
+            lo demás (habilidades, idiomas, contrato…) no lo da."
+    (* La ficha de empresa para un headhunter (2026-10-13), la tarea de su
+       prompt (company_profile): un cristal parcial, da solo lo que la evidencia
+       sostiene y la forja le pide al LLM el resto. *)
+    |> con (tarea "t-3df20b85d1d5") `Mixta Ficha_empresa.cristal
+         ~descripcion:
+           "De la evidencia de una empresa (<evidence> con Empresa:, Ubicaciones vistas:, sus ofertas y \
+            un extracto), los campos de su ficha que el texto sostiene: remotePolicy remote si todas las \
+            ubicaciones son remotas y nada habla de oficina, onsite si todas son presenciales; website si \
+            un dominio de la evidencia es el nombre de la empresa; hqCountry y hqCountryEn si la sede se \
+            dice en primera persona; sizeBucket si dice cuántos son. Un objeto parcial: no sabe nada del \
+            mundo, y el resumen, el sector, la ciudad, las señales de alarma y la confianza no los da.")
