@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name claude-shim)
+ (package cristales)
+ (libraries claude_shim cohttp-eio http eio eio_main eio.unix ipaddr ipaddr.unix unix uri yojson))

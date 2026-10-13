@@ -1,0 +1,4 @@
+(library
+ (name claude_shim)
+ (public_name cristales.claude-shim)
+ (libraries yojson))

@@ -1,0 +1,3 @@
+(test
+ (name claude_shim_test)
+ (libraries claude_shim yojson))
