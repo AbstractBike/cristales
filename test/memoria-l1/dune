@@ -1,0 +1,13 @@
+(tests
+ (names red)
+ (modules red)
+
+ (libraries memoria_l1 agencia forja yojson))
+
+; Para la prueba real (no es una prueba de dune): siembra memoria_l0 en una
+; base de prueba con unos transcripts de Claude Code.
+
+(executable
+ (name sembrar)
+ (modules sembrar)
+ (libraries memoria_l1 forja_http eio_main yojson uri unix mirage-crypto-rng.unix))

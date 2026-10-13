@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name memoria-destila)
+ (package cristales)
+ (libraries memoria_l1 agencia agencia_mcp agencia_http forja_http eio eio_main mirage-crypto-rng.unix uri))
