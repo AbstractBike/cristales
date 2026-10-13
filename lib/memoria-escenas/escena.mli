@@ -53,3 +53,12 @@ val de_texto : slug:string -> string -> (t, string) result
 val a_texto : t -> string
 (** Inverso de {!de_texto}: [de_texto ~slug (a_texto e) = Ok e] si los
     campos son de una línea y el cuerpo no empieza ni acaba en blanco. *)
+
+val recortar : ?max:int -> string -> string
+(** El cuerpo, quitando líneas enteras desde el final (y los encabezados
+    que se queden vacíos) hasta caber en [max] ({!max_cuerpo}). Nunca corta
+    una línea por la mitad. *)
+
+val sin_trayectoria : string -> string
+(** El cuerpo sin su sección [## Trayectoria] y sin líneas en blanco ni
+    sangrías: para comprobar que una edición solo tocó la trayectoria. *)

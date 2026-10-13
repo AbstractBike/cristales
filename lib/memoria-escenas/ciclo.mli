@@ -39,14 +39,25 @@ val consolidar :
   efectos ->
   escenas_agente:Agencia.Agente.t ->
   persona_agente:Agencia.Agente.t ->
+  ?reglas:string ->
+  ?anteriores:Atomo.etapa list ->
   ?lote:int ->
   estado:Estado.t ->
   persona:string ->
   Escena.t list ->
   Atomo.t list ->
   salida
-(** [lote] por defecto 30. [persona] es el [persona.md] actual. El cursor
-    nuevo es el [ts] mayor de los átomos dados, salvo que algún lote se
+(** [reglas]: el CLAUDE.md y el AGENTS.md vigentes, que mandan sobre los
+    átomos (van en cada encargo, de escenas y de persona). [anteriores]:
+    cómo se reconoce una etapa anterior de la flota ({!Atomo.etapa}): sus átomos van
+    al final, en lotes aparte, y solo pueden tocar la [## Trayectoria] de
+    escenas que ya existen. Los átomos que ya están en los
+    [atomos] de una escena actualizada después de escribirse no se
+    repiten. [lote] por defecto 30. [persona] es el [persona.md] actual. El cursor
+    nuevo es el [escrito] mayor de los átomos dados, salvo que algún lote se
     quedara sin hacer (dos salidas inservibles, la segunda con el modelo por
     defecto del agente): entonces no se mueve y la siguiente pasada los
     repite todos. *)
+
+val ms_de_iso : string -> int option
+(** [2026-10-13T20:37:06Z] en milisegundos desde 1970 (UTC). *)

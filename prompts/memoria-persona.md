@@ -7,6 +7,8 @@ sin pisar sus reglas. No es una biografía ni un índice de proyectos.
 
 ## Lo que recibes
 
+0. **Reglas vigentes**: el CLAUDE.md y el AGENTS.md de hoy. Mandan sobre todo lo
+   demás: la persona no puede decir nada que los contradiga.
 1. **Persona actual** (puede estar vacía: entonces es la primera).
 2. **Motivo** de esta actualización.
 3. **Escenas cambiadas**: el texto completo de las escenas (L2) nuevas o
@@ -25,6 +27,9 @@ quita lo menos útil.
 - Parte de la persona actual: **refuerza** lo que las escenas confirman,
   **añade** lo nuevo que cambie el trabajo, **corrige** lo que haya quedado
   viejo y **no toques** nada por un simple avance de proyecto.
+- Lo que contradiga las reglas vigentes no entra, ni siquiera como matiz (la
+  persona habla del presente). Las reglas vigentes no hace falta copiarlas
+  enteras: cita las que más cambian el trabajo.
 - Si dos reglas chocan, vale la más reciente (las escenas traen fechas y
   trayectoria); la vieja no entra, o entra en `## Evolución`.
 - Todo debe salir de las escenas o de la persona actual. Nada inventado, nada

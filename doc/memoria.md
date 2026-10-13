@@ -115,6 +115,37 @@ salida de las herramientas. Una prueba por patrón.
 - `memoria-mcp`: `memoria_buscar`, `memoria_conversacion`, `memoria_escena`.
   `MEMORIA_GREPTIME`, `MEMORIA_GREPTIME_DB`, `MEMORIA_TABLA_L0`/`_L1`.
 
+## Consolidación (pieza C)
+
+`memoria-consolida` lee los átomos L1 desde el cursor (`.estado` del repo,
+que se mueve en el mismo commit que las escenas), los consolida por lotes con
+`memoria-escenas` y regenera `persona.md` con `memoria-persona` si toca.
+
+- **Su propio clon.** Trabaja en `$MEMORIA_ESTADO/repo` (lo clona del bare
+  si falta) o en `MEMORIA_REPO`; se niega a trabajar en el checkout canónico,
+  en `/` o en algo sin `escenas/`. Antes de leer, `git pull --rebase`; con
+  `--push`, empuja al bare con un reintento (pull --rebase y otra vez) y, si
+  no puede, sale con error: nunca diverge en silencio. El canónico se pone al
+  día desde el bare como el resto.
+- **Reglas vigentes.** El `~/.claude/CLAUDE.md` global y
+  `/logical-node/AGENTS.md` van en cada encargo como reglas de máxima
+  prioridad (`--reglas` las cambia): lo que las contradiga solo puede ir a
+  `## Trayectoria` o `## Por confirmar`, nunca a la persona.
+- **Historia.** Los átomos de notas importadas llegan marcados como
+  historia; los de una etapa anterior (`--etapa-anterior`, por defecto
+  `/home/digger`: marzo-abril, Scala/Temporal/hn1/cn1), como solo
+  trayectoria. Manda lo más reciente.
+- **Longitudes.** Un cuerpo de hasta un 25 % de más se recorta por líneas
+  enteras desde el final; más, se rechaza y se pide condensar (al mismo
+  modelo y luego al más capaz).
+- **Importación de las notas, solo a mano** (`--importar`): es idempotente,
+  pero las notas son un canal heredado que L0/L1 sustituye, se reimporta
+  mal (una nota editada conserva su id y no se actualiza) y su riesgo es
+  de secretos: cada nota pasa por `Memoria_l0.Redaccion` y las de nombre
+  delicado (password, credencial, secret, token) no se abren. Una vez basta.
+- Entorno: `MEMORIA_REPO`, `MEMORIA_ESTADO`, `MEMORIA_GREPTIME`,
+  `MEMORIA_GREPTIME_DB` y los de la agencia (`AGENCIA_*`); los flags mandan.
+
 Lo que se aprendió de GreptimeDB 1.2 al escribirlo, y vale para A y B:
 
 - `id`, `uuid` y `version` son palabras reservadas: en el SQL, entre comillas

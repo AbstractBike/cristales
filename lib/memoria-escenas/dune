@@ -5,7 +5,7 @@
 (library
  (name memoria_escenas)
  (public_name cristales.memoria-escenas)
- (libraries agencia forja_http yojson unix))
+ (libraries agencia forja_http memoria_l0 yojson unix))
 
 ; Los prompts de los dos agentes van dentro del binario, como cristalizar.md
 ; en la forja.

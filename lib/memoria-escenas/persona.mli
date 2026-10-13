@@ -19,8 +19,10 @@ val disparo :
 val cambiadas : ultima:string option -> Escena.t list -> Escena.t list
 (** Las escenas actualizadas después de [ultima] (todas, sin [ultima]). *)
 
-val entrada : actual:string -> motivo:string -> cambiadas:Escena.t list -> resto:Escena.t list -> string
-(** El mensaje para el agente [memoria-persona]. *)
+val entrada :
+  reglas:string -> actual:string -> motivo:string -> cambiadas:Escena.t list -> resto:Escena.t list -> string
+(** El mensaje para el agente [memoria-persona]; [reglas], las vigentes
+    (CLAUDE.md, AGENTS.md), que mandan. *)
 
 val validar : string -> (string, string) result
 (** La salida del agente: sin bloque de código alrededor, no vacía y de

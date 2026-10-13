@@ -19,7 +19,7 @@ let escena ?(calor = 1) ?(bloqueada = false) ?(atomos = []) slug =
     actualizada = "2026-10-01T00:00:00Z"; calor; bloqueada; atomos; extra = []; cuerpo = "## Datos clave\n\n- " ^ slug }
 
 let atomo ?(ts = 1000) ?(version = 1) ?(vigente = true) ?(escena = "flota") id contenido =
-  { Atomo.ts; id; version; vigente; tipo = "hecho"; prioridad = 50; escena; contenido; proyecto = "/p"; origen = "[]";
+  { Atomo.ts; escrito = ts; id; version; vigente; tipo = "hecho"; prioridad = 50; escena; contenido; proyecto = "/p"; origen = "[]";
     fechas = {|["2026-10-13"]|} }
 
 let contenido ?(cuerpo = "## Datos clave\n\n- nuevo") ?(atomos = []) slug =
@@ -132,8 +132,15 @@ let () =
     (List.length (aplicar ~abiertas:[ "b" ] [ Actualizar (contenido "a") ]).rechazos = 1);
   comprueba "actualizar una que no existe" (List.length (aplicar [ Actualizar (contenido "nop") ]).rechazos = 1);
   let largo = String.concat "" (List.init 1501 (fun _ -> "ñ")) in
-  comprueba "cuerpo de más de 1500 caracteres"
+  comprueba "una línea de 1501: no se recorta, se rechaza"
     (List.length (aplicar [ Actualizar (contenido ~cuerpo:largo "a") ]).rechazos = 1);
+  let lineas n = String.concat "\n" (List.init n (fun i -> Printf.sprintf "- línea %03d %s" i (String.make 80 'x'))) in
+  let r = aplicar [ Actualizar (contenido ~cuerpo:(lineas 17 ^ "\n\n## Por confirmar\n\n- algo") "a") ] in
+  comprueba "un 10 % de más: se recorta por líneas"
+    (r.rechazos = [] && r.recortadas = [ "a" ]
+    && let e = busca "a" r in
+       Escena.longitud e.cuerpo <= 1500 && not (contiene "## Por confirmar" e.cuerpo));
+  comprueba "un 30 % de más: se rechaza" (List.length (aplicar [ Actualizar (contenido ~cuerpo:(lineas 22) "a") ]).rechazos = 1);
   comprueba "cuerpo de 1500 caracteres"
     ((aplicar [ Actualizar (contenido ~cuerpo:(String.sub largo 0 3000) "a") ]).rechazos = []);
   comprueba "slug inválido" (List.length (aplicar [ Crear (contenido "Mal Slug") ]).rechazos = 1);
@@ -236,7 +243,19 @@ let () =
   comprueba "vigentes" (List.map (fun (a : Atomo.t) -> a.contenido) (Atomo.vigentes l) = [ "v2" ]);
   let fila = `List [ `Int 7; `String "a-9"; `Int 1; `Bool true; `String "regla"; `Int 70; `String "e"; `String "c";
                      `String "p"; `String "[]"; `String "[]" ] in
-  comprueba "de_fila" ((Option.get (Atomo.de_fila fila)).tipo = "regla");
+  comprueba "de_fila sin escrito" (let a = Option.get (Atomo.de_fila fila) in a.tipo = "regla" && a.escrito = 7);
+  (match fila with
+  | `List l ->
+      comprueba "de_fila con escrito" ((Option.get (Atomo.de_fila (`List (l @ [ `Int 99 ])))).escrito = 99);
+      comprueba "de_fila con escrito nulo" ((Option.get (Atomo.de_fila (`List (l @ [ `Null ])))).escrito = 7)
+  | _ -> ());
+  comprueba "vigentes por escrito"
+    (List.map (fun (a : Atomo.t) -> a.contenido)
+       (Atomo.vigentes [ { (atomo ~ts:5 "a-1" "viejo") with escrito = 10 }; { (atomo ~ts:5 "a-1" "nuevo") with escrito = 20 } ])
+     = [ "nuevo" ]);
+  comprueba "etapa por fecha"
+    (Atomo.anterior ~anteriores:[ Atomo.Antes_de "2026-06-01" ] { (atomo "a" "x") with fechas = {|["2026-05-03"]|} }
+    && not (Atomo.anterior ~anteriores:[ Atomo.Antes_de "2026-06-01" ] (atomo "a" "x")));
   let sql = L1.insertar_sql [ atomo "a-'1" "it's" ] in
   comprueba "comillas escapadas"
     (contiene "'it''s'" sql)
@@ -295,6 +314,59 @@ let () =
   in
   comprueba "lote fallido: cursor quieto" (s.fallidos = 1 && s.estado.cursor = 0 && s.estado.atomos_desde_persona = 0);
   comprueba "lotes por escena" (List.map List.length (Ciclo.lotes 2 [ atomo "a" "x"; atomo "b" "y"; atomo "c" "z" ]) = [ 2; 1 ])
+
+let () =
+  (* Ronda 2: redacción, exclusión, marcas de historia, fechas, repetidos y
+     escenas mal formadas. *)
+  let n = Nota.de_texto "---\ndescription: la clave es sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789\ntype: reference\n---\nANTHROPIC_API_KEY=abcdef0123456789abcdef\n" in
+  comprueba "nota: descripción redactada" (not (contiene "AbCdEfGh" n.descripcion) && contiene "[redactado:" n.descripcion);
+  comprueba "nota: cuerpo redactado" (not (contiene "abcdef0123456789" n.cuerpo));
+  comprueba "nota: cuenta las redacciones" (n.redacciones >= 2);
+  comprueba "nota delicada" (Nota.excluida "x/reference_cn1_root_password.md" && Nota.excluida "reference_oracle_auth_token.md");
+  comprueba "nota normal" (not (Nota.excluida "feedback_pin_ca_keys_in_repo.md"));
+  let a = Nota.atomo ~ts:1 ~ruta:"r" ~proyecto:"/home/digger" ~escena:"digger" ~fecha:"2026-03-01" n in
+  comprueba "marca de etapa anterior" (contiene "ETAPA ANTERIOR" (Atomo.linea ~anteriores:[ Atomo.Proyecto "/home/digger" ] a));
+  comprueba "marca de historia" (contiene "{historia" (Atomo.linea { a with proyecto = "/p" }));
+  comprueba "sin marca" (not (contiene "{" (Atomo.linea (atomo "a-1" "x"))));
+  comprueba "fechas en rango" (contiene "2026-03-01" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} })
+    && contiene "2026-03-01..2026-10-13" (Atomo.linea { a with fechas = {|["2026-03-01","2026-05-02","2026-10-13"]|} }));
+  comprueba "ms_de_iso" (Ciclo.ms_de_iso "1970-01-02T00:00:01Z" = Some 86401000 && Ciclo.ms_de_iso "2026-10-13T20:37:06Z" = Some 1791923826000);
+  comprueba "modo trayectoria en la entrada"
+    (contiene "## Modo trayectoria" (Consolidacion.entrada ~trayectoria:true ~ahora ~escenas:[] ~abiertas:[] [ atomo "a" "x" ]));
+  (let base = { (escena "s") with cuerpo = "## Datos clave\n\n- uno\n\n## Trayectoria\n\n- de A a B" } in
+   let ap ops = Consolidacion.aplicar ~solo_trayectoria:true ~ahora ~abiertas:[ "s" ] ~nuevos:[] [ base ] ops in
+   let r = ap [ Actualizar (contenido ~cuerpo:"## Datos clave\n- uno\n\n## Trayectoria\n- de A a B\n- de Scala a OCaml" "s") ] in
+   comprueba "trayectoria: se puede añadir" (r.rechazos = [] && (List.hd r.escenas).titulo = base.titulo);
+   comprueba "trayectoria: el resto no se toca"
+     (List.length (ap [ Actualizar (contenido ~cuerpo:"## Datos clave\n- dos\n## Trayectoria\n- x" "s") ]).rechazos = 1);
+   comprueba "trayectoria: no se crea" (List.length (ap [ Crear (contenido "t") ]).rechazos = 1));
+  comprueba "reglas en la entrada"
+    (contiene "Reglas vigentes" (Consolidacion.entrada ~reglas:"Python prohibido" ~ahora ~escenas:[] ~abiertas:[] []));
+  (* Un átomo que ya está en una escena actualizada después no se repite. *)
+  let pedidos = ref 0 in
+  let ef =
+    { Ciclo.encargar = (fun ?modelo:_ _ _ -> incr pedidos; failwith "no debería pedir");
+      juzgar_mal = (fun _ _ -> ()); ahora = (fun () -> ahora); log = (fun _ -> ()) }
+  in
+  let escalera = [ Result.get_ok (Agencia.Modelo.de_texto "claude-haiku-5-5") ] in
+  let e = { (escena ~atomos:[ "a-1" ] "x") with actualizada = "2026-10-13T00:00:00Z"; cuerpo = "" } in
+  let s =
+    Ciclo.consolidar ef ~escenas_agente:(Agentes.escenas ~escalera) ~persona_agente:(Agentes.persona ~escalera)
+      ~estado:{ Estado.inicial with persona = Some "2027-01-01T00:00:00Z" } ~persona:"" [ e ] [ atomo ~ts:1000 "a-1" "uno" ]
+  in
+  comprueba "ya aplicado: no se repite" (!pedidos = 0 && s.consolidados = 0 && s.estado.cursor = 1000);
+  (* Una escena mal formada se salta, bloqueada. *)
+  let d = Filename.concat (Filename.get_temp_dir_name ()) (Printf.sprintf "memoria-c-%d" (Unix.getpid ())) in
+  Sys.mkdir d 0o755;
+  Sys.mkdir (Filename.concat d "escenas") 0o755;
+  Repo.escribir_fichero d "escenas/mala.md" "---\ncalor: mucho\n---\nx\n";
+  Repo.escribir_fichero d "escenas/buena.md" (Escena.a_texto (escena "buena"));
+  let es, avisos = Repo.escenas d in
+  comprueba "mal formada: aviso y bloqueada"
+    (List.length avisos = 1 && List.exists (fun (e : Escena.t) -> e.slug = "mala" && e.bloqueada) es && List.length es = 2);
+  Repo.escribir d ~escenas:[ { (escena "mala") with bloqueada = false } ] ~escritas:[ "mala" ] ~borradas:[] ~persona:None Estado.inicial;
+  comprueba "mal formada: no se pisa" (contiene "calor: mucho" (In_channel.with_open_bin (Filename.concat d "escenas/mala.md") In_channel.input_all));
+  ignore (Sys.command ("rm -rf " ^ Filename.quote d))
 
 let () =
   if !fallos > 0 then (

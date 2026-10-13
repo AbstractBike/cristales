@@ -14,17 +14,22 @@ let escribir_fichero repo ruta texto =
 
 let escenas repo =
   let d = repo / "escenas" in
-  if not (Sys.file_exists d) then Ok []
+  if not (Sys.file_exists d) then ([], [])
   else
     Sys.readdir d |> Array.to_list
     |> List.filter (fun f -> Filename.check_suffix f ".md")
     |> List.sort compare
-    |> List.fold_left
-         (fun acc f ->
-           Result.bind acc (fun acc ->
-               Result.map (fun e -> e :: acc) (Escena.de_texto ~slug:(Filename.chop_suffix f ".md") (leer (d / f)))))
-         (Ok [])
-    |> Result.map List.rev
+    |> List.map (fun f ->
+           let slug = Filename.chop_suffix f ".md" in
+           match Escena.de_texto ~slug (leer (d / f)) with
+           | Ok e -> (e, None)
+           | Error err ->
+               (* Mal formada (editada a mano): cuenta para el tope y sale en
+                  el índice como bloqueada, para que nadie la pise. *)
+               ( { Escena.slug; titulo = slug; resumen = "(cabecera mal formada: no se toca)"; creada = "";
+                   actualizada = ""; calor = 0; bloqueada = true; atomos = []; extra = []; cuerpo = "" },
+                 Some err ))
+    |> fun l -> (List.map fst l, List.filter_map snd l)
 
 let persona repo = if Sys.file_exists (repo / "persona.md") then leer (repo / "persona.md") else ""
 let estado repo = if Sys.file_exists (repo / ".estado") then Estado.de_texto (leer (repo / ".estado")) else Estado.inicial

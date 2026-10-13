@@ -9,7 +9,7 @@
     ha subido). *)
 
 type t = {
-  cursor : int;  (** El [ts] (ms) del último átomo L1 consolidado. *)
+  cursor : int;  (** El [escrito] (ms) del último átomo L1 consolidado. *)
   persona : string option;  (** Cuándo se escribió la persona (ISO). *)
   atomos_desde_persona : int;
 }

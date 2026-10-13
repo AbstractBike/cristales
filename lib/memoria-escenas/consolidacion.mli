@@ -32,9 +32,20 @@ val abiertas : Escena.t list -> Atomo.t list -> string list
     escenas, para que haya qué fusionar), sin las bloqueadas, de más a menos
     parecida. *)
 
-val entrada : ahora:string -> escenas:Escena.t list -> abiertas:string list -> Atomo.t list -> string
-(** El mensaje para el agente: aviso, índice, escenas abiertas enteras,
-    átomos nuevos y hora. *)
+val entrada :
+  ?reglas:string ->
+  ?anteriores:Atomo.etapa list ->
+  ?trayectoria:bool ->
+  ahora:string ->
+  escenas:Escena.t list ->
+  abiertas:string list ->
+  Atomo.t list ->
+  string
+(** El mensaje para el agente: reglas vigentes (el CLAUDE.md y el AGENTS.md
+    de hoy, que mandan), aviso, índice, escenas abiertas enteras, átomos
+    nuevos (con su marca de historia o de etapa anterior, ver
+    {!Atomo.linea}) y hora. Con [trayectoria], los átomos son de una etapa
+    anterior y el mensaje dice que solo se puede tocar la trayectoria. *)
 
 val reintento : entrada:string -> salida:string -> string list -> string
 (** El mensaje para repetir: la entrada, la respuesta y los rechazos. *)
@@ -47,9 +58,13 @@ type resultado = {
   borradas : string list;  (** Slugs que ya no existen (fusionados). *)
   aplicadas : Operacion.t list;
   rechazos : (Operacion.t * string) list;  (** Con el motivo. *)
+  recortadas : string list;
+      (** Slugs cuyo cuerpo se pasaba hasta un 25 % y se recortó por líneas
+          desde el final; más allá, la operación se rechaza. *)
 }
 
 val aplicar :
+  ?solo_trayectoria:bool ->
   ahora:string ->
   abiertas:string list ->
   nuevos:Atomo.t list ->
@@ -59,4 +74,6 @@ val aplicar :
 (** Primero las fusiones (liberan sitio), luego las actualizaciones y al
     final las creaciones; las que incumplen una regla se rechazan con su
     motivo y no cambian nada. Los [atomos] de cada operación se filtran a
-    los ids de [nuevos] y se unen a los de la escena. *)
+    los ids de [nuevos] y se unen a los de la escena. Con
+    [solo_trayectoria] (átomos de una etapa anterior) solo vale [actualizar]
+    y solo puede cambiar la sección [## Trayectoria] (ni título ni resumen). *)

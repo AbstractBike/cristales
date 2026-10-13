@@ -15,15 +15,23 @@ type t = {
   descripcion : string;  (** [description]. *)
   tipo : string;  (** [metadata.type] o [type]: feedback, user, project, reference. *)
   cuerpo : string;
+  redacciones : int;  (** Secretos sustituidos por [[redactado:<tipo>]]. *)
 }
 
 val de_texto : string -> t
-(** Cabecera YAML sencilla: [clave: valor] por línea, valores entre
+(** La descripción y el cuerpo, ya pasados por {!Memoria_l0.Redaccion.redactar}:
+    nada de una nota llega a L1, a git ni a un LLM sin redactar.
+
+    Cabecera YAML sencilla: [clave: valor] por línea, valores entre
     comillas dobles (JSON) o simples (YAML) o sin ellas; [type] vale
     anidado bajo [metadata] o suelto. *)
 
 val es_indice : string -> bool
 (** [MEMORY.md]: un índice, no una nota. *)
+
+val excluida : string -> bool
+(** Una nota cuyo nombre dice password, contraseña, credencial, secret o
+    token: no se abre siquiera. *)
 
 val tipo_atomo : string -> string
 (** feedback → regla, user → persona, project y reference → hecho. *)

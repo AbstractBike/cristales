@@ -61,9 +61,14 @@ let abiertas escenas atomos =
 
 (* {1 El mensaje} *)
 
-let entrada ~ahora ~escenas ~abiertas atomos =
+let reglas_vigentes b r =
+  if String.trim r <> "" then
+      Printf.bprintf b "## Reglas vigentes (máxima prioridad)\n\nLas reglas actuales del usuario (su CLAUDE.md y AGENTS.md). Mandan sobre cualquier átomo: lo que las contradiga solo puede ir a `## Trayectoria` o `## Por confirmar`, nunca como regla.\n\n%s\n\n" (String.trim r)
+
+let entrada ?(reglas = "") ?(anteriores = []) ?(trayectoria = false) ~ahora ~escenas ~abiertas atomos =
   let b = Buffer.create 8192 in
   let p fmt = Printf.bprintf b fmt in
+  reglas_vigentes b reglas;
   let n = List.length escenas in
   Option.iter (fun a -> p "## Aviso de tope\n\n%s\n\n" a) (aviso n);
   p "## Índice de escenas (%d/%d)\n\n" n tope;
@@ -85,8 +90,11 @@ let entrada ~ahora ~escenas ~abiertas atomos =
             (Escena.a_texto e)
       | None -> ())
     abiertas;
-  p "## Átomos nuevos (%d)\n\n" (List.length atomos);
-  List.iter (fun a -> p "%s\n" (Atomo.linea a)) atomos;
+  if trayectoria then (
+    p "## Modo trayectoria\n\nEstos átomos son de una etapa ANTERIOR de la flota (otras máquinas, rutas y lenguajes): no son reglas ni datos vigentes. Solo puedes `actualizar` una escena abierta para añadir o corregir líneas de su `## Trayectoria` (de X a Y, porque…), dejando idéntico el resto del cuerpo, o `nada`. El código rechaza cualquier otra cosa.\n\n";
+    p "## Átomos de una etapa anterior (%d)\n\n" (List.length atomos))
+  else p "## Átomos nuevos (%d)\n\n" (List.length atomos);
+  List.iter (fun a -> p "%s\n" (Atomo.linea ~anteriores a)) atomos;
   p "\n## Hora actual\n\n%s\n" ahora;
   Buffer.contents b
 
@@ -105,10 +113,16 @@ type resultado = {
   borradas : string list;
   aplicadas : Operacion.t list;
   rechazos : (Operacion.t * string) list;
+  recortadas : string list;
 }
 
 let union a b = a @ List.filter (fun x -> not (List.mem x a)) b
 
+let tolerancia = Escena.max_cuerpo * 5 / 4
+
+(* Hasta un 25 % de más se recorta por líneas desde el final (lo último de
+   una escena es lo menos vital: trayectoria y dudas, que siguen en L1); más
+   allá, se rechaza y se pide condensar. *)
 let validar_contenido (c : Operacion.contenido) =
   if not (Escena.slug_valido c.slug) then Error (Printf.sprintf "slug inválido «%s»" c.slug)
   else if String.trim c.titulo = "" then Error "sin título"
@@ -116,13 +130,20 @@ let validar_contenido (c : Operacion.contenido) =
   else if String.trim c.cuerpo = "" then Error "cuerpo vacío"
   else
     let n = Escena.longitud (String.trim c.cuerpo) in
-    if n > Escena.max_cuerpo then
-      Error (Printf.sprintf "cuerpo de %d caracteres: el máximo es %d, condénsalo" n Escena.max_cuerpo)
-    else Ok ()
+    if n <= Escena.max_cuerpo then Ok (c, false)
+    else
+      let r = Escena.recortar c.cuerpo in
+      (* Recortar no debe dejarla en los huesos: si se va más de la mitad
+         (líneas muy largas), mejor pedir que la condense. *)
+      if n <= tolerancia && Escena.longitud r >= Escena.max_cuerpo / 2 then Ok ({ c with cuerpo = r }, true)
+      else
+      Error
+        (Printf.sprintf "cuerpo de %d caracteres: el máximo es %d (apunta a 1100), condénsalo" n Escena.max_cuerpo)
 
 let orden = function Operacion.Fusionar _ -> 0 | Actualizar _ -> 1 | Crear _ -> 2 | Nada -> 3
 
-let aplicar ~ahora ~abiertas ~nuevos escenas ops =
+let aplicar ?(solo_trayectoria = false) ~ahora ~abiertas ~nuevos escenas ops =
+  let recortadas = ref [] in
   let ids = List.map (fun (a : Atomo.t) -> a.id) nuevos in
   let suyos l = List.filter (fun i -> List.mem i ids) l in
   let ops = List.stable_sort (fun a b -> compare (orden a) (orden b)) ops in
@@ -144,13 +165,22 @@ let aplicar ~ahora ~abiertas ~nuevos escenas ops =
   let paso (escenas, escritas, borradas, creadas) op =
     match (op : Operacion.t) with
     | Nada -> Ok (escenas, escritas, borradas, creadas)
+    | (Crear _ | Fusionar _) when solo_trayectoria -> Error "en modo trayectoria solo se actualiza la «## Trayectoria»"
     | Actualizar c ->
-        let* () = validar_contenido c in
+        let* c, r = validar_contenido c in
+        if r then recortadas := c.slug :: !recortadas;
         let* e = tocable ~escritas escenas c.slug in
+        let* c =
+          if not solo_trayectoria then Ok c
+          else if Escena.sin_trayectoria e.cuerpo <> Escena.sin_trayectoria c.cuerpo then
+            Error (Printf.sprintf "«%s»: en modo trayectoria solo puede cambiar «## Trayectoria»" c.slug)
+          else Ok { c with titulo = e.titulo; resumen = e.resumen }
+        in
         let e' = nueva c ~creada:e.creada ~calor:(e.calor + 1) ~atomos:(union e.atomos (suyos c.atomos)) in
         Ok (con { e' with extra = e.extra } escenas, union escritas [ c.slug ], borradas, creadas)
     | Crear c ->
-        let* () = validar_contenido c in
+        let* c, r = validar_contenido c in
+        if r then recortadas := c.slug :: !recortadas;
         if buscar c.slug escenas <> None then Error (Printf.sprintf "«%s» ya existe: actualízala" c.slug)
         else if not (puede_crear (List.length escenas)) then
           Error (Printf.sprintf "hay %d escenas: no se admite crear (tope %d)" (List.length escenas) tope)
@@ -159,7 +189,8 @@ let aplicar ~ahora ~abiertas ~nuevos escenas ops =
           let e = nueva c ~creada:ahora ~calor:1 ~atomos:(suyos c.atomos) in
           Ok (con e escenas, union escritas [ c.slug ], borradas, creadas + 1)
     | Fusionar (de, c) ->
-        let* () = validar_contenido c in
+        let* c, r = validar_contenido c in
+        if r then recortadas := c.slug :: !recortadas;
         let de = List.sort_uniq compare de in
         if List.length de < 2 || List.length de > 4 then Error "fusionar junta de 2 a 4 escenas"
         else if (not (List.mem c.slug de)) && buscar c.slug escenas <> None then
@@ -200,4 +231,5 @@ let aplicar ~ahora ~abiertas ~nuevos escenas ops =
     escritas;
     borradas;
     aplicadas = List.rev aplicadas;
-    rechazos = List.rev rechazos }
+    rechazos = List.rev rechazos;
+    recortadas = List.rev !recortadas }
