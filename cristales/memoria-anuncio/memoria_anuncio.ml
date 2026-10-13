@@ -513,10 +513,11 @@ let memoria_de (a : anuncio) =
   (* El part number del título; si no, el de la descripción, si da uno solo. *)
   let pn = match (lt.modulos, ld) with (m, _) :: _, _ -> Some m | [], Some { modulos = [ (m, _) ]; _ } -> Some m | _ -> None in
   let esp = match ld with Some d -> completar lt.especificacion d.especificacion | None -> lt.especificacion in
+  (* Un lote mezclado lo es antes de mirar el part number: su capacidad no es la de ese módulo. *)
+  let esp = if List.length lt.generaciones >= 2 || T.hay ws mezcla then { esp with iguales = Some false } else esp in
   let esp = combinar esp pn in
   (* El ECC del texto sobre un formato sin ECC: «UDIMM ECC». *)
   let esp = match (esp.formato, esp.ecc) with Some f, Some true -> { esp with formato = Some (C.con_ecc f) } | _ -> esp in
-  let esp = if List.length lt.generaciones >= 2 || T.hay ws mezcla then { esp with iguales = Some false } else esp in
   { lt; esp; pn; ws }
 
 let gb_texto mb = Yojson.Safe.to_string (gb_json mb)

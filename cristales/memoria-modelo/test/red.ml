@@ -34,6 +34,8 @@ let () =
   (* a2: el que lleva y sus equivalentes exactos *)
   pn "M393A8G40AB2-CWE" "ddr4 rdimm 64x1 3200 2Rx4";
   pn "Samsung M393A8G40AB2-CWECO 64GB" "ddr4 rdimm 64x1 3200 2Rx4";
+  (* La cuenta pegada al part number, como la escribe quien se da de alta. *)
+  pn "quiero completar mi ROME2D16-2T, ya lleva 8×M393A8G40AB2-CWE" "ddr4 rdimm 64x1 3200 2Rx4";
   pn "M393A8G40BB4-CWE" "ddr4 rdimm 64x1 3200 2Rx4";
   pn "HMAA8GR7AJR4N-XN" "ddr4 rdimm 64x1 3200 2Rx4";
   pn "HMAA8GR7CJR4N-XN" "ddr4 rdimm 64x1 3200 2Rx4";

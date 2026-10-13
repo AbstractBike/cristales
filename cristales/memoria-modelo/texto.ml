@@ -28,7 +28,15 @@ let pliega s =
   let s = String.mapi (fun i c -> if (c = '.' || c = ',') && i > 0 && i + 1 < n && es_cifra s.[i - 1] && es_cifra s.[i + 1] then 'd' else c) s in
   String.map (fun c -> match c with 'A' .. 'Z' -> Char.lowercase_ascii c | 'a' .. 'z' | '0' .. '9' -> c | _ -> ' ') s
 
-let palabras texto = Array.of_list (List.filter (( <> ) "") (String.split_on_char ' ' (pliega texto)))
+(* «8xM393A8G40AB2», «10xHynix»: la cuenta pegada a lo que cuenta va aparte («8x m393a8g40ab2»).
+   «2x16gb» se queda como está: ahí la cuenta va con la capacidad. *)
+let separa_cuenta w =
+  let n = String.length w in
+  let rec cifras i = if i < n && es_cifra w.[i] then cifras (i + 1) else i in
+  let i = cifras 0 in
+  if i >= 1 && i <= 2 && n - i - 1 >= 4 && w.[i] = 'x' && es_letra w.[i + 1] then [ String.sub w 0 (i + 1); String.sub w (i + 1) (n - i - 1) ] else [ w ]
+
+let palabras texto = Array.of_list (List.concat_map separa_cuenta (List.filter (( <> ) "") (String.split_on_char ' ' (pliega texto))))
 
 (** Los trozos de letras o de cifras de una palabra: «2rx4» → [2; rx; 4]. *)
 let trozos w =

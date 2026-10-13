@@ -213,13 +213,21 @@ let combinar (e : especificacion) (m : modulo option) =
        línea de juego) cede ante el del part number. *)
     let formato = match (e.formato, m.formato) with Some f, _ when e.formato_dicho -> Some f | _, Some f -> Some f | f, None -> f in
     let formato = match (formato, e.ecc) with Some f, Some true -> Some (con_ecc f) | f, _ -> f in
+    (* «8x M393A8G40AB2-CWE 64GB»: el texto leyó los 64 GB como el total de los
+       ocho; el part number dice que son los de cada módulo. *)
+    let capacidad, total =
+      match (e.capacidad, e.total, e.modulos, m.capacidad) with
+      | Some c, Some t, Some k, Some mc when k > 1 && c <> mc && t = mc && e.iguales <> Some false -> (Some mc, Some (mc * k))
+      | _ -> (o e.capacidad m.capacidad, e.total)
+    in
     {
       e with
       generacion = o e.generacion m.generacion;
       formato;
       ecc = o e.ecc (match m.ecc with Some _ -> m.ecc | None -> Option.bind formato ecc_de);
       registrada = o e.registrada (match m.registrada with Some _ -> m.registrada | None -> Option.bind formato registrada_de);
-      capacidad = o e.capacidad m.capacidad;
+      capacidad;
+      total;
       velocidad = o e.velocidad m.velocidad;
       cas = o e.cas m.cas;
       rangos = o e.rangos m.rangos;

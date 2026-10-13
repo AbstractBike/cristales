@@ -50,6 +50,9 @@ let () =
   es "Crucial 16GB DDR4-3200 CL22 UDIMM Desktop RAM CT16G4DFRA32A" "modulo 1x16 ddr4 udimm 3200";
   (* a2: RDIMM de 64 a 3200, sueltos y en lote *)
   es "4× Samsung 64GB DDR4-3200 ECC REG RDIMM RAM M393A8G40AB2-CWECO" "lote 4x64 ddr4 rdimm 3200";
+  (* La cuenta delante del part number y la capacidad detrás: los 64 GB son de cada uno (el part number lo dice). *)
+  es "8x M393A8G40AB2-CWE 64GB" "lote 8x64 ddr4 rdimm 3200";
+  es "8xM393A8G40AB2-CWE 64GB" "lote 8x64 ddr4 rdimm 3200";
   es "HPE P03053-0A1 64GB DDR4 3200 Hynix HMAA8GR7AJR4N-XN REG ECC RAM" "modulo 1x64 ddr4 rdimm 3200";
   es "MICRON 64 GB PC4 DDR4 3200 MHz ECC 2Rx4 Server-Speicher" "modulo 1x64 ddr4 rdimm 3200";
   es "50x SK Hynix DDR4 3200AA 64GB 2Rx4 Módulos RAM" "lote 50x64 ddr4 rdimm 3200";
