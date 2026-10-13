@@ -36,11 +36,13 @@ val pasar :
   ?escribir:(Transcript.mensaje list -> (unit, string) result) ->
   ?al_fichero:(string -> unit) ->
   ?al_redactar:(string -> Redaccion.tipo -> antes:string -> string -> unit) ->
+  ?al_mensaje:(string -> Transcript.mensaje -> unit) ->
   unit ->
   estadisticas
 (** [al_fichero] se llama tras cada fichero cuyo cursor avanzó (para
     guardarlo); [al_redactar], con cada redacción y su fichero
-    ({!Redaccion.redactar}). *)
+    ({!Redaccion.redactar}); [al_mensaje], con cada mensaje tal como iría
+    a L0 y su fichero. *)
 
 val informe : estadisticas -> string
 (** Las cifras, en texto, una por línea. *)

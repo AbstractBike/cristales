@@ -129,6 +129,18 @@ let reglas =
           if v.[0] = '$' || v.[0] = '/' || String.starts_with ~prefix:"\"$" v || String.starts_with ~prefix:"\"/" v
           then None
           else Some (Re.Group.get g 1 ^ marca Clave)) };
+    (* Variables de entorno con la palabra en medio ([KEY_ID_ACCESS=…],
+       [SECRET_ACCESS_KEY_ID=…]): en mayúsculas, sin distinguir dónde. *)
+    { tipo = Clave;
+      re = perl {|(\b[A-Z0-9_]*(TOKEN|SECRET|KEY|PASSWORD|PASSWD)[A-Z0-9_]*["']?[ \t]*[:=][ \t]*)("[^"\n]{8,}"|'[^'\n]{8,}'|[^\s"'\[$/]{8,})|};
+      sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Clave)) };
+    (* Hex de 32 o más poco después de la palabra: un token de Forgejo es
+       igual que un hash de git, pero un hash no va detrás de [token]. *)
+    { tipo = Clave;
+      re =
+        perl ~opts:[ `Caseless ]
+          {|((token|secret|api[-_]?key|key|password|passwd|clave|contraseña)[^\n]{0,24}?[^0-9a-f\n])[0-9a-f]{32,}|};
+      sustituto = (fun g -> Some (Re.Group.get g 1 ^ marca Clave)) };
     { tipo = Entropia;
       re = perl {|[A-Za-z0-9+/_.-]{20,}|};
       sustituto = (fun g -> if parece_secreto (Re.Group.get g 0) then Some (marca Entropia) else None) } ]

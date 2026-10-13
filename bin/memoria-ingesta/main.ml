@@ -6,7 +6,7 @@
    por un cursor local; --todo vuelve a leerlo todo (es idempotente).
 
    memoria-ingesta [--raiz DIR] [--greptime URL] [--db BASE] [--cursor F]
-                   [--todo] [--seco [--auditar]] *)
+                   [--todo] [--seco [--auditar] [--residuos]] *)
 
 open Memoria_l0
 
@@ -16,7 +16,7 @@ let () =
   let greptime = ref "https://greptime.pin" in
   let db = ref "memoria" in
   let cursor = ref (Cursor.ruta_por_defecto ()) in
-  let todo = ref false and seco = ref false and auditar = ref false in
+  let todo = ref false and seco = ref false and auditar = ref false and residuos = ref false in
   Arg.parse
     [ ("--raiz", Arg.Set_string raiz, "DIR  transcripts (~/.claude/projects)");
       ("--greptime", Arg.Set_string greptime, "URL  raíz HTTP de GreptimeDB (https://greptime.pin)");
@@ -26,7 +26,10 @@ let () =
       ("--seco", Arg.Set seco, " no escribir nada: solo contar");
       ( "--auditar",
         Arg.Set auditar,
-        " con --seco: una línea por redacción (tipo, silueta, lo que la precede, fichero), sin el secreto" ) ]
+        " con --seco: una línea por redacción (tipo, silueta, lo que la precede, fichero), sin el secreto" );
+      ( "--residuos",
+        Arg.Set residuos,
+        " con --seco: patrones sospechosos que sobreviven a la redacción (tipo, silueta, fichero), sin el valor" ) ]
     (fun a -> raise (Arg.Bad ("argumento de más: " ^ a)))
     "memoria-ingesta: transcripts de Claude Code a memoria_l0";
   let t0 = Unix.gettimeofday () in
@@ -40,7 +43,16 @@ let () =
               Printf.printf "%s\t%s\t%s\t%s\n" (Redaccion.nombre t) forma (String.escaped antes) f)
         else None
       in
-      Ingesta.pasar ~raiz:!raiz ~cursor:estado ?al_redactar ()
+      let al_mensaje =
+        if !residuos then
+          Some
+            (fun f (m : Transcript.mensaje) ->
+              List.iter
+                (fun (t, forma) -> Printf.printf "residuo\t%s\t%s\t%s\n" (Residuos.nombre t) forma f)
+                (Residuos.buscar m.texto))
+        else None
+      in
+      Ingesta.pasar ~raiz:!raiz ~cursor:estado ?al_redactar ?al_mensaje ()
     else (
       Mirage_crypto_rng_unix.use_default ();
       Eio_main.run @@ fun env ->

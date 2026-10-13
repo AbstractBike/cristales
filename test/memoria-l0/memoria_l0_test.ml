@@ -82,6 +82,20 @@ let () =
   intacto "id de invocación" "inv_1abcDEF234ghiJKL567mnoPQR890stu";
   let k = "client=" ^ "aZ3" ^ "-" ^ alnum in
   redacta "entropía con separador" ~queda:[ "client=" ] Entropia k alnum;
+  (* Huecos que encontró --residuos. *)
+  let hex40 = "0123456789abcdef" ^ "0123456789abcdef" ^ "01234567" in
+  redacta "palabra en medio de la variable" ~queda:[ "KEY_FOR_FORGEJO=" ] Clave ("KEY_FOR_FORGEJO=" ^ hex40) hex40;
+  redacta "hex tras token (Forgejo)" ~queda:[ "el token de Forgejo es " ] Clave ("el token de Forgejo es " ^ hex40) hex40;
+  redacta "hex tras API-Key" ~queda:[ "API-Key: " ] Clave ("curl -H 'API-Key: " ^ hex40 ^ "'") hex40;
+  redacta "PEM en base64 tras SECRET" ~queda:[ "SECRET=" ] Clave ("SECRET=LS0t" ^ "LS1CRUdJTiBQUklWQVRF") "LS1CRUdJTi";
+  redacta "apiKey = " ~queda:[ "apiKey = " ] Clave ("apiKey = \"" ^ alnum ^ "\"") alnum;
+  intacto "hash de git tras commit" ("commit " ^ hex40 ^ " en master");
+  intacto "ruta tras key_file" "key_file=/run/secrets/c1-wg.key";
+  let sucio = "export API_TOKEN=" ^ alnum ^ " y LS0t" ^ "LS1CRUdJTiBQUklWQVRFIEtFWS0" in
+  comprueba "residuos: los ve" (List.length (Residuos.buscar sucio) = 2);
+  comprueba "residuos: nada tras redactar" (Residuos.buscar (fst (Redaccion.redactar sucio)) = []);
+  comprueba "residuos: silueta, no valor"
+    (List.for_all (fun (_, f) -> not (contiene f "Qx7b")) (Residuos.buscar sucio));
   (* La marca no se vuelve a redactar. *)
   let r1, _ = Redaccion.redactar ("A_TOKEN=" ^ gh) in
   let r2, c2 = Redaccion.redactar r1 in
