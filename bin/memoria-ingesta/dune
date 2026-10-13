@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name memoria-ingesta)
+ (package cristales)
+ (libraries memoria_l0 forja_http eio_main mirage-crypto-rng.unix unix uri))

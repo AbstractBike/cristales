@@ -1,0 +1,4 @@
+(library
+ (name memoria_l0)
+ (public_name cristales.memoria-l0)
+ (libraries forja_http re unix yojson))

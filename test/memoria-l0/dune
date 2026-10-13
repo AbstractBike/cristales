@@ -1,0 +1,3 @@
+(test
+ (name memoria_l0_test)
+ (libraries memoria_l0 unix yojson))

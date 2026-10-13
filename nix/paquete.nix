@@ -9,7 +9,7 @@ ocamlPackages.buildDunePackage {
   version = "0.1.0";
   src = lib.cleanSource ../.;
   propagatedBuildInputs = with ocamlPackages; [
-    eio_main cohttp-eio tls-eio ca-certs mirage-crypto-rng yojson uri
+    eio_main cohttp-eio tls-eio ca-certs mirage-crypto-rng yojson uri re
   ];
   doCheck = true;
   # Sin caché de dune: en el sandbox HOME no es escribible.
