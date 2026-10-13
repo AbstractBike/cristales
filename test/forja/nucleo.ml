@@ -109,7 +109,7 @@ let () =
 let () =
   let muestras =
     [ { Forja.Cantera.tarea = tarea "mayus"; plantilla = "Pon en mayúsculas.";
-        entrada = "hola"; salida = Some "HOLA"; contraste = None; defecto = None } ]
+        entrada = "hola"; salida = Some "HOLA"; contraste = None; defecto = None; ejemplos = false } ]
   in
   let prompt = Forja_http.Prompt.cristalizar in
   let n = Forja.Semilla.nucleacion ~prompt muestras in
@@ -218,15 +218,18 @@ let () =
       {|{"output":[{"records":{"schema":{},"rows":[
           ["mayus","P","hola","HOLA",true,"HOLA","",true],
           ["mayus","P","a1","A1",false,"","dígitos",null],
-          ["mayus","","b2","",false,"","dígitos",false]]}}]}|}
+          ["mayus","","b2","",false,"","dígitos",false],
+          ["mayus","P","c3","C3",false,"","",true,true],
+          ["mayus","P","d4","D4",false,"","",true,null]]}}]}|}
   in
   match Forja_http.Cantera_greptime.filas r with
-  | [ a; b; c ] ->
+  | [ a; b; c; d; e ] ->
+      comprueba "fila con ejemplos" (d.ejemplos && not e.ejemplos && not a.ejemplos);
       comprueba "fila contrastada" (a.contraste = Some "HOLA" && a.defecto = None);
       comprueba "fila con defecto" (b.contraste = None && b.defecto = Some "dígitos");
       comprueba "fila de antes de respondida: vino del LLM" (b.salida = Some "A1");
       comprueba "fila de un defecto por MCP: sin salida" (c.salida = None && c.defecto = Some "dígitos")
-  | _ -> comprueba "tres filas de greptime" false
+  | _ -> comprueba "cinco filas de greptime" false
 
 (* Un defecto directo (forja-mcp): no cuenta para la madurez y la semilla lo dice. *)
 let () =
@@ -243,7 +246,7 @@ let () =
     let s = Printf.sprintf {|{"salario":%d,"skills":["a"]}|} i
     and c = Printf.sprintf {|{"salario":%d,"skills":["b"]}|} i in
     { Forja.Cantera.tarea = tarea "oferta"; plantilla = "Extrae."; entrada = string_of_int i;
-      salida = Some s; contraste = Some c; defecto = None }
+      salida = Some s; contraste = Some c; defecto = None; ejemplos = false }
   in
   let ms = List.init 4 muestra in
   let i = Forja.Madurez.informe ms in
@@ -362,5 +365,36 @@ let () =
     && contiene t {|h_segundos_bucket{le="+Inf"} 3|});
   comprueba "suma y cuenta" (contiene t "h_segundos_sum 5.55" && contiene t "h_segundos_count 3");
   comprueba "medidas, con etiquetas ordenadas" (contiene t "# TYPE g gauge" && contiene t {|g{y="2",z="1"} 0.5|})
+
+(* Ejemplos (few-shot): la muestra vale, su contraste no mide la madurez; y
+   el contraste se pide sin ellos. *)
+let () =
+  let m =
+    { Forja.Cantera.tarea = tarea "mayus"; plantilla = "P"; entrada = "a"; salida = Some "A";
+      contraste = Some "A"; defecto = None; ejemplos = true }
+  in
+  let i = Forja.Madurez.sumar Forja.Madurez.vacio m in
+  comprueba "con ejemplos, muestra sin contraste" (i.muestras = 1 && i.contrastes = 0 && i.coincidencias = 0);
+  let i = Forja.Madurez.sumar Forja.Madurez.vacio { m with ejemplos = false } in
+  comprueba "sin ejemplos, contraste" (i.contrastes = 1 && i.coincidencias = 1);
+  let j = Yojson.Safe.from_string in
+  let a =
+    j {|{"system":"S","messages":[{"role":"user","content":"x"},{"role":"assistant","content":"X"},{"role":"user","content":"z"}]}|}
+  in
+  comprueba "anthropic: con ejemplos" (Forja_http.Anthropic.con_ejemplos a);
+  comprueba "anthropic: sin ejemplos, el último"
+    (Forja_http.Anthropic.sin_ejemplos a
+    = j {|{"system":"S","messages":[{"role":"user","content":"z"}]}|});
+  comprueba "anthropic: sin ejemplos no tiene"
+    (not (Forja_http.Anthropic.con_ejemplos (Forja_http.Anthropic.sin_ejemplos a)));
+  let o =
+    j {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"x"},{"role":"assistant","content":"X"},{"role":"user","content":"z"}]}|}
+  in
+  comprueba "openai: con ejemplos" (Forja_http.Openai.con_ejemplos o);
+  comprueba "openai: sin ejemplos, el system y el último"
+    (Forja_http.Openai.sin_ejemplos o
+    = j {|{"messages":[{"role":"system","content":"S"},{"role":"user","content":"z"}]}|});
+  comprueba "openai: system y usuario no son ejemplos"
+    (not (Forja_http.Openai.con_ejemplos (Forja_http.Openai.sin_ejemplos o)))
 
 let () = if !fallos > 0 then exit 1

@@ -50,3 +50,11 @@ val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
 
 val uso : Yojson.Safe.t -> (int * int) option
 (** Tokens de entrada y de salida de una respuesta ([usage]). *)
+
+(** {1 Ejemplos} *)
+
+val con_ejemplos : Yojson.Safe.t -> bool
+(** Si la petición lleva turnos previos al último (ejemplos few-shot). *)
+
+val sin_ejemplos : Yojson.Safe.t -> Yojson.Safe.t
+(** La misma petición sin ellos: el system y el último turno. *)

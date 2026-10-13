@@ -4,7 +4,7 @@
 type post = Greptime.post
 
 let columnas =
-  [ "tarea"; "plantilla"; "entrada"; "salida"; "contrastada"; "contraste"; "defecto"; "respondida" ]
+  [ "tarea"; "plantilla"; "entrada"; "salida"; "contrastada"; "contraste"; "defecto"; "respondida"; "ejemplos" ]
 
 (* Las columnas opcionales se escriben siempre (cadena vacía si no hay) para
    que existan desde la primera fila y el SELECT no falle. *)
@@ -18,12 +18,15 @@ let json (m : Forja.Cantera.muestra) =
       ("contrastada", `Bool (Option.is_some m.contraste));
       ("contraste", o m.contraste);
       ("defecto", o m.defecto);
-      ("respondida", `Bool (Option.is_some m.salida)) ]
+      ("respondida", `Bool (Option.is_some m.salida));
+      ("ejemplos", `Bool m.ejemplos) ]
 
-let fila = function
+let rec fila = function
+  (* Una fila de antes de [ejemplos] (o leída sin ella). *)
+  | `List ([ _; _; _; _; _; _; _; _ ] as l) -> fila (`List (l @ [ `Null ]))
   | `List
       [ `String tarea; `String plantilla; `String entrada; `String salida;
-        `Bool contrastada; `String contraste; `String defecto; respondida ] -> (
+        `Bool contrastada; `String contraste; `String defecto; respondida; ejemplos ] -> (
       match Forja.Tarea.explicita tarea with
       | Error _ -> None
       | Ok tarea ->
@@ -33,7 +36,9 @@ let fila = function
                  venían del LLM. *)
               salida = (if respondida = `Bool false then None else Some salida);
               contraste = (if contrastada then Some contraste else None);
-              defecto = (if defecto = "" then None else Some defecto) })
+              defecto = (if defecto = "" then None else Some defecto);
+              (* Las de antes de [ejemplos], a null: no los llevaban. *)
+              ejemplos = ejemplos = `Bool true })
   | _ -> None
 
 let filas j = List.filter_map fila (Greptime.crudas j)
@@ -44,6 +49,7 @@ let crear ~post ~url ?(db = "public") ?(tabla = "forja_cantera") () =
      ingesta que las traiga, y el SELECT de [muestras] fallaría. Si la tabla
      aún no existe, falla sin más: la crea la primera ingesta. *)
   ignore (Greptime.sql g (Printf.sprintf "ALTER TABLE %s ADD COLUMN IF NOT EXISTS respondida BOOLEAN" tabla));
+  ignore (Greptime.sql g (Printf.sprintf "ALTER TABLE %s ADD COLUMN IF NOT EXISTS ejemplos BOOLEAN" tabla));
   let registrar m = Greptime.ingerir g ~tabla (json m) in
   let leer = Greptime.leer g in
   (* La tarea es un nombre validado ([a-z0-9-]): se puede citar sin

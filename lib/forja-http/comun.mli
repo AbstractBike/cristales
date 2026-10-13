@@ -29,3 +29,7 @@ val ultimo_de_ejemplos : Yojson.Safe.t list -> Yojson.Safe.t option
 (** Si los turnos son usuario/asistente alternos, todos de texto, y el
     último es de usuario, ese último: los anteriores son ejemplos
     (few-shot) de la misma tarea. *)
+
+val sin_ejemplos_en : (Yojson.Safe.t -> bool) -> Yojson.Safe.t -> Yojson.Safe.t
+(** La petición con solo los turnos de system (según el predicado) y el
+    último: sin ejemplos. Igual si no los había. *)

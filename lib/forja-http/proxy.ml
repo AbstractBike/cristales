@@ -82,6 +82,8 @@ module type API = sig
   val campos : Yojson.Safe.t -> string list
   val restringir : Yojson.Safe.t -> string list -> Yojson.Safe.t
   val uso : Yojson.Safe.t -> (int * int) option
+  val con_ejemplos : Yojson.Safe.t -> bool
+  val sin_ejemplos : Yojson.Safe.t -> Yojson.Safe.t
 end
 
 (* {1 Métricas}
@@ -218,20 +220,28 @@ let mensajes (module A : API) ~api upstream p req cuerpo =
       try A.salida forma (Yojson.Safe.from_string r.cuerpo) with Yojson.Json_error _ -> None
     else None
   in
-  let aprender (pet : Forja.peticion) ?contraste ?defecto s =
-    match Forja.aprender p.forja pet ?contraste ?defecto s with
+  let aprender (pet : Forja.peticion) ?contraste ?defecto ?ejemplos s =
+    match Forja.aprender p.forja pet ?contraste ?defecto ?ejemplos s with
     | Some informe ->
         sumar "forja_maduraciones_total" ~etiquetas:[ ("tarea", Forja.Tarea.to_string pet.tarea) ];
         p.madura pet.tarea informe
     | None -> ()
   in
-  let liquido (pet : Forja.peticion) forma ~contrastar ~defecto =
-    let r, contraste =
-      if contrastar then Eio.Fiber.pair (reenviar ~pet) (fun () -> Some (reenviar ~pet ()))
-      else (reenviar ~pet (), None)
+  (* Con ejemplos (few-shot), la salida se parece a ellos: la muestra no
+     dice si el LLM tiene un método. Un contraste se pide sin ellos, las dos
+     veces, para medir la plantilla sola; el resto lleva sus ejemplos y su
+     muestra va marcada. *)
+  let liquido (pet : Forja.peticion) forma j ~contrastar ~defecto =
+    let ejemplos = A.con_ejemplos j in
+    let r, contraste, ejemplos =
+      if contrastar then
+        let cuerpo = if ejemplos then Yojson.Safe.to_string (A.sin_ejemplos j) else cuerpo in
+        let r, c = Eio.Fiber.pair (reenviar ~pet ~cuerpo) (fun () -> Some (reenviar ~pet ~cuerpo ())) in
+        (r, c, false)
+      else (reenviar ~pet (), None, ejemplos)
     in
     Option.iter
-      (fun s -> aprender pet ?contraste:(Option.bind contraste (salida forma)) ?defecto s)
+      (fun s -> aprender pet ?contraste:(Option.bind contraste (salida forma)) ?defecto ~ejemplos s)
       (salida forma r);
     con_fuente ~tarea:pet.tarea (if defecto = None then "liquido" else "defecto") r
   in
@@ -267,7 +277,7 @@ let mensajes (module A : API) ~api upstream p req cuerpo =
         | Some (s, Ok resp) ->
             campos pet "cristal" (List.length (A.campos j) - List.length ks);
             campos pet "llm" (List.length ks);
-            aprender pet ~defecto:motivo s;
+            aprender pet ~defecto:motivo ~ejemplos:(A.con_ejemplos j) s;
             con_fuente ~tarea:pet.tarea "parcial" (json `OK resp)
         | Some (_, Error _) | None -> con_fuente ~tarea:pet.tarea "defecto" r)
   in
@@ -303,7 +313,7 @@ let mensajes (module A : API) ~api upstream p req cuerpo =
                   con_fuente ~tarea:pet.tarea "cristal" (json `OK r)
               (* Un cristal estructurado que no da JSON tiene una impureza: se
                  trata como defecto y responde el LLM. *)
-              | Error motivo -> liquido pet forma ~contrastar:false ~defecto:(Some motivo))
+              | Error motivo -> liquido pet forma j ~contrastar:false ~defecto:(Some motivo))
           | ks -> parcial pet forma j ~modelo salida ks)
       | Fallo { etapa; motivo } ->
           con_fuente ~tarea:pet.tarea "defecto"
@@ -311,7 +321,7 @@ let mensajes (module A : API) ~api upstream p req cuerpo =
                (A.error ~tipo:"invalid_request_error"
                   (Printf.sprintf "forja: la tarea %s es cristalina y su cristal no sabe: %s"
                      etapa motivo)))
-      | Al_liquido { contrastar; defecto } -> liquido pet forma ~contrastar ~defecto)
+      | Al_liquido { contrastar; defecto } -> liquido pet forma j ~contrastar ~defecto)
 
 (* Cada respuesta, contada por su fuente y su tarea (las cabeceras que ya
    lleva) y medida de punta a punta. *)
