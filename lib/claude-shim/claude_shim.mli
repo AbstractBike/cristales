@@ -25,10 +25,20 @@ type peticion = {
   alias : string;  (** [haiku], [sonnet] u [opus]: lo que entiende Claude Code. *)
   prompt : prompt;
   herramienta : (string * Yojson.Safe.t) option;  (** Nombre e [input_schema]. *)
+  max_tokens : int option;  (** El de la petición: alarga el plazo (ver {!plazo}). *)
 }
 
 val peticion : string -> (peticion, string) result
-(** Lee el cuerpo de un [POST /v1/messages]. *)
+(** Lee el cuerpo de un [POST /v1/messages]. Con un solo turno de user, ese
+    texto va tal cual; con varios (los ejemplos y advertencias que antepone
+    la agencia), la conversación entera va como transcripción de turnos
+    [<turno rol="...">] con la entrada al final, y el sistema dice cómo
+    leerla. Los turnos [system] (estilo Chat Completions) se suman al
+    sistema. *)
+
+val plazo : base:float -> techo:float -> tokens_por_s:float -> int option -> float
+(** Segundos para una llamada: [max_tokens / tokens_por_s], al menos [base] y
+    como mucho [techo]. *)
 
 val alias : string -> string
 (** [claude-haiku-5-5] → [haiku]; [opus] → [opus]; lo demás, [sonnet]. *)

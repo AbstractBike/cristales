@@ -7,7 +7,10 @@
    SHIM_IP            dirección de escucha      (::)
    SHIM_PORT          puerto                    (8317)
    SHIM_CONCURRENCY   procesos claude a la vez  (3)
-   SHIM_TIMEOUT_S     tope por llamada          (180)
+   SHIM_TIMEOUT_S     plazo mínimo por llamada  (180)
+   SHIM_TIMEOUT_MAX_S plazo máximo por llamada  (580; el cliente de la agencia espera 600)
+   SHIM_TOKENS_S      tok/s que se le suponen al CLI para alargar el plazo
+                      según el max_tokens de la petición (50)
    SHIM_DIR           donde van los HOME efímeros ($TMPDIR/claude-shim)
    SHIM_TOKEN         sin él, abierto a quien llegue; con él, x-api-key
    CLAUDE_BIN         el CLI                    (claude)
@@ -79,6 +82,8 @@ let () =
   let mgr = Eio.Stdenv.process_mgr env and fs = Eio.Stdenv.fs env in
   let bin = entorno "CLAUDE_BIN" "claude" in
   let timeout = float_of_int (entero "SHIM_TIMEOUT_S" 180) in
+  let techo = Float.max timeout (float_of_int (entero "SHIM_TIMEOUT_MAX_S" 580)) in
+  let tokens_por_s = float_of_int (max 1 (entero "SHIM_TOKENS_S" 50)) in
   let dir = entorno "SHIM_DIR" (Filename.concat (Filename.get_temp_dir_name ()) "claude-shim") in
   (try Unix.mkdir dir 0o700 with Unix.Unix_error (Unix.EEXIST, _, _) -> ());
   let token = Sys.getenv_opt "SHIM_TOKEN" |> Option.map String.trim |> Option.map (function "" -> None | t -> Some t) |> Option.join in
@@ -106,7 +111,9 @@ let () =
                     Fun.protect ~finally:(fun () -> Eio.Semaphore.release turno) @@ fun () ->
                     incr n;
                     let id = Printf.sprintf "shim_%d_%d" (int_of_float (t0 *. 1000.)) !n in
-                    try Result.bind (ejecutar ~mgr ~fs ~clock ~bin ~timeout ~dir p) (Claude_shim.respuesta p ~id)
+                    try Result.bind (ejecutar ~mgr ~fs ~clock ~bin ~dir p
+                      ~timeout:(Claude_shim.plazo ~base:timeout ~techo ~tokens_por_s p.max_tokens))
+                      (Claude_shim.respuesta p ~id)
                     with e -> Error (Printexc.to_string e)
                   in
                   match r with
@@ -126,8 +133,8 @@ let () =
     | Error (`Msg m) -> failwith m
   in
   let puerto = entero "SHIM_PORT" 8317 in
-  Printf.eprintf "claude-shim: escuchando en [%s]:%d (concurrencia=%d, timeout=%.0fs%s)\n%!" (entorno "SHIM_IP" "::")
-    puerto concurrencia timeout (if token = None then ", SIN token" else "");
+  Printf.eprintf "claude-shim: escuchando en [%s]:%d (concurrencia=%d, plazo=%.0f-%.0fs%s)\n%!" (entorno "SHIM_IP" "::")
+    puerto concurrencia timeout techo (if token = None then ", SIN token" else "");
   let socket = Eio.Net.listen net ~sw ~backlog:128 ~reuse_addr:true (`Tcp (ip, puerto)) in
   Cohttp_eio.Server.run socket (Cohttp_eio.Server.make ~callback ())
     ~on_error:(fun e -> Printf.eprintf "claude-shim: %s\n%!" (Printexc.to_string e))

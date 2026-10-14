@@ -19,6 +19,13 @@ oferta, el CV, la entrada del encargo) por stdin, nunca mezclado. El CLI
 corre sin herramientas, sin MCP y sin skills: solo puede contestar. Cada
 llamada tiene un HOME suyo, que es también su cwd, y se borra al acabar.
 
+Una conversación de varios turnos (los ejemplos y advertencias que la
+agencia antepone a la entrada) va entera por stdin como transcripción, cada
+turno en `<turno rol="user|assistant">`, con la entrada al final; el sistema
+lleva una línea que dice que se responde al último turno. Un solo turno va
+tal cual. Hasta 2026-10-14 solo se reenviaba `messages[0]`: con ejemplos o
+advertencias, el modelo nunca veía la entrada.
+
 `lib/claude-shim` es puro (la petición, el prompt, la respuesta);
 `bin/claude-shim`, el servidor. Es el puerto del `ClaudeCodeShim.kt` de
 trabajo-kt, con su misma conducta; desde 2026-10-13 corre como servicio de
@@ -31,7 +38,9 @@ como imagen construida a mano.
 |---|---|
 | `SHIM_IP`, `SHIM_PORT` | `::`, `8317` |
 | `SHIM_CONCURRENCY` | `3` procesos `claude` a la vez |
-| `SHIM_TIMEOUT_S` | `180` |
+| `SHIM_TIMEOUT_S` | `180`: plazo mínimo por llamada |
+| `SHIM_TIMEOUT_MAX_S` | `580`: plazo máximo (el cliente de la agencia espera 600) |
+| `SHIM_TOKENS_S` | `50`: con el `max_tokens` de la petición, el plazo es `max_tokens / SHIM_TOKENS_S` entre mínimo y máximo |
 | `SHIM_DIR` | `$TMPDIR/claude-shim`: los HOME efímeros |
 | `SHIM_TOKEN` | sin él, abierto a quien llegue; con él, `x-api-key` |
 | `CLAUDE_BIN` | `claude` |

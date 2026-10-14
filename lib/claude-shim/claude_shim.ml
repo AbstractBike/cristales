@@ -10,6 +10,7 @@ type peticion = {
   alias : string;
   prompt : prompt;
   herramienta : (string * Yojson.Safe.t) option;
+  max_tokens : int option;
 }
 
 let contiene ~sub s =
@@ -50,6 +51,34 @@ let texto = function
               bloques))
   | _ -> None
 
+(* Claude Code solo admite un prompt por stdin: una conversación de varios
+   turnos (los ejemplos y advertencias que antepone la agencia) va como
+   transcripción, cada turno con su rol, y la última entrada al final. Un
+   solo turno de user va tal cual, como siempre. *)
+let instrucciones_transcripcion =
+  "La conversación llega como transcripción: cada turno entre <turno rol=\"user\"> o <turno rol=\"assistant\"> y \
+   </turno>. Los turnos anteriores al último son contexto (ejemplos, advertencias, respuestas previas). Responde \
+   únicamente al último turno de user, como lo haría el asistente, sin etiquetas <turno>."
+
+let transcripcion turnos =
+  String.concat "\n\n" (List.map (fun (rol, t) -> Printf.sprintf "<turno rol=\"%s\">\n%s\n</turno>" rol t) turnos)
+
+let conversacion system mensajes =
+  let leer m =
+    let rol = match member "role" m with `String r -> r | _ -> "user" in
+    Option.map (fun t -> (rol, t)) (texto (member "content" m))
+  in
+  let turnos = List.filter_map leer mensajes in
+  (* El system de estilo Chat Completions, al sistema. *)
+  let extra, turnos = List.partition (fun (rol, _) -> rol = "system") turnos in
+  let system = String.concat "\n\n" (List.filter (fun s -> String.trim s <> "") (system :: List.map snd extra)) in
+  match turnos with
+  | [] -> None
+  | [ ("user", t) ] -> Some (system, t)
+  | _ ->
+      let system = if String.trim system = "" then instrucciones_transcripcion else system ^ "\n\n" ^ instrucciones_transcripcion in
+      Some (system, transcripcion turnos)
+
 let peticion cuerpo =
   match Yojson.Safe.from_string cuerpo with
   | exception Yojson.Json_error e -> Error ("el cuerpo no es JSON: " ^ e)
@@ -57,11 +86,9 @@ let peticion cuerpo =
       try
         let modelo = match member "model" j with `String m -> m | _ -> "sonnet" in
         let system = Option.value ~default:"" (texto (member "system" j)) in
-        let user =
-          match member "messages" j with
-          | `List (m :: _) -> texto (member "content" m)
-          | _ -> None
-        in
+        let max_tokens = match member "max_tokens" j with `Int n when n > 0 -> Some n | _ -> None in
+        let conv = match member "messages" j with `List ms -> conversacion system ms | _ -> None in
+        let system, user = match conv with Some (s, u) -> (s, Some u) | None -> (system, None) in
         let herramienta =
           match member "tools" j with
           | `List (t :: _) ->
@@ -71,15 +98,22 @@ let peticion cuerpo =
           | _ -> None
         in
         match user with
-        | None -> Error "messages[0].content ausente"
+        | None -> Error "messages sin contenido de texto"
         | Some user ->
             let prompt =
               match herramienta with
               | None -> { system; user }
               | Some (nombre, schema) -> { system = instrucciones_esquema system nombre schema; user }
             in
-            Ok { modelo; alias = alias modelo; prompt; herramienta }
+            Ok { modelo; alias = alias modelo; prompt; herramienta; max_tokens }
       with Type_error (m, _) -> Error m)
+
+(* Una salida larga no cabe en el tope fijo: 20k tokens a ~50 tok/s son
+   400 s, y a los 180 s el CLI moría y el cliente se quedaba sin nada. El
+   plazo crece con el max_tokens que pide el cliente, sin pasar de [techo]. *)
+let plazo ~base ~techo ~tokens_por_s max_tokens =
+  let pedido = match max_tokens with Some n -> float_of_int n /. tokens_por_s | None -> 0. in
+  Float.min techo (Float.max base pedido)
 
 let argumentos ~bin ~alias ~system =
   [ bin; "-p"; "--output-format"; "json"; "--model"; alias; "--tools"; ""; "--strict-mcp-config";

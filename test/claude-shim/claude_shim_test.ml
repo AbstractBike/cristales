@@ -65,7 +65,44 @@ let () =
     ok (peticion {|{"model":"opus","messages":[{"role":"user","content":[{"type":"text","text":"a"},{"type":"text","text":"b"}]}]}|})
   in
   comprueba "bloques de texto" (b.prompt.user = "a\nb" && b.alias = "opus");
+  (* Varios turnos (2026-10-14, traductor-carta-toml): la agencia antepone
+     advertencias y ejemplos como pares user/assistant, y la entrada va al
+     final. Solo se reenviaba messages[0] y el modelo nunca veía la entrada. *)
+  let v =
+    ok
+      (peticion
+         {|{"model":"claude-sonnet-5-5","max_tokens":20000,"system":"Traduce el TOML.",
+            "messages":[
+              {"role":"user","content":[{"type":"text","text":"ADVERTENCIA: no traduzcas las claves","cache_control":{"type":"ephemeral"}}]},
+              {"role":"assistant","content":"Entendido."},
+              {"role":"user","content":"[ejemplo]\nplato = \"tortilla\""},
+              {"role":"assistant","content":"[ejemplo]\nplato = \"omelette\""},
+              {"role":"user","content":"[carta]\npostre = \"flan\""}]}|})
+  in
+  let u = v.prompt.user in
+  comprueba "varios: las advertencias" (contiene "ADVERTENCIA: no traduzcas las claves" u);
+  comprueba "varios: el ejemplo y su respuesta" (contiene "plato = \"tortilla\"" u && contiene "plato = \"omelette\"" u);
+  comprueba "varios: la entrada" (contiene "postre = \"flan\"" u);
+  comprueba "varios: los roles"
+    (contiene "<turno rol=\"assistant\">\nEntendido.\n</turno>" u && contiene "<turno rol=\"user\">\n[carta]" u);
+  comprueba "varios: la entrada, al final" (String.ends_with ~suffix:"postre = \"flan\"\n</turno>" u);
+  comprueba "varios: el sistema sigue siendo el nuestro"
+    (contiene "Traduce el TOML." v.prompt.system && contiene "último turno de user" v.prompt.system);
+  comprueba "varios: max_tokens" (v.max_tokens = Some 20000);
+  (* Estilo Chat Completions: el turno system, al sistema. *)
+  let s =
+    ok
+      (peticion
+         {|{"model":"haiku","messages":[{"role":"system","content":"S"},{"role":"user","content":"hola"}]}|})
+  in
+  comprueba "turno system al sistema" (s.prompt = { system = "S"; user = "hola" } && s.max_tokens = None);
+  (* El plazo crece con max_tokens, entre base y techo. *)
+  comprueba "plazo sin max_tokens" (plazo ~base:180. ~techo:580. ~tokens_por_s:50. None = 180.);
+  comprueba "plazo corto" (plazo ~base:180. ~techo:580. ~tokens_por_s:50. (Some 4096) = 180.);
+  comprueba "plazo largo" (plazo ~base:180. ~techo:580. ~tokens_por_s:50. (Some 20000) = 400.);
+  comprueba "plazo con techo" (plazo ~base:180. ~techo:580. ~tokens_por_s:50. (Some 64000) = 580.);
   comprueba "sin mensajes" (Result.is_error (peticion {|{"model":"x"}|}));
+  comprueba "mensajes vacíos" (Result.is_error (peticion {|{"model":"x","messages":[]}|}));
   comprueba "no JSON" (Result.is_error (peticion "{"));
   (* extraer_json tolera fences y prosa. *)
   comprueba "fences" (extraer_json "```json\n{\"a\":1}\n```" = Ok (`Assoc [ ("a", `Int 1) ]));
