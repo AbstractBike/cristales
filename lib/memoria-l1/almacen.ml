@@ -148,12 +148,16 @@ let mensajes g ~sesion ~cursor ~fondo =
     "SELECT ts, sesion, \"uuid\", proyecto, rol, agente, texto FROM memoria_l0 WHERE sesion = " ^ literal sesion
   in
   let leer_m c = Result.map (List.filter_map mensaje) (leer g c) in
+  (* GreptimeDB 1.2 revienta (OOM del pod, 3 GiB) con ORDER BY ts, uuid sobre
+     un rango de ts de memoria_l0; con ORDER BY ts a secas no. El desempate por
+     uuid se hace aquí. *)
+  let en_orden = Result.map (List.stable_sort (fun (a : Atomo.mensaje) b -> compare (a.ts, a.uuid) (b.ts, b.uuid))) in
   match cursor with
-  | None -> leer_m (columnas ^ " ORDER BY ts, \"uuid\"")
+  | None -> en_orden (leer_m (columnas ^ " ORDER BY ts"))
   | Some c ->
       let corte = Printf.sprintf "to_timestamp_millis(%d)" c in
       let* previos = leer_m (Printf.sprintf "%s AND ts <= %s ORDER BY ts DESC LIMIT %d" columnas corte fondo) in
-      let* despues = leer_m (Printf.sprintf "%s AND ts > %s ORDER BY ts, \"uuid\"" columnas corte) in
+      let* despues = en_orden (leer_m (Printf.sprintf "%s AND ts > %s ORDER BY ts" columnas corte)) in
       Ok (previos @ despues)
 
 let rec todos = function [] -> Ok [] | Ok x :: r -> Result.map (List.cons x) (todos r) | Error e :: _ -> Error e
