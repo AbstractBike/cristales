@@ -200,6 +200,20 @@ salida en el sentido que pedía la nota.
 Los modelos se nombran como en su API: `claude-haiku-5-5` va por Messages;
 `openai:<modelo>`, por Chat Completions (llama-server, vLLM…).
 
+## Hooks
+
+Las instrucciones del MCP piden usar la agencia y juzgar, pero el texto
+pierde contra la inercia: hacerlo en línea siempre es más cómodo. Dos hooks
+de Claude Code (`bin/agencia-hook`, `lib/agencia-hook`) ponen el empujón
+donde cuenta:
+
+| Hook | Qué hace |
+|---|---|
+| `agencia-hook inicio` (SessionStart) | El catálogo de agentes del archivo (menos `AGENCIA_HOOK_OCULTOS`, los de los pipelines) y cuándo encargarles, como contexto. Sin GreptimeDB en 3 s, nada |
+| `agencia-hook fin` (Stop) | Cruza en la transcripción los resultados de encargo (la meta «Júzgalo con agencia_juzgar (agente …, id …)») con las llamadas a `agencia_juzgar`; si queda alguno, para la sesión **una vez** (`decision: block`) pidiendo los veredictos. Con `stop_hook_active` no insiste |
+
+Ninguno falla: ante cualquier error no escriben nada y salen con 0.
+
 ## Mediciones
 
 El archivo guarda cada encargo entero, para releerlo; además, con

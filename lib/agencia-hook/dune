@@ -1,0 +1,4 @@
+(library
+ (name agencia_hook)
+ (public_name cristales.agencia-hook)
+ (libraries yojson str))

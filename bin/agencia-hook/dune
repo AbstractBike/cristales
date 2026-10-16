@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name agencia-hook)
+ (package cristales)
+ (libraries agencia_hook agencia agencia_http forja forja_http eio eio_main yojson uri))
