@@ -5,7 +5,7 @@ open Agencia
 
 type efectos = {
   encargar : Agente.t -> ?modelo:Modelo.t -> string -> Encargo.t;
-  juzgar_mal : Encargo.t -> string -> unit;
+  juzgar : Encargo.t -> veredicto -> string -> unit;
   candidatos : Atomo.nuevo -> (Atomo.t list, string) result;
   escrito : sesion:string -> hasta:int -> (bool, string) result;
   escribir : hasta:int -> Atomo.t list -> (unit, string) result;
@@ -50,9 +50,11 @@ let extraer ef ags ~sesion ~escena_previa (l : Lote.t) =
     | Error err -> (e, Error (`Sin_respuesta err))
     | Ok texto -> (
         match Extraccion.leer ~clave:(clave sesion l) ~nuevos:l.nuevos texto with
-        | Ok r -> (e, Ok r)
+        | Ok r ->
+            ef.juzgar e Bien (Printf.sprintf "legible: %d átomos" (List.length r.atomos));
+            (e, Ok r)
         | Error err ->
-            ef.juzgar_mal e ("salida ilegible: " ^ err);
+            ef.juzgar e Mal ("salida ilegible: " ^ err);
             (e, Error (`Basura err)))
   in
   let sin_respuesta err = Error ("memoria-atomos sin respuesta: " ^ err) in
@@ -78,9 +80,11 @@ let juzgar ef ags casos =
         ([ e ], Dedup.guardar_todo casos)
     | Ok texto -> (
         match Dedup.leer casos texto with
-        | Ok d -> ([ e ], d)
+        | Ok d ->
+            ef.juzgar e Bien "legible";
+            ([ e ], d)
         | Error err ->
-            ef.juzgar_mal e ("salida ilegible: " ^ err);
+            ef.juzgar e Mal ("salida ilegible: " ^ err);
             ef.avisar ("memoria-dedup: salida ilegible; se guarda todo: " ^ err);
             ([ e ], Dedup.guardar_todo casos))
 

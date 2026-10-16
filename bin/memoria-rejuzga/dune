@@ -1,0 +1,5 @@
+(executable
+ (name main)
+ (public_name memoria-rejuzga)
+ (package cristales)
+ (libraries memoria_l1 memoria_escenas agencia agencia_http forja forja_http eio eio_main uri))

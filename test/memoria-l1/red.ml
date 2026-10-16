@@ -304,8 +304,12 @@ let () =
   comprueba "asegurar: la primera vez guarda" (Agentes.asegurar archivo agentes.atomos);
   comprueba "asegurar: la segunda no" (not (Agentes.asegurar archivo agentes.atomos))
 
+(* Los juzgados bien, de la última llamada a [falsos]. *)
+let buenos = ref []
+
 let falsos ?(escribir = fun _ -> Ok ()) ?(ya = false) ?candidatos respuestas =
   let cola = ref respuestas and encargados = ref [] and malos = ref [] and escrito = ref [] and cursores = ref [] in
+  buenos := [];
   let n = ref 0 in
   let candidatos =
     match candidatos with
@@ -322,7 +326,8 @@ let falsos ?(escribir = fun _ -> Ok ()) ?(ya = false) ?candidatos respuestas =
           { Agencia.Encargo.id = Printf.sprintf "%016d" !n; agente = a.nombre; version = Agencia.Agente.version a; modelo = m;
             motivo = ""; fuente = "directo"; entrada; salida; ms = 1; tokens_entrada = 1; tokens_salida = 1; veredicto = None;
             nota = ""; corregida = None });
-      juzgar_mal = (fun e nota -> malos := (e.id, nota) :: !malos);
+      juzgar =
+        (fun e v nota -> match v with Agencia.Mal -> malos := (e.id, nota) :: !malos | Agencia.Bien -> buenos := e.id :: !buenos);
       candidatos;
       escrito = (fun ~sesion:_ ~hasta:_ -> Ok ya);
       escribir = (fun ~hasta:_ f -> match escribir f with Ok () -> escrito := !escrito @ f; Ok () | e -> e);
@@ -341,6 +346,7 @@ let () =
   comprueba "destila: un lote" (List.length r.informes = 1 && Destila.avanzo r);
   comprueba "destila: dos encargos" (List.rev !encargados = [ ("memoria-atomos", "claude-sonnet-5-5"); ("memoria-dedup", "claude-haiku-5-5") ]);
   comprueba "destila: nada juzgado mal" (!malos = []);
+  comprueba "destila: extracción y juicio, juzgados bien" (List.length !buenos = 2);
   comprueba "destila: regla nueva y hecho actualizado" (List.map (fun (a : Atomo.t) -> a.version) !escrito = [ 1; 2 ]);
   comprueba "destila: cursor al último"
     (!cursores = [ { Lote.hasta = (List.nth nuevos 2).ts; escena = Some "Despliegue de a2 con colmena"; fallos = 0 } ]);

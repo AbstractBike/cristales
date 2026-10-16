@@ -9,11 +9,17 @@
     [memoria-escenas], se aplican sus operaciones y, si alguna se rechaza,
     se le devuelven los motivos una vez y se aplica la segunda respuesta
     (o, si esa no se entiende, lo válido de la primera). Una salida que no
-    es JSON se juzga mal en la agencia sin esperar a nadie. *)
+    es JSON se juzga mal en la agencia sin esperar a nadie, y una que se
+    entiende, bien (los rechazos van en la nota, no en el veredicto: hasta
+    un 40 % de lotes trae alguno y se corrigen con el reintento). *)
 
 type efectos = {
   encargar : ?modelo:Agencia.Modelo.t -> Agencia.Agente.t -> string -> Agencia.Encargo.t;
-  juzgar_mal : Agencia.Encargo.t -> string -> unit;  (** Con la nota. *)
+  juzgar : Agencia.Encargo.t -> Agencia.veredicto -> string -> unit;
+      (** Con la nota. Lo que la pasada acepta se juzga [Bien] y lo que no
+          entiende [Mal]: sin los [Bien], unos pocos fallos de parseo
+          descartaban modelos que acertaban el 99 % y la agencia subía a
+          Opus (2026-10-16). *)
   ahora : unit -> string;  (** ISO 8601 en UTC. *)
   log : string -> unit;
 }

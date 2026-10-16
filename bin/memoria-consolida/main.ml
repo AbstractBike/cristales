@@ -311,7 +311,7 @@ let () =
   then exit 0;
   let ciclo =
     { Ciclo.encargar = (fun ?modelo a entrada -> Agencia_mcp.encargar efectos a ?modelo entrada);
-      juzgar_mal = (fun e nota -> archivo.juzgar e.agente e.id Agencia.Mal nota);
+      juzgar = (fun e v nota -> archivo.juzgar e.agente e.id v nota);
       ahora = (fun () -> iso (Unix.gettimeofday ()));
       log }
   in

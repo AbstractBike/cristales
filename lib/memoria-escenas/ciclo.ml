@@ -3,7 +3,7 @@
 
 type efectos = {
   encargar : ?modelo:Agencia.Modelo.t -> Agencia.Agente.t -> string -> Agencia.Encargo.t;
-  juzgar_mal : Agencia.Encargo.t -> string -> unit;
+  juzgar : Agencia.Encargo.t -> Agencia.veredicto -> string -> unit;
   ahora : unit -> string;
   log : string -> unit;
 }
@@ -87,7 +87,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
         match Operacion.de_texto texto with
         | Ok s -> (e, Ok (texto, s))
         | Error err ->
-            ef.juzgar_mal e ("salida no válida: " ^ err);
+            ef.juzgar e Agencia.Mal ("salida no válida: " ^ err);
             anotar e ("no se entiende: " ^ err);
             (e, Error err))
   in
@@ -96,6 +96,12 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
       (List.map Operacion.describir r.aplicadas
       @ List.map (fun s -> "RECORTADA " ^ s) r.recortadas
       @ List.map (fun (o, m) -> Printf.sprintf "RECHAZADA %s (%s)" (Operacion.describir o) m) r.rechazos)
+  in
+  (* Entendida y aplicada: bien, con lo que pasó (rechazos incluidos) de nota. *)
+  let aplicado e r =
+    let nota = resumen r in
+    ef.juzgar e Agencia.Bien nota;
+    anotar e nota
   in
   let un_lote ~trayectoria (escenas, escritas, borradas, senal) atomos =
     let ahora = ef.ahora () in
@@ -120,7 +126,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
           (None, None)
       | e, Ok (texto, s) ->
           let r = aplicar s.operaciones in
-          anotar e (resumen r);
+          aplicado e r;
           (* Hasta dos correcciones: con el mismo modelo (que vea sus
              rechazos) y, si sigue, con el más capaz de la escalera. *)
           let rec corregir intentos (e : Agencia.Encargo.t) texto (s : Operacion.salida) r =
@@ -134,7 +140,7 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
                 match pedir ?modelo (Consolidacion.reintento ~entrada ~salida:texto motivos) with
                 | e2, Ok (texto2, s2) ->
                     let r2 = aplicar s2.operaciones in
-                    anotar e2 (resumen r2);
+                    aplicado e2 r2;
                     let s2 = { s2 with persona = (match s2.persona with Some _ as p -> p | None -> s.persona) } in
                     corregir resto e2 texto2 s2 r2
                 | _, Error _ -> (Some r, s.persona))
@@ -184,10 +190,12 @@ let consolidar ef ~escenas_agente ~persona_agente ?(reglas = "") ?(anteriores = 
           | Ok texto -> (
               match Persona.validar texto with
               | Ok p ->
-                  anotar e (Printf.sprintf "persona de %d caracteres" (Escena.longitud p));
+                  let nota = Printf.sprintf "persona de %d caracteres" (Escena.longitud p) in
+                  ef.juzgar e Agencia.Bien nota;
+                  anotar e nota;
                   `Bien p
               | Error err ->
-                  ef.juzgar_mal e err;
+                  ef.juzgar e Agencia.Mal err;
                   anotar e ("rechazada: " ^ err);
                   `Mal (e, texto, err))
         in

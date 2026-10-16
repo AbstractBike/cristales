@@ -20,12 +20,17 @@
       avisa): un fallo pasajero (un modelo caído, una exploración mala de la
       agencia) se recupera solo, y un lote envenenado no atasca la sesión
       para siempre;
-    - si el juez devuelve basura, se juzga [mal] y se guarda todo. *)
+    - si el juez devuelve basura, se juzga [mal] y se guarda todo;
+    - lo que se entiende (extracción o juicio) se juzga [bien]. *)
 
 type efectos = {
   encargar : Agencia.Agente.t -> ?modelo:Agencia.Modelo.t -> string -> Agencia.Encargo.t;
       (** Un encargo de la agencia, registrado en su archivo. *)
-  juzgar_mal : Agencia.Encargo.t -> string -> unit;  (** Con la nota. *)
+  juzgar : Agencia.Encargo.t -> Agencia.veredicto -> string -> unit;
+      (** Con la nota. Lo que la pasada acepta se juzga [Bien] y lo que no
+          entiende [Mal]: sin los [Bien], unos pocos fallos de parseo
+          descartaban modelos que acertaban el 99 % y la agencia subía a
+          Opus (2026-10-16). *)
   candidatos : Atomo.nuevo -> (Atomo.t list, string) result;
   escrito : sesion:string -> hasta:int -> (bool, string) result;
       (** Si el lote que acaba en [hasta] ya escribió sus filas. *)

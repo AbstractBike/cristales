@@ -272,7 +272,7 @@ let () =
 let () =
   let escalera = [ Result.get_ok (Agencia.Modelo.de_texto "claude-haiku-5-5") ] in
   let escenas_agente = Agentes.escenas ~escalera and persona_agente = Agentes.persona ~escalera in
-  let respuestas = ref [] and malos = ref [] and pedidos = ref [] in
+  let respuestas = ref [] and malos = ref [] and buenos = ref 0 and pedidos = ref [] in
   let n = ref 0 in
   let encargar ?modelo:_ (a : Agencia.Agente.t) entrada =
     incr n;
@@ -283,7 +283,8 @@ let () =
       tokens_salida = 1; veredicto = None; nota = ""; corregida = None }
   in
   let ef =
-    { Ciclo.encargar; juzgar_mal = (fun e nota -> malos := (e.id, nota) :: !malos); ahora = (fun () -> ahora);
+    { Ciclo.encargar;
+      juzgar = (fun e v nota -> match v with Agencia.Mal -> malos := (e.id, nota) :: !malos | Agencia.Bien -> incr buenos); ahora = (fun () -> ahora);
       log = (fun _ -> ()) }
   in
   let crear slug cuerpo =
@@ -304,6 +305,7 @@ let () =
   comprueba "pasada: el reintento lleva los rechazos"
     (List.exists (contiene "## Rechazos") !pedidos);
   comprueba "pasada: el que no es JSON, juzgado mal" (List.length !malos = 1);
+  comprueba "pasada: los entendidos (rechazos incluidos) y la persona, bien" (!buenos = 4);
   comprueba "pasada: persona" (s.persona = Some "# Persona\n\nNueva.");
   comprueba "pasada: cursor" (s.estado.cursor = 20 && s.estado.persona = Some ahora && s.estado.atomos_desde_persona = 0);
   comprueba "pasada: cinco encargos" (List.length s.encargos = 5 && s.fallidos = 0);
@@ -346,7 +348,7 @@ let () =
   let pedidos = ref 0 in
   let ef =
     { Ciclo.encargar = (fun ?modelo:_ _ _ -> incr pedidos; failwith "no debería pedir");
-      juzgar_mal = (fun _ _ -> ()); ahora = (fun () -> ahora); log = (fun _ -> ()) }
+      juzgar = (fun _ _ _ -> ()); ahora = (fun () -> ahora); log = (fun _ -> ()) }
   in
   let escalera = [ Result.get_ok (Agencia.Modelo.de_texto "claude-haiku-5-5") ] in
   let e = { (escena ~atomos:[ "a-1" ] "x") with actualizada = "2026-10-13T00:00:00Z"; cuerpo = "" } in
