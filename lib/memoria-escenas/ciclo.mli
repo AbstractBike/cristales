@@ -41,6 +41,10 @@ type salida = {
 val lotes : int -> Atomo.t list -> Atomo.t list list
 (** De [n] en [n], ordenados por escena propuesta y por [ts]. *)
 
+val tope : int -> Atomo.t list -> Atomo.t list
+(** Los [n] primeros por [escrito] (el eje del cursor), más los que empatan
+    con el último; con [n <= 0], todos. *)
+
 val consolidar :
   efectos ->
   escenas_agente:Agencia.Agente.t ->

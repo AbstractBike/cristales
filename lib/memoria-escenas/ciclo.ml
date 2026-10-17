@@ -29,6 +29,18 @@ let lotes n atomos =
   in
   ir [] [] 0 ordenados
 
+(* Los [n] primeros por [escrito], el mismo eje que el cursor: un corte por
+   [ts] dejaría el cursor por delante de átomos sin consolidar. Los que
+   empatan con el último entran también (el cursor avanza a ese [escrito] y
+   [L1.desde] pide «> cursor»: se perderían). *)
+let tope n atomos =
+  if n <= 0 then atomos
+  else
+    let ordenados = List.stable_sort (fun (a : Atomo.t) (b : Atomo.t) -> compare (a.escrito, a.ts) (b.escrito, b.ts)) atomos in
+    match List.nth_opt ordenados (n - 1) with
+    | None -> ordenados
+    | Some ultimo -> List.filter (fun (a : Atomo.t) -> a.escrito <= ultimo.escrito) ordenados
+
 let union a b = a @ List.filter (fun x -> not (List.mem x a)) b
 
 (* El modelo de un encargo, para repetirle a él; y el más capaz del agente. *)

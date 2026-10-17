@@ -299,10 +299,7 @@ let () =
   let escenas, avisos = Repo.escenas !repo in
   List.iter (fun a -> log ("escena mal formada, se salta (bloqueada): " ^ a)) avisos;
   let atomos = if !seco && !importar then !importados else L1.desde g estado.cursor in
-  let atomos =
-    if !maximo > 0 then List.filteri (fun i _ -> i < !maximo) (List.sort (fun (a : Atomo.t) b -> compare a.ts b.ts) atomos)
-    else atomos
-  in
+  let atomos = Ciclo.tope !maximo atomos in
   log (Printf.sprintf "%d átomos nuevos desde %d; %d escenas" (List.length atomos) estado.cursor (List.length escenas));
   (* Sin átomos nuevos solo se sigue si la persona va atrasada (una pasada
      anterior no logró escribirla). *)

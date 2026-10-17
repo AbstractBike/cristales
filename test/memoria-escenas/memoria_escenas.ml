@@ -315,7 +315,14 @@ let () =
     Ciclo.consolidar ef ~escenas_agente ~persona_agente ~estado:Estado.inicial ~persona:"" [] [ atomo ~ts:30 "a-3" "tres" ]
   in
   comprueba "lote fallido: cursor quieto" (s.fallidos = 1 && s.estado.cursor = 0 && s.estado.atomos_desde_persona = 0);
-  comprueba "lotes por escena" (List.map List.length (Ciclo.lotes 2 [ atomo "a" "x"; atomo "b" "y"; atomo "c" "z" ]) = [ 2; 1 ])
+  comprueba "lotes por escena" (List.map List.length (Ciclo.lotes 2 [ atomo "a" "x"; atomo "b" "y"; atomo "c" "z" ]) = [ 2; 1 ]);
+  let e ts escrito id = { (atomo ~ts id id) with escrito } in
+  let ids l = List.map (fun (a : Atomo.t) -> a.id) l in
+  (* Corte por escrito, no por ts, y sin partir un empate. *)
+  let l = [ e 1 50 "viejo"; e 2 10 "a"; e 3 20 "b"; e 4 20 "c"; e 5 30 "d" ] in
+  comprueba "tope: por escrito" (ids (Ciclo.tope 2 l) = [ "a"; "b"; "c" ]);
+  comprueba "tope: 0 es todo" (List.length (Ciclo.tope 0 l) = 5);
+  comprueba "tope: más que los que hay" (ids (Ciclo.tope 9 l) = [ "a"; "b"; "c"; "d"; "viejo" ])
 
 let () =
   (* Ronda 2: redacción, exclusión, marcas de historia, fechas, repetidos y
