@@ -4,11 +4,14 @@
 
 Una vez al día, el servicio `nucleador` de nixos-config
 (`modules/services/nucleador.nix`, en a1) pone el workbench
-`/logical-node/workbench/cristales--nucleador` sobre `origin/main` y lanza
-`claude -p` con [`prompts/nucleador.md`](../prompts/nucleador.md): elige la
-tarea madura de la forja que más tráfico ahorra, juzga si tiene un método,
-la nuclea (o sube de versión su cristal con los campos maduros que aún no da),
-la mide contra la cantera, la registra en la vitrina y commitea.
+`/logical-node/workbench/cristales--nucleador` sobre `origin/main`, baja de la
+forja a `/var/lib/nucleador/horno/` la ficha, la semilla y la nucleación de
+cada tarea madura (por MCP no caben: forja-mcp corta a los 5 s y una semilla
+son 18 MB) y lanza `claude -p` con
+[`prompts/nucleador.md`](../prompts/nucleador.md). El agente elige la tarea
+madura que más tráfico ahorra, juzga si tiene un método, la nuclea (o sube de
+versión su cristal con los campos maduros que aún no da), la mide contra la
+cantera, la registra en la vitrina y commitea.
 
 El servicio no se fía del agente: compila el paquete entero (`nix build`, con
 la red de todos los cristales) y solo si compila sube la rama a `main` en
