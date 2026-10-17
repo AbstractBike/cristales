@@ -38,10 +38,13 @@ maduros sin cristal. Si no queda ninguna, apunta la pasada en
 
 El servicio te ha dejado el horno en disco (la ruta, al final de este
 prompt): por cada tarea madura, `<horno>/<tarea>/tarea.json` (lo de
-`forja_tarea`: muestras, contrastes, coincidencia por campo),
-`SEMILLA.md` (la plantilla y las muestras) y `nucleacion.md`. Léelos con
-Read y Grep, a trozos: una semilla puede pesar decenas de MB. No uses
-`forja_semilla` ni `forja_nucleacion` por MCP: cortan a los 5 s. Que el LLM
+`forja_tarea`: la plantilla, contrastes, coincidencia por campo y las últimas
+muestras en `ultimas`) y `muestras.jsonl` (esas muestras, una por línea,
+`{"e": entrada, "s": salida del LLM}`, lo que lee un `test/medir.ml`).
+Léelos con Read y Grep, a trozos: pueden pesar decenas de MB. El prompt de
+nucleación es `prompts/cristalizar.md`. No uses `forja_semilla` ni
+`forja_nucleacion` por MCP: cortan a los 5 s y la semilla entera son cientos
+de MB. Que el LLM
 se repita no basta:
 hace falta que haya un **método** que un programa puro pueda seguir (reglas
 sobre el texto de la entrada, un catálogo, un formato). Rechaza, con su
@@ -73,9 +76,8 @@ Sigue `doc/anatomia.md` al pie de la letra:
 
 ## 4. Medir y recortar
 
-Pasa `medir` sobre las muestras (al menos 100 si las hay), sacadas de la
-`SEMILLA.md` del horno a un `.jsonl` fuera del repo (en `_build/` o en el
-horno), con un programa OCaml si hace falta, nunca a mano. Cada campo que
+Pasa `medir` sobre el `muestras.jsonl` del horno (al menos 100 muestras si
+las hay). Cada campo que
 entregues tiene que coincidir con el LLM en **≥ 98 %** de las veces que lo da.
 El que no llegue, fuera del cristal (lo sigue dando el LLM), y dilo en la
 semilla. Si no queda ningún campo, es un rechazo (paso 2).
