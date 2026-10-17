@@ -390,6 +390,12 @@ la vez: todos leen la misma lista.
 Las dos se usan juntas: el proxy en el camino de las pipelines, el MCP en el
 agente que las cuida.
 
+## El nucleador
+
+La nucleación (paso 3 del ciclo) no espera a que alguien mire el horno: un
+agente la hace una vez al día, una tarea por pasada, y deja lo que nuclea en
+`main` si el paquete compila. Ver [`nucleador.md`](nucleador.md).
+
 ## Métricas
 
 `GET /metrics` en el mismo puerto, en el formato de texto de Prometheus, para
