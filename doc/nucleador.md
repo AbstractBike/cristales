@@ -15,10 +15,15 @@ cantera, la registra en la vitrina y commitea.
 
 El servicio no se fía del agente: compila el paquete entero (`nix build`, con
 la red de todos los cristales) y solo si compila sube la rama a `main` en
-fast-forward. Si no, la deja en `nucleador/<fecha>` para que se mire. Lo que
-llega a `main` todavía no atiende tráfico: la forja de a2 lo recoge con
-`nix flake update cristales` y su despliegue, que siguen siendo de una
-persona.
+fast-forward. Si no, la deja en `nucleador/<fecha>` para que se mire.
+
+Si lo subido toca la vitrina (un cristal nuevo o una versión), el servicio
+lo lleva también a la forja: pone el input `cristales` de nixos-config en
+`main`, sube el lock a master y despliega a2 en ventana (:20-:50 UTC, nunca
+de 21:00 a 00:15 ni del miércoles 21Z al jueves 01Z). Solo si master no
+lleva más cambios para a2 que nadie haya desplegado: si los lleva, el lock
+queda subido y el aviso pide un despliegue a mano. Al acabar comprueba que la
+forja sirve cada tarea registrada en la vitrina.
 
 Cada pasada deja una fila aquí, también las que no nuclean nada: así la
 siguiente no vuelve sobre una tarea rechazada mientras no haya más muestras.
