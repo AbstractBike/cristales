@@ -28,6 +28,11 @@ val sumar : t -> string -> ?etiquetas:etiquetas -> float -> unit
 val observar : t -> string -> ?etiquetas:etiquetas -> float -> unit
 (** Una observación de un histograma declarado. *)
 
+val suma : t -> string -> donde:etiquetas -> float
+(** Lo sumado en el contador [nombre] por todas sus series que llevan esas
+    etiquetas (y las que sean): [donde:[("tarea", t)]] suma todas las fuentes
+    y APIs de la tarea. 0 si no hay ninguna. *)
+
 type medida = { nombre : string; ayuda : string; valores : (etiquetas * float) list }
 (** Un gauge calculado al servir. *)
 

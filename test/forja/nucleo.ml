@@ -360,6 +360,9 @@ let () =
   comprueba "mismas etiquetas en otro orden, misma serie" (contiene t {|x_total{a="1",b="2"} 3|});
   comprueba "escapa comillas y barras" (contiene t {|x_total{a="comilla \"y\\ barra"} 1|});
   comprueba "lo no declarado no sale" (not (contiene t "no_declarado"));
+  comprueba "suma por las series que llevan esas etiquetas" (M.suma m "x_total" ~donde:[ ("a", "1") ] = 3.);
+  comprueba "suma de todo el contador" (M.suma m "x_total" ~donde:[] = 4.);
+  comprueba "suma de lo que no hay, 0" (M.suma m "x_total" ~donde:[ ("a", "9") ] = 0.);
   comprueba "cubos acumulados"
     (contiene t {|h_segundos_bucket{le="0.1"} 1|} && contiene t {|h_segundos_bucket{le="1"} 2|}
     && contiene t {|h_segundos_bucket{le="+Inf"} 3|});

@@ -10,9 +10,11 @@ type respuesta = { estado : int; tipo : string; cuerpo : string }
 
 val atender :
   ?contar:(tarea:string -> resultado:string -> unit) ->
+  ?uso:(tarea:string -> Yojson.Safe.t) ->
   Forja.t -> meth:Http.Method.t -> ruta:string -> query:(string * string list) list -> string -> respuesta option
 (** [None] si la ruta no es de [/forja/]. [contar] recibe cada aplicación de
     un cristal de la vitrina ([POST /forja/vitrina/{tarea}]) con su resultado,
     [cristal] o [defecto]: lo que resuelve la vitrina no pasa por el LLM ni
     deja muestra, y sin contarlo no se sabe el grado de cristalización de la
-    tarea. *)
+    tarea. [uso], si se da, va en cada cristal de [GET /forja/vitrina] como
+    campo [uso]: lo que ha resuelto, para quien lo mira (vitrina.pin). *)

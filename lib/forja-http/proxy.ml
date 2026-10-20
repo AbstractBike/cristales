@@ -347,7 +347,19 @@ let atender p req cuerpo =
       let contar ~tarea ~resultado =
         sumar ~etiquetas:[ ("tarea", tarea); ("resultado", resultado) ] "forja_vitrina_aplicaciones_total"
       in
-      match Introspeccion.atender ~contar p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
+      (* Lo que ha resuelto cada cristal desde que arrancó la forja: por la vitrina
+         (aplicado tal cual) y por el proxy (la petición entera, en parte, o al LLM). *)
+      let uso ~tarea =
+        let n nombre etiquetas = `Int (int_of_float (Metricas.suma metricas nombre ~donde:(("tarea", tarea) :: etiquetas))) in
+        `Assoc
+          [ ( "vitrina",
+              `Assoc
+                [ ("cristal", n "forja_vitrina_aplicaciones_total" [ ("resultado", "cristal") ]);
+                  ("defecto", n "forja_vitrina_aplicaciones_total" [ ("resultado", "defecto") ]) ] );
+            ( "proxy",
+              `Assoc (List.map (fun f -> (f, n "forja_peticiones_total" [ ("fuente", f) ])) [ "cristal"; "parcial"; "liquido"; "defecto" ]) ) ]
+      in
+      match Introspeccion.atender ~contar ~uso p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
       | Some r ->
           { estado = Http.Status.of_int r.estado;
             cabeceras = Http.Header.of_list [ ("content-type", r.tipo) ];

@@ -101,5 +101,14 @@ let () =
   ignore (Forja_http.Introspeccion.atender ~contar forja ~meth:`GET ~ruta:"/forja/vitrina" ~query:[] "");
   comprueba "cada aplicación de la vitrina se cuenta con su resultado, y nada más"
     (List.rev !contadas = [ ("mayus", "cristal"); ("mayus", "defecto"); ("mayus", "cristal") ]);
+  let uso ~tarea = `Assoc [ ("tarea_vista", `String tarea) ] in
+  (match Forja_http.Introspeccion.atender ~uso forja ~meth:`GET ~ruta:"/forja/vitrina" ~query:[] "" with
+  | Some r -> (
+      match json r with
+      | `List [ c ] -> comprueba "el uso va en cada cristal" (campo "uso" c = `Assoc [ ("tarea_vista", `String "mayus") ])
+      | _ -> comprueba "vitrina con un cristal" false)
+  | None -> comprueba "vitrina responde" false);
+  comprueba "sin uso, la vitrina como antes"
+    (match pedir "/forja/vitrina" with Some r -> (match json r with `List [ c ] -> campo "uso" c = `Null | _ -> false) | None -> false);
   comprueba "ruta desconocida bajo /forja/ es 404" (estado (pedir "/forja/otra") = Some 404);
   if !fallos > 0 then exit 1

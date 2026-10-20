@@ -32,14 +32,16 @@ let politica f =
       ("contrastes", `Int p.contrastes);
       ("estabilidad", `Float p.estabilidad) ]
 
-let vitrina f =
+let vitrina ?uso f =
   `List
     (List.map
        (fun (p : Forja.Vitrina.pieza) ->
+         let tarea = Forja.Tarea.to_string p.tarea in
          `Assoc
-           [ ("tarea", `String (Forja.Tarea.to_string p.tarea));
-             ("estado", `String (fase (p.estado :> Forja.fase)));
-             ("descripcion", `String p.descripcion) ])
+           ([ ("tarea", `String tarea);
+              ("estado", `String (fase (p.estado :> Forja.fase)));
+              ("descripcion", `String p.descripcion) ]
+           @ (match uso with Some u -> [ ("uso", u ~tarea) ] | None -> [])))
        (Forja.Vitrina.listar (Forja.vitrina f)))
 
 (* El cristal tal cual, sin respaldo líquido: quien llama ya es un LLM. El
@@ -105,9 +107,9 @@ let con_muestras f nombre k =
   | Some (t, r, (_ :: _ as muestras)) -> markdown (k t r muestras)
   | _ -> no_hay nombre
 
-let atender ?(contar = fun ~tarea:_ ~resultado:_ -> ()) f ~meth ~ruta ~query cuerpo =
+let atender ?(contar = fun ~tarea:_ ~resultado:_ -> ()) ?uso f ~meth ~ruta ~query cuerpo =
   match (meth, String.split_on_char '/' ruta) with
-  | `GET, [ ""; "forja"; "vitrina" ] -> Some (json 200 (vitrina f))
+  | `GET, [ ""; "forja"; "vitrina" ] -> Some (json 200 (vitrina ?uso f))
   | `POST, [ ""; "forja"; "vitrina"; t ] -> Some (aplicar ~contar f t cuerpo)
   | `GET, [ ""; "forja"; "politica" ] -> Some (json 200 (politica f))
   | `GET, [ ""; "forja"; "tareas" ] ->

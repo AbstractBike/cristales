@@ -54,6 +54,13 @@ let observar t nombre ?(etiquetas = []) v =
       cuenta := !cuenta +. 1.
   | _ -> ()
 
+(* Lo sumado en un contador por las series que llevan todas esas etiquetas. *)
+let suma t nombre ~donde =
+  let donde = normal donde in
+  Hashtbl.fold
+    (fun (n, es) r acc -> if n = nombre && List.for_all (fun p -> List.mem p es) donde then acc +. !r else acc)
+    t.contadores 0.
+
 type medida = { nombre : string; ayuda : string; valores : (etiquetas * float) list }
 
 (* {1 Texto} *)
