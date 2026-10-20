@@ -60,16 +60,16 @@ CREATE TABLE IF NOT EXISTS cristal_registro (
 ```
 
 `append_mode` porque dos eventos de la misma etapa en el mismo milisegundo son
-dos filas, no una que pisa a la otra. Cada app la tiene en su propia base
-(`trabajo`, `coches`, `buscarcasa`…).
+dos filas, no una que pisa a la otra.
 
-Quién escribe:
-
-- **buzon-kt** (`buzon.cristal`): todo `Agent` de los `*.email` deja cada
-  llamada como `liquido`, con el mensaje que vio el modelo y el JSON que
-  devolvió. Crea la tabla la primera vez; `CRISTALES_REGISTRO=off` lo apaga.
-- **OCaml**: `Registro.escribir` como `~observar` da JSON Lines; para
-  GreptimeDB, el mismo evento va en un `INSERT` a esta tabla.
+**En la flota la cantera es la forja**, no esta tabla. Las apps (los `*.email`)
+mandan su LLM por la forja ([`forja.md`](forja.md)), que guarda cada entrada y
+su salida en `forja_cantera` (base `forja`); lo que resuelve su vitrina sin
+LLM no deja muestra y se cuenta en `forja_vitrina_aplicaciones_total{tarea,
+resultado}`. Hasta el 2026-10-20 buzon-kt escribía además `cristal_registro`
+en la base de cada app, y era lo mismo dos veces. Esta tabla queda para las
+pipelines que no pasan por la forja: `Registro.escribir` como `~observar` da
+JSON Lines, y para GreptimeDB el mismo evento va en un `INSERT` a ella.
 
 Leerlo no pide convertir nada: `cristales` lee la respuesta de `/v1/sql` tal
 cual.

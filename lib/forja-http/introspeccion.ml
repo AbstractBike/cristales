@@ -45,7 +45,7 @@ let vitrina f =
 (* El cristal tal cual, sin respaldo líquido: quien llama ya es un LLM. El
    defecto queda en la cantera, sin salida: semilla de la recristalización
    como los que ve el proxy. *)
-let aplicar f nombre cuerpo =
+let aplicar ~contar f nombre cuerpo =
   match (Forja.Tarea.explicita nombre, Yojson.Safe.from_string cuerpo) with
   | Error _, _ -> no_hay nombre
   | Ok t, j -> (
@@ -53,8 +53,11 @@ let aplicar f nombre cuerpo =
       | None, _ -> no_hay nombre
       | Some (_, c), `String e -> (
           match c.aplicar e with
-          | Ok s -> json 200 (`Assoc [ ("salida", `String s) ])
+          | Ok s ->
+              contar ~tarea:(Forja.Tarea.to_string t) ~resultado:"cristal";
+              json 200 (`Assoc [ ("salida", `String s) ])
           | Error m ->
+              contar ~tarea:(Forja.Tarea.to_string t) ~resultado:"defecto";
               (Forja.cantera f).registrar (Forja.Cantera.defecto_directo t ~entrada:e m);
               json 200 (`Assoc [ ("defecto", `String m) ]))
       | Some _, _ -> error 400 "forja: falta entrada (texto)")
@@ -102,10 +105,10 @@ let con_muestras f nombre k =
   | Some (t, r, (_ :: _ as muestras)) -> markdown (k t r muestras)
   | _ -> no_hay nombre
 
-let atender f ~meth ~ruta ~query cuerpo =
+let atender ?(contar = fun ~tarea:_ ~resultado:_ -> ()) f ~meth ~ruta ~query cuerpo =
   match (meth, String.split_on_char '/' ruta) with
   | `GET, [ ""; "forja"; "vitrina" ] -> Some (json 200 (vitrina f))
-  | `POST, [ ""; "forja"; "vitrina"; t ] -> Some (aplicar f t cuerpo)
+  | `POST, [ ""; "forja"; "vitrina"; t ] -> Some (aplicar ~contar f t cuerpo)
   | `GET, [ ""; "forja"; "politica" ] -> Some (json 200 (politica f))
   | `GET, [ ""; "forja"; "tareas" ] ->
       Some (json 200 (`List (List.map (fun r -> `Assoc (resumen r)) (Forja.tareas f))))

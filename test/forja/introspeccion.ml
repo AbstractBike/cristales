@@ -89,5 +89,17 @@ let () =
   (match pedir "/forja/tareas/mayus/semilla" with
   | Some r -> comprueba "la semilla dice que el defecto no tuvo respuesta" (r.estado = 200 && contiene r.cuerpo "Sin respuesta")
   | None -> comprueba "semilla del cristal responde" false);
+  (* Lo que resuelve la vitrina no deja muestra: se cuenta, para el grado. *)
+  let contadas = ref [] in
+  let contar ~tarea ~resultado = contadas := (tarea, resultado) :: !contadas in
+  let aplicar_contando e =
+    ignore
+      (Forja_http.Introspeccion.atender ~contar forja ~meth:`POST ~ruta:"/forja/vitrina/mayus" ~query:[]
+         (Printf.sprintf {|{"entrada":%S}|} e))
+  in
+  List.iter aplicar_contando [ "a"; ""; "b" ];
+  ignore (Forja_http.Introspeccion.atender ~contar forja ~meth:`GET ~ruta:"/forja/vitrina" ~query:[] "");
+  comprueba "cada aplicación de la vitrina se cuenta con su resultado, y nada más"
+    (List.rev !contadas = [ ("mayus", "cristal"); ("mayus", "defecto"); ("mayus", "cristal") ]);
   comprueba "ruta desconocida bajo /forja/ es 404" (estado (pedir "/forja/otra") = Some 404);
   if !fallos > 0 then exit 1

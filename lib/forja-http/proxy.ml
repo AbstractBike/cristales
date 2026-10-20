@@ -105,7 +105,9 @@ let () =
   histograma m "forja_cristal_segundos" ~ayuda:"Lo que tarda un cristal, por tarea." ~cubos:[ 0.0001; 0.0005; 0.001; 0.005; 0.01; 0.05; 0.1; 0.5; 1. ];
   contador m "forja_campos_total" ~ayuda:"Campos de las salidas estructuradas de tareas con cristal, por tarea y quién los dio (cristal, llm).";
   contador m "forja_pasos_total" ~ayuda:"Peticiones que no son tareas, por ruta y motivo.";
-  contador m "forja_maduraciones_total" ~ayuda:"Tareas que han madurado (una vez por tarea y proceso)."
+  contador m "forja_maduraciones_total" ~ayuda:"Tareas que han madurado (una vez por tarea y proceso).";
+  contador m "forja_vitrina_aplicaciones_total"
+    ~ayuda:"Cristales aplicados por la vitrina (POST /forja/vitrina/{tarea}), por tarea y resultado (cristal, defecto)."
 
 let sumar ?etiquetas n = Metricas.sumar metricas n ?etiquetas 1.
 
@@ -342,7 +344,10 @@ let atender p req cuerpo =
         cabeceras = Http.Header.of_list [ ("content-type", "text/plain; version=0.0.4; charset=utf-8") ];
         cuerpo = Metricas.servir metricas (medidas p.forja) }
   | _ -> (
-      match Introspeccion.atender p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
+      let contar ~tarea ~resultado =
+        sumar ~etiquetas:[ ("tarea", tarea); ("resultado", resultado) ] "forja_vitrina_aplicaciones_total"
+      in
+      match Introspeccion.atender ~contar p.forja ~meth ~ruta:(Uri.path uri) ~query:(Uri.query uri) cuerpo with
       | Some r ->
           { estado = Http.Status.of_int r.estado;
             cabeceras = Http.Header.of_list [ ("content-type", r.tipo) ];
