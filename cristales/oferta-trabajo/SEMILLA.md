@@ -30,7 +30,7 @@ Campo a campo, sí:
 |---|---|---|
 | salaryMin, salaryMax, salaryCurrency, salaryPeriod, workMode, seniority, yoeMin, yoeMax, isAgency, isEasyApply | 80 de 80 | |
 | companySize | 79 | se queda en el LLM |
-| languages | 77 | se queda en el LLM |
+| languages | 77 | v3: lo da el cristal, con otro significado (abajo) |
 | contractType | 76 | |
 | hardSkills | 61 | se queda en el LLM |
 
@@ -96,6 +96,52 @@ pedida de «10 years in business» o «founded 20 years ago», ni el «3» que
 gemma pone a «mehrjährige»); la seniority sin palabra en el título (casi todas las que faltan:
 manager, architect, staff, ingeniero a secas); y
 `companySize`, `languages` y `hardSkills`.
+
+## Idiomas exigidos (v3)
+
+El `languages` del LLM no era un método que copiar: en 1.500 extracciones de
+la cantera (hasta el 2026-10-20) ponía el idioma en que está escrita la
+oferta (una de jobindex.dk, «Danish» o «Dansk»), a veces el equivocado (una
+oferta francesa o una convocatoria en castellano, «English»), con la forma
+que le salía («English», «english», «Deutsch», «German (native level)») y,
+en el 16 % de las ofertas que nombran un idioma, ninguno. Solo en el 27 % los
+que daba estaban escritos en la oferta.
+
+Así que cambia el significado del campo: **los idiomas que la oferta exige,
+en ISO 639-1, ordenados; `[]` si no exige ninguno**. Lo da siempre, y la
+forja ya no se lo pide al LLM.
+
+- Se exige un idioma nombrado en una frase con señal de exigencia: nivel
+  («B2», «nivel alto», «básico»), «fluent», «proficient», «skills», «Kenntnisse»,
+  «fließend», «imprescindible», «required», «spreekt goed»…; las compuestas
+  («Deutschkenntnisse», «englischsprachig») la llevan dentro.
+- Y lo que dice la ficha del portal: «Idiomas: english, russian»
+  (euremotejobs), «Idioma de trabajo: alemán» (germantechjobs, j-vers),
+  «Languages: …».
+- «Idioma local imprescindible»: el del país, por la ubicación o, si no, por
+  el dominio del portal.
+- No: lo que rebaja («a plus», «would be an advantage», «se valorará»,
+  «deseable», «von Vorteil», «highly valued», «appreciate», «additional
+  fluency», «otros idiomas»), que vale para su cláusula y las siguientes, y
+  para la anterior si no nombra idioma («Inglés alto (C1): deseable pero no
+  obligatorio»); una frase cuya única señal está en lo que rebaja
+  («Additional fluency in Italian…») no exige nada.
+- No: las alternativas («German or French is required», «German, French,
+  Dutch, or other major regional languages»): no se sabe cuál. Es el límite
+  del campo, que es una lista de exigidos.
+- No: gentilicios y países («Dutch market», «territorio español»,
+  «Deutschland Ticket», «Germany»), «programming languages», y el relleno de
+  los portales («Find more English Speaking Jobs in Germany on Arbeitnow», la
+  navegación de englishjobs.de).
+
+Medida contra un juicio hecho a mano (las frases de cada oferta que nombran
+un idioma, leídas una a una): 60 ofertas de semilla, 60 de 60; 40 de reserva
+al azar, juzgadas antes de ver el cristal, **39 de 40 (97,5 %)**: el fallo,
+«Inglés básico» en una lista de requisitos, sin señal de nivel bajo, está ya
+arreglado. En las 1.500 muestras da `[]` en 1.006, `en` en 287, `de` en 88,
+`de,en` en 62. Límite que queda: lo que la oferta pone bajo un apartado de
+«Nice to have» en otra línea («Spanish, Italian, or Portuguese language
+skills») se lee línea a línea; con «or» ya no cuenta, sin él sí.
 
 ## Fusiones (v2)
 

@@ -6,10 +6,12 @@
     Un cristal {e parcial}: de los 14 campos que pide la extracción da solo
     los que sabe decidir por reglas, y en cada oferta los que pueda; la forja
     le pide al LLM el resto (doc/forja.md, «Campo a campo»). Las habilidades
-    técnicas, los idiomas y el tamaño de la empresa no los da nunca: piden
-    criterio (los idiomas, además, el LLM los deduce del idioma de la oferta
-    y los nombra a su manera; el tamaño, de lo que sabe de la empresa). El
-    contrato y si es una agencia, solo cuando la oferta no deja dudas.
+    técnicas y el tamaño de la empresa no los da nunca: piden criterio (el
+    tamaño, además, sale de lo que el LLM sabe de la empresa, no de la
+    oferta). El contrato y si es una agencia, solo cuando la oferta no deja
+    dudas. Los idiomas (v3) los da siempre, con otro significado que el del
+    LLM: los que la oferta exige, en ISO 639-1 (SEMILLA.md, «Idiomas
+    exigidos»).
 
     Sirve dos tareas de la forja con la misma entrada y la misma salida:
     [t-a9fd1c2e9324] (Chat Completions con [json_schema]) y [t-cab6e50313a9]

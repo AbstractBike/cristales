@@ -478,10 +478,284 @@ let agencia o =
               || contiene_alguna t senales_agencia then []
       else [ ("isAgency", `Bool false) ]
 
+(* {2 Idiomas exigidos}
+
+   Los que la oferta pide, en ISO 639-1, ordenados; [] si no exige ninguno.
+   No los que valora («a plus», «se valorará», «von Vorteil»), ni el idioma en
+   que está escrita, ni los gentilicios («Dutch market», «territorio
+   español»). Se exige un idioma que la oferta nombra en una frase con una
+   señal de exigencia (nivel, «fluent», «Kenntnisse», «imprescindible»…) o en
+   la ficha del portal («Idiomas: english», «Idioma de trabajo: alemán»). *)
+
+(* Minúsculas también para las letras latinas con tilde («INGLÉS»): en UTF-8,
+   C3 80–9E son las mayúsculas de Latin-1 y la minúscula está 0x20 más allá. *)
+let minusculas s =
+  let b = Bytes.of_string (String.lowercase_ascii s) in
+  Bytes.iteri
+    (fun i c ->
+      if c = '\xc3' && i + 1 < Bytes.length b then
+        let d = Char.code (Bytes.get b (i + 1)) in
+        if d >= 0x80 && d <= 0x9e && d <> 0x97 then Bytes.set b (i + 1) (Char.chr (d + 0x20)))
+    b;
+  Bytes.to_string b
+
+(* Los signos de UTF-8 que separan palabras: «¡» y «¿», comillas, guiones y
+   viñetas. Sin esto «¡Bonus» sería una palabra que no empieza por «bonus». *)
+let signos_separadores =
+  [ "\xc2\xa1"; "\xc2\xbf"; "\xc2\xb7"; "\xc2\xab"; "\xc2\xbb"; "\xe2\x80\x93"; "\xe2\x80\x94"; "\xe2\x80\x98";
+    "\xe2\x80\x99"; "\xe2\x80\x9c"; "\xe2\x80\x9d"; "\xe2\x80\xa2" ]
+
+let sin_signos s =
+  List.fold_left
+    (fun s sg -> String.concat " " (let rec partes t = match indice t sg ~desde:0 with None -> [ t ] | Some i -> String.sub t 0 i :: partes (String.sub t (i + String.length sg) (String.length t - i - String.length sg)) in partes s))
+    s signos_separadores
+
+(* Las palabras en orden: hacen falta la anterior y la siguiente. *)
+let lista_palabras s =
+  let es c = match c with 'a' .. 'z' | '0' .. '9' -> true | c -> Char.code c >= 128 in
+  let b = Buffer.create 16 and acc = ref [] in
+  let cerrar () = if Buffer.length b > 0 then (acc := Buffer.contents b :: !acc; Buffer.clear b) in
+  String.iter (fun c -> if es c then Buffer.add_char b c else cerrar ()) (minusculas (sin_signos s));
+  cerrar ();
+  List.rev !acc
+
+let nombres_idioma =
+  [ ("en", [ "english"; "englisch"; "inglés"; "ingles"; "anglais"; "engelsk"; "engels"; "inglese" ]);
+    ("de", [ "german"; "deutsch"; "alemán"; "aleman"; "allemand"; "tysk"; "duits"; "tedesco" ]);
+    ("es", [ "spanish"; "español"; "espanol"; "castellano"; "spansk"; "spanisch"; "espagnol"; "spaans"; "spagnolo" ]);
+    ("fr", [ "french"; "français"; "francais"; "francés"; "französisch"; "fransk"; "francese" ]);
+    ("it", [ "italian"; "italiano"; "italienisch"; "italiensk"; "italiaans" ]);
+    ("nl", [ "dutch"; "nederlands"; "niederländisch"; "holandés"; "neerlandés"; "néerlandais"; "hollandsk" ]);
+    ("pt", [ "portuguese"; "português"; "portugués"; "portugiesisch"; "portugais" ]);
+    ("da", [ "danish"; "dansk"; "danés"; "dänisch"; "danois"; "deens" ]);
+    ("sv", [ "swedish"; "svenska"; "svensk"; "sueco"; "schwedisch"; "suédois"; "zweeds" ]);
+    ("no", [ "norwegian"; "norsk"; "noruego"; "norwegisch"; "norvégien" ]);
+    ("fi", [ "finnish"; "suomi"; "finés"; "finlandés"; "finnisch" ]);
+    ("pl", [ "polaco"; "polnisch"; "polonais"; "polski" ]);
+    ("ru", [ "russian"; "russisch"; "ruso"; "russe"; "russisk" ]);
+    ("ar", [ "arabic"; "árabe"; "arabisch" ]);
+    ("zh", [ "chinese"; "mandarin"; "chino"; "chinesisch"; "mandarín" ]);
+    ("ja", [ "japanese"; "japonés"; "japanisch"; "japonais" ]);
+    ("ko", [ "korean"; "coreano"; "koreanisch" ]);
+    ("tr", [ "turkish"; "turco"; "türkisch" ]);
+    ("cs", [ "czech"; "checo"; "tschechisch" ]);
+    ("ro", [ "romanian"; "rumano"; "rumänisch"; "roumain" ]);
+    ("el", [ "greek"; "griego"; "griechisch" ]);
+    ("hu", [ "hungarian"; "húngaro"; "ungarisch"; "hongrois" ]);
+    ("ca", [ "catalán"; "català"; "catalan" ]);
+    ("eu", [ "euskera"; "euskara" ]);
+    ("gl", [ "gallego"; "galego" ]) ]
+
+let codigo_de w = List.find_map (fun (c, ns) -> if List.mem w ns then Some c else None) nombres_idioma
+
+(* Las compuestas del alemán y del danés nombran el idioma y la exigencia a la
+   vez: Deutschkenntnisse, englischsprachig, danskkundskaber. *)
+let compuestas =
+  [ ("deutsch", "de"); ("englisch", "en"); ("französisch", "fr"); ("spanisch", "es"); ("italienisch", "it");
+    ("niederländisch", "nl"); ("polnisch", "pl"); ("russisch", "ru"); ("türkisch", "tr"); ("dansk", "da");
+    ("engelsk", "en"); ("tysk", "de") ]
+
+let colas_de_exigencia = [ "kenntnis"; "sprachig"; "kundskab"; "sprachkennt" ]
+
+let compuesta w =
+  List.find_map
+    (fun (raiz, c) ->
+      if String.starts_with ~prefix:raiz w then
+        let resto = String.sub w (String.length raiz) (String.length w - String.length raiz) in
+        if List.exists (fun p -> String.starts_with ~prefix:p resto) colas_de_exigencia then Some c else None
+      else None)
+    compuestas
+
+(* El gentilicio de un nombre: «Dutch market», «territorio español». *)
+let sustantivo_despues =
+  [ "market"; "markets"; "markt"; "company"; "companies"; "culture"; "customers"; "clients"; "law"; "government";
+    "citizens"; "nationality"; "ticket"; "speaking"; "speaker"; "speakers" ]
+
+let sustantivo_antes = [ "territorio"; "mercado"; "mercados"; "empresa"; "estado"; "gobierno"; "nacionalidad"; "sector" ]
+
+let senal_prefijos =
+  [ "fluen"; "flie"; "proficien"; "level"; "nivel"; "niveau"; "skill"; "kenntnis"; "verhandlungssicher";
+    "muttersprach"; "native"; "nativ"; "requir"; "must"; "essential"; "imprescindible"; "obligatori"; "requisit";
+    "requerid"; "necesari"; "excellent"; "excelente"; "strong"; "high"; "avanzad"; "advanced"; "intermedi";
+    "business"; "written"; "spoken"; "schrift"; "communicat"; "comunica"; "kommunik"; "speak"; "spreek"; "sprich";
+    "spricht"; "beherrsch"; "bilingu"; "bilingü"; "dominio"; "domin"; "habla"; "command"; "mother"; "sicher";
+    "perfect"; "perfekt"; "parler"; "básic"; "basic"; "elemental"; "maîtris"; "courant"; "flydende"; "kundskab"; "vloeiend"; "beheers"; "fließ" ]
+
+let senal_palabras = [ "good"; "gute"; "guten"; "sehr"; "alto"; "alta"; "buen"; "buena"; "god"; "gode"; "goed"; "goede";
+                       "wort"; "a1"; "a2"; "b1"; "b2"; "c1"; "c2" ]
+
+let quita_prefijos =
+  [ "advantage"; "ventaja"; "vorteil"; "plus"; "bonus"; "nice"; "desirable"; "deseable"; "valor"; "wünschenswert";
+    "optional"; "opcional"; "preferib"; "preferred"; "additional"; "adicional"; "otros"; "otras"; "other"; "weitere";
+    "ideally"; "idealmente"; "beneficial"; "asset"; "gerne"; "welcome"; "valued"; "valuable"; "appreciat" ]
+
+let genericos = [ "language"; "languages"; "idioma"; "idiomas"; "sprache"; "sprachen"; "langue"; "langues"; "sprog" ]
+
+(* Lo que el portal añade a todas sus ofertas: «Find more English Speaking Jobs
+   in Germany on Arbeitnow», la navegación de englishjobs.de. *)
+let relleno = [ "speaking jobs in"; "english jobs in"; "jobs in germany on arbeitnow"; "find jobs in" ]
+
+let fichas_idioma = [ "idiomas:"; "idioma:"; "idioma de trabajo:"; "languages:"; "language:"; "sprachen:"; "sprache:"; "sprog:" ]
+
+let local = [ "idioma local"; "local language"; "lengua local"; "landessprache"; "idioma del país" ]
+
+(* El idioma del país de la oferta, para «idioma local imprescindible»: por la
+   ubicación y, si no lo dice, por el dominio del portal. *)
+let idioma_del_pais o =
+  let u = minusculas o.ubicacion in
+  let por_ubicacion =
+    [ ("es", [ "spain"; "españa"; "espana"; "málaga"; "malaga"; "madrid"; "barcelona"; "sevilla"; "valencia"; "marbella" ]);
+      ("de", [ "germany"; "deutschland"; "alemania"; "berlin"; "münchen"; "munich"; "hamburg"; "frankfurt" ]);
+      ("da", [ "denmark"; "danmark"; "københavn"; "copenhagen"; "aarhus" ]);
+      ("nl", [ "netherlands"; "nederland"; "amsterdam"; "rotterdam" ]);
+      ("fr", [ "france"; "paris"; "lyon" ]);
+      ("it", [ "italy"; "italia"; "milano"; "roma" ]);
+      ("pt", [ "portugal"; "lisboa"; "porto" ]) ]
+  in
+  match List.find_opt (fun (_, ls) -> contiene_alguna u ls) por_ubicacion with
+  | Some (c, _) -> Some c
+  | None ->
+      let host = match String.split_on_char '/' o.url with _ :: _ :: h :: _ -> h | _ -> "" in
+      List.find_map
+        (fun (tld, c) -> if String.ends_with ~suffix:tld host then Some c else None)
+        [ (".es", "es"); (".de", "de"); (".at", "de"); (".dk", "da"); (".nl", "nl"); (".fr", "fr"); (".it", "it"); (".pt", "pt") ]
+
+(* Trozos del texto que se juzgan juntos: líneas, viñetas y frases. *)
+let segmentos s =
+  let partir seps l = List.concat_map (fun x -> String.split_on_char seps x) l in
+  let frases t =
+    let rec ir acc i desde =
+      match indice t ". " ~desde:i with
+      | None -> List.rev (String.sub t desde (String.length t - desde) :: acc)
+      | Some j -> ir (String.sub t desde (j - desde) :: acc) (j + 2) (j + 2)
+    in
+    ir [] 0 0
+  in
+  [ s ] |> partir '\n' |> partir ';' |> List.concat_map (String.split_on_char '\xb7' (* «·» acaba en B7 *))
+  |> List.concat_map (fun t ->
+         (* «•» es E2 80 A2 *)
+         let rec cortar t =
+           match indice t "\xe2\x80\xa2" ~desde:0 with
+           | None -> [ t ]
+           | Some i -> String.sub t 0 i :: cortar (String.sub t (i + 3) (String.length t - i - 3))
+         in
+         cortar t)
+  |> List.concat_map frases
+
+(* Las menciones de idioma de un trozo, con su posición en las palabras. *)
+let menciones_en ws =
+  let a = Array.of_list ws in
+  let n = Array.length a in
+  List.concat
+    (List.mapi
+       (fun i w ->
+         match compuesta w with
+         | Some c -> [ (i, c, true) ]
+         | None -> (
+             match codigo_de w with
+             | None -> []
+             | Some c ->
+                 let siguiente = if i + 1 < n then a.(i + 1) else "" and anterior = if i > 0 then a.(i - 1) else "" in
+                 if List.mem siguiente sustantivo_despues && not (List.mem siguiente [ "speaking"; "speaker"; "speakers" ])
+                 then []
+                 else if List.mem anterior sustantivo_antes then []
+                 else [ (i, c, false) ]))
+       ws)
+
+let menciones ws = List.map (fun (_, c, s) -> (c, s)) (menciones_en ws)
+
+let disyuntivas = [ "or"; "o"; "u"; "oder"; "ou"; "eller"; "of"; "oppure"; "lub" ]
+
+(* Los idiomas que la oferta da como alternativa: «Spanish, Italian, or
+   Portuguese», «German, French, Dutch, or other», «Catalan or French».
+   Una lista de idiomas seguidos (las comas no son palabras) es alternativa
+   si entre dos de ellos, o justo después del último, hay un «or». Ninguno
+   queda exigido: no se sabe cuál. *)
+let alternativas ws =
+  let a = Array.of_list ws in
+  let n = Array.length a in
+  let ms = menciones_en ws in
+  let rec tramos acc actual = function
+    | [] -> List.rev (List.rev actual :: acc)
+    | ((i, _, _) as m) :: resto -> (
+        match actual with
+        | (j, _, _) :: _ when i = j + 1 || (i = j + 2 && List.mem a.(j + 1) disyuntivas) -> tramos acc (m :: actual) resto
+        | [] -> tramos acc [ m ] resto
+        | _ -> tramos (List.rev actual :: acc) [ m ] resto)
+  in
+  tramos [] [] ms
+  |> List.filter (fun t ->
+         let rec pares = function
+           | (i, _, _) :: ((j, _, _) :: _ as r) -> (j = i + 2 && List.mem a.(i + 1) disyuntivas) || pares r
+           | [ (i, _, _) ] -> i + 1 < n && List.mem a.(i + 1) disyuntivas
+           | [] -> false
+         in
+         List.length t >= 1 && pares t && (List.length t >= 2 || (match t with [ (i, _, _) ] -> i + 2 < n && List.mem a.(i + 2) [ "other"; "otros"; "otro"; "andere"; "anderen"; "autres" ] | _ -> false)))
+  |> List.concat_map (List.map (fun (_, c, _) -> c))
+
+let tiene_senal ws =
+  List.exists (fun w -> List.mem w senal_palabras || List.exists (fun p -> String.starts_with ~prefix:p w) senal_prefijos) ws
+
+let quita ws = List.exists (fun w -> List.exists (fun p -> String.starts_with ~prefix:p w) quita_prefijos) ws
+
+(* Un trozo: si es ficha, todo lo que nombra; si no, lo que nombra con señal de
+   exigencia, menos lo de las cláusulas que lo rebajan. Una cláusula que rebaja
+   («a plus», «deseable») vale para ella y las que la siguen; si no nombra
+   ningún idioma (ni siquiera «idioma»), para la última que sí nombraba uno:
+   «Inglés alto (C1): deseable pero no obligatorio». *)
+let exigidos_de_segmento o seg =
+  let l = minusculas seg in
+  let limpio = String.trim (String.concat "" (String.split_on_char '*' l)) in
+  let limpio = if String.starts_with ~prefix:"-" limpio then String.trim (String.sub limpio 1 (String.length limpio - 1)) else limpio in
+  if contiene_alguna l relleno then []
+  else if List.exists (fun f -> String.starts_with ~prefix:f limpio) fichas_idioma then
+    List.map fst (menciones (lista_palabras limpio))
+  else
+    let clausulas =
+      List.concat_map (String.split_on_char ',') (List.concat_map (String.split_on_char ')') (String.split_on_char '(' l))
+      |> List.map lista_palabras
+    in
+    let todas = List.concat clausulas in
+    let alternativa = alternativas (lista_palabras l) in
+    let sin_alternativas = List.filter (fun c -> not (List.mem c alternativa)) in
+    sin_alternativas @@
+    if not (tiene_senal todas) then
+      (* Sin señal fuera de las compuestas: solo «Deutschkenntnisse», que la lleva dentro. *)
+      List.concat_map (fun ws -> if quita ws then [] else List.filter_map (fun (c, s) -> if s then Some c else None) (menciones ws)) clausulas
+    else
+      let n = List.length clausulas in
+      let fuera = Array.make n false in
+      (* Si la única señal de exigencia está en lo que rebaja («Additional fluency
+         in…»), la frase entera es de lo que se valora. *)
+      let solo_rebaja =
+        List.exists quita clausulas && not (List.exists (fun ws -> tiene_senal ws && not (quita ws)) clausulas)
+      in
+      if solo_rebaja then Array.fill fuera 0 n true;
+      List.iteri
+        (fun i ws ->
+          if quita ws then (
+            for j = i to n - 1 do fuera.(j) <- true done;
+            let sin_idioma = menciones ws = [] && not (List.exists (fun w -> List.mem w genericos) ws) in
+            if sin_idioma then
+              let rec atras k = if k < 0 then () else if menciones (List.nth clausulas k) <> [] then fuera.(k) <- true else atras (k - 1) in
+              atras (i - 1)))
+        clausulas;
+      let exigidos = List.concat (List.mapi (fun i ws -> if fuera.(i) then [] else List.map fst (menciones ws)) clausulas) in
+      let local_exigido =
+        contiene_alguna l local && not (quita (lista_palabras (String.concat " " (List.filteri (fun i _ -> i = 0) (String.split_on_char '(' l)))))
+      in
+      exigidos @ if local_exigido then Option.to_list (idioma_del_pais o) else []
+
+let idiomas o =
+  let codigos =
+    List.concat_map (exigidos_de_segmento o) (segmentos (o.titulo ^ "\n" ^ o.descripcion)) |> List.sort_uniq compare
+  in
+  [ ("languages", `List (List.map (fun c -> `String c) codigos)) ]
+
 let campos o =
   let todo = o.titulo ^ "\n" ^ o.ubicacion ^ "\n" ^ o.descripcion in
   let ws = palabras todo and fs = fichas todo in
-  List.concat [ salario o fs; anyos o fs; easy_apply o; seniority o; modalidad o fs ws; contrato o; agencia o ]
+  List.concat [ salario o fs; anyos o fs; easy_apply o; seniority o; modalidad o fs ws; contrato o; agencia o; idiomas o ]
 
 let cristal =
   Cristal.cristal "oferta-trabajo" Cristal.texto (fun s ->
@@ -497,5 +771,6 @@ let descripcion =
    modalidad (onsite si no menciona remoto ni híbrido, remote con la ubicación «Remote» y sin \
    oficina, hybrid con trabajo híbrido y sin remoto, o la ficha del portal), el contrato (null \
    si no habla de él, o la ficha «Contrato:») y si es una agencia (por su nombre, «Publica: \
-   Randstad» o la cesión de trabajadores; false si nada lo sugiere). Un objeto parcial: \
-   habilidades, idiomas y tamaño de empresa no los da."
+   Randstad» o la cesión de trabajadores; false si nada lo sugiere) y los idiomas que exige, en ISO \
+   639-1 ([] si no exige ninguno; no los que valora, ni el de la oferta, ni las alternativas «German \
+   or French»). Un objeto parcial: habilidades y tamaño de empresa no los da."

@@ -1,5 +1,6 @@
 (test
  (name red)
+ (modules red)
  (libraries oferta_trabajo cristal yojson))
 
 ; Mide el cristal contra muestras de la cantera (una por línea,
@@ -8,4 +9,9 @@
 (executable
  (name medir)
  (modules medir)
+ (libraries oferta_trabajo yojson))
+
+(executable
+ (name idiomas)
+ (modules idiomas)
  (libraries oferta_trabajo yojson))

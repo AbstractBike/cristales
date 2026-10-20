@@ -178,8 +178,9 @@ let () =
       ("Ejemplo", "Empresa del sector sanitario busca contable.") ];
   (* Invariantes: solo campos de la extracción, nunca los de criterio, y
      valores de sus enumeraciones. Fusión v2: contractType e isAgency salen
-     de los de criterio (los da cuando la oferta no deja dudas); hardSkills,
-     languages y companySize siguen siéndolo. *)
+     de los de criterio (los da cuando la oferta no deja dudas); hardSkills y
+     companySize siguen siéndolo. v3: languages deja de serlo con otro
+     significado (los idiomas exigidos en ISO 639-1), y lo da siempre. *)
   let todos =
     [ sin; mensaje "Senior Staff Engineer" "Easy Apply. 60k. Hybrid. 5 years.";
       mensaje "Werkstudent" "Deutschkenntnisse erforderlich.";
@@ -198,7 +199,11 @@ let () =
       comprueba "nunca los de criterio"
         (List.for_all
            (fun k -> not (List.mem_assoc k cs))
-           [ "hardSkills"; "languages"; "companySize" ]);
+           [ "hardSkills"; "companySize" ]);
+      comprueba "languages, siempre y en ISO 639-1"
+        (match List.assoc_opt "languages" cs with
+        | Some (`List l) -> List.for_all (function `String c -> String.length c = 2 | _ -> false) l
+        | _ -> false);
       comprueba "contractType del enum"
         (match List.assoc_opt "contractType" cs with
         | None | Some `Null
@@ -231,4 +236,70 @@ let () =
         | None | Some (`String ("remote" | "hybrid" | "onsite")) -> true
         | Some _ -> false))
     todos;
+  (* Idiomas exigidos, en ISO 639-1 (v3). Frases de ofertas reales de la
+     cantera (2026-10-20), con el juicio hecho a mano: lo que la oferta exige,
+     no lo que valora ni el idioma en que está escrita. *)
+  let idiomas ?ubicacion ?url ?(titulo = "Data Engineer") d =
+    match vale (mensaje ?ubicacion ?url titulo d) "languages" with
+    | Some (`List l) -> List.map (function `String c -> c | _ -> "?") l
+    | _ -> [ "?" ]
+  in
+  List.iter
+    (fun (d, esperado) ->
+      comprueba (Printf.sprintf "idiomas de «%s»: [%s]" d (String.concat "," esperado)) (idiomas d = esperado))
+    [ (* Exigidos. *)
+      ("Tipo: full-time · Área: engineering · Skills: ai, llm · Idiomas: english", [ "en" ]);
+      ("Tipo: full-time · Área: engineering · Idiomas: english, russian", [ "en"; "ru" ]);
+      ("Idioma de trabajo: alemán", [ "de" ]);
+      ("- Nivel alto de español.", [ "es" ]);
+      ("- Good English skills (B2/C1)", [ "en" ]);
+      ("Je spreekt goed Nederlands en hebt rijbewijs B.", [ "nl" ]);
+      ("Fluency in both French and English is essential", [ "en"; "fr" ]);
+      ("- Nivel alto de inglés (imprescindible) .", [ "en" ]);
+      ("Klare und adressatengerechte Kommunikationsfähigkeit in Deutsch und Englisch", [ "de"; "en" ]);
+      ("Proficiency in Dutch & English.", [ "en"; "nl" ]);
+      ("Gute Deutschkenntnisse in Wort und Schrift", [ "de" ]);
+      ("Gute Deutsch- und Englischkenntnisse", [ "de"; "en" ]);
+      ("Bitte beachte: Diese Position setzt fließende Deutsch- und Englischkenntnisse voraus.", [ "de"; "en" ]);
+      ("Sprache: Deutsch & Englisch fließend notwendig", [ "de"; "en" ]);
+      ("Sehr gutes Deutsch", [ "de" ]);
+      ("Intermediate-advanced English", [ "en" ]);
+      ("Clear written and spoken English", [ "en" ]);
+      ("communicate effectively in English, and combine a strong sense of ownership", [ "en" ]);
+      ("- Inglés básico,", [ "en" ]);
+      ("NIVEL ALTO DE INGLÉS", [ "en" ]);
+      ("Idiomas: Español/Catalán bilingües, Inglés alto (mínimo C1)\nFrancés y Alemán no obligatorios, pero se valorarán.",
+       [ "ca"; "en"; "es" ]);
+      (* Lo que valora, no lo que exige. *)
+      ("Fluent English language skills are required\nGerman language proficiency would be a strong advantage", [ "en" ]);
+      ("You speak fluently German\nRussian is a string advantage.", [ "de" ]);
+      ("Fluency in both French and English is essential\nAdditional fluency in Italian, Spanish, or Portuguese", [ "en"; "fr" ]);
+      ("- Buen nivel de inglés valorado positivamente.", []);
+      ("Inglés alto (C1): Deseable pero no obligatorio,\nOtros idiomas: neerlandés, francés, alemán, ruso.", []);
+      ("Business fluent English is a must (any additional European language is a plus)", [ "en" ]);
+      ("Dominas el español a nivel nativo y el inglés con fluidez\n¡Bonus si hablas francés!", [ "en"; "es" ]);
+      ("Catalan highly valued, as a large part of our client base is in Catalonia.", []);
+      ("We strongly appreciate various languages! Proficiency in Japanese, Korean or Spanish.", []);
+      (* Alternativas: no se sabe cuál. *)
+      ("Proficiency in German or French is required.", []);
+      ("Fluency in German, French, Dutch, or other major regional languages.", []);
+      ("Multilingual capabilities (English required; and French, Spanish, German or other European languages strongly preferred)", [ "en" ]);
+      (* Ni gentilicios, ni países, ni el relleno del portal. *)
+      ("Buscamos Desarrolladores Java para trabajar 100% remoto en TERRITORIO ESPAÑOL", []);
+      ("You will be an expert of the Dutch market, proficient in English and Dutch", [ "en"; "nl" ]);
+      ("The Deutschland Ticket gets you there.\nYou are fluent in English.", [ "en" ]);
+      ("Find more English Speaking Jobs in Germany on Arbeitnow", []);
+      ("Programming fundamentals in any language (bash, Perl, Ruby)", []);
+      ("Today, 100,000+ tutors teach 90+ languages to learners in 180 countries", []);
+      ("Vil du udvikle dig hos os? Vi tilbyder et godt arbejdsmiljø.", []) ];
+  comprueba "el título cuenta: «(German speaker)»" (idiomas ~titulo:"Account Executive (German speaker)" "Sales role." = [ "de" ]);
+  comprueba "idioma local por la ubicación"
+    (idiomas ~ubicacion:"Marbella, España"
+       "- Idioma local imprescindible (se valorará positivamente nivel de inglés dado el entorno internacional)."
+    = [ "es" ]);
+  comprueba "idioma local por el dominio"
+    (idiomas ~ubicacion:"" ~url:"https://www.randstad.es/x" "- Idioma local imprescindible." = [ "es" ]);
+  comprueba "sin nada de idiomas, []" (idiomas "Uno.\nDos." = []);
+  comprueba "los idiomas, siempre: el LLM ya no los da"
+    (List.for_all (fun (d, _) -> da (mensaje "Data Engineer" d) "languages") [ ("Uno.", ()); ("Fluent English.", ()) ]);
   if !fallos > 0 then exit 1
