@@ -7,7 +7,9 @@ cristalización deja de subir.
 
 Toda etapa empieza líquida, y está bien: es la forma más rápida de saber si el
 problema se puede resolver. Pero desde el primer día se **registra** cada
-llamada: entrada, salida, modelo. Ese registro es la cantera de semillas.
+llamada: entrada completa, salida, modelo. Ese registro es la cantera de
+semillas; su formato está en [`registro.md`](registro.md). Una caché de
+respuestas no sustituye al registro: guarda el hash, no la entrada.
 
 ## 1. Elegir la etapa
 
@@ -38,7 +40,7 @@ más pruebas, y una lista explícita de los casos que el método no cubre.
 Si el LLM no puede dar un método general, la etapa no está madura: se queda
 líquida y se recogen más ejemplos.
 
-## 4. Verificar la red
+## 4. Verificar la red y pasar por sombra
 
 El cristal se acepta solo si:
 
@@ -49,16 +51,24 @@ El cristal se acepta solo si:
   discrepancias se revisan a mano: o el cristal tiene una impureza, o el
   líquido se equivocaba (pasa más de lo que parece).
 
+Esto último se mide en vivo: la etapa pasa a `Sombra (cristal, liquido)`.
+Responde el LLM como siempre, el cristal corre a su lado y cada entrada queda
+registrada como `comparado`. `cristales grado` da el *acuerdo*, y
+`cristales semillas` saca las discrepancias para revisarlas. Se sale de sombra
+cuando el acuerdo es alto y las discrepancias que quedan son errores del
+líquido.
+
 ## 5. Desplegar en mixto
 
-La etapa pasa a `Mixta (cristal, liquido)`. El cristal atiende; los defectos
-caen al LLM y se registran. Se mide el grado de cristalización.
+`Cristal.solidificar` lleva la etapa a `Mixta (cristal, liquido)`. El cristal
+atiende; los defectos caen al LLM y se registran con su entrada y con lo que
+respondió el LLM. Se mide el grado de cristalización con `cristales grado`.
 
 ## 6. Crecer
 
-Periódicamente los defectos registrados se añaden a la semilla y se vuelve al
-paso 3. El cristal nuevo tiene que pasar la red del anterior entera: la red
-solo crece.
+Periódicamente `cristales semillas` saca los defectos registrados, se revisan
+y se añaden a la semilla, y se vuelve al paso 3. El cristal nuevo tiene que
+pasar la red del anterior entera: la red solo crece.
 
 ## 7. Solidificar
 
@@ -72,6 +82,14 @@ no una llamada silenciosa al modelo.
 Si el grado de cristalización cae de golpe, el dominio ha cambiado. Se vuelve
 a mixto (o a líquido) sin dramas: la procedencia y la semilla antiguas siguen
 en git para la siguiente nucleación.
+
+## Fallar en silencio no vale
+
+En ninguna fase se rellena un defecto con un valor por omisión: ni `"{}"`, ni
+la primera etiqueta del enumerado, ni la entrada sin tocar, ni una confianza
+inventada. Eso es una impureza fabricada a propósito. Si el cristal no sabe,
+devuelve `Error`; si el LLM devuelve algo que no se puede leer o que no
+pertenece al conjunto cerrado, eso también es un defecto y se registra.
 
 ## La pipeline entera
 

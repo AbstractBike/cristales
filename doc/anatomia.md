@@ -22,6 +22,9 @@ cristales/<nombre>/
   Nada de excepciones para "no sé".
   Con salida estructurada (un objeto JSON) también vale un objeto con solo
   los campos que sabe: la forja pide al LLM el resto ([forja.md](forja.md), campo a campo).
+- **El cristal sabe escribirse.** Lleva su `forma`: cómo se registran su
+  entrada y su salida (ver [`registro.md`](registro.md)). Sin ella sus
+  defectos no dejan semillas.
 - **La semilla y la procedencia se commitean.** Sin ellas el cristal no se
   puede recristalizar; sería código huérfano.
 - **La red solo crece.** Un caso que entró en la red no se borra; si el

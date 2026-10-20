@@ -224,4 +224,4 @@ let aplicar entrada : (string, string) result =
                 ("modelos", lista modelos);
                 ("nuevos", lista nuevos) ]))
 
-let cristal = Cristal.cristal "memoria-noticia" aplicar
+let cristal = Cristal.cristal "memoria-noticia" Cristal.texto aplicar

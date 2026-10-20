@@ -352,4 +352,4 @@ let aplicar texto : (string, string) result =
               ("desconocidos", lista str l.desconocidos);
               ("marcas", lista str (sin_repetir (l.marcas @ List.map (fun ((m : modulo), _) -> m.fabricante) l.modulos))) ]))
 
-let cristal = Cristal.cristal "memoria-modelo" aplicar
+let cristal = Cristal.cristal "memoria-modelo" Cristal.texto aplicar

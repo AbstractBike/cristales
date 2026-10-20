@@ -60,4 +60,4 @@ let aplicar texto : (string, string) result =
               ("antiguas", lista l.antiguas);
               ("profesionales", lista l.profesionales) ]))
 
-let cristal = Cristal.cristal "grafica-modelo" aplicar
+let cristal = Cristal.cristal "grafica-modelo" Cristal.texto aplicar

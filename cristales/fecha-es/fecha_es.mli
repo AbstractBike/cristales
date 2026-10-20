@@ -8,6 +8,9 @@ type fecha = { anyo : int; mes : int; dia : int }
 val aplicar : hoy:fecha -> string -> (fecha, string) result
 (** Pura: solo depende del texto y de [hoy]. *)
 
+val forma : (string, fecha) Cristal.forma
+(** Entrada tal cual; salida en ISO 8601. *)
+
 val cristal : hoy:fecha -> (string, fecha) Cristal.cristal
 val iso : fecha -> string
 val valida : fecha -> bool

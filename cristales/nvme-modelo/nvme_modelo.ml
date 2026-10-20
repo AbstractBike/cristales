@@ -113,4 +113,4 @@ let aplicar texto : (string, string) result =
               ("formato", opt (fun s -> `String s) l.formato);
               ("marcas", lista l.marcas) ]))
 
-let cristal = Cristal.cristal "nvme-modelo" aplicar
+let cristal = Cristal.cristal "nvme-modelo" Cristal.texto aplicar

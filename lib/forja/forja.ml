@@ -312,21 +312,29 @@ let decidir f p =
   | Some (estado, c) -> (
       match c.aplicar p.entrada with
       | Ok y ->
-          f.observar (Por_cristal nombre);
+          f.observar (Cristal.Por_cristal { etapa = nombre; entrada = p.entrada; salida = y });
           Por_cristal y
       | Error motivo -> (
-          f.observar (Defecto (nombre, motivo));
           match estado with
+          (* El evento de un defecto mixto lo da [aprender], con lo que respondió
+             el LLM: un evento por entrada, y el par es semilla. *)
           | `Mixta -> Al_liquido { contrastar = false; defecto = Some motivo }
-          | `Cristalina -> Fallo { etapa = nombre; motivo }))
+          | `Cristalina ->
+              f.observar
+                (Cristal.Defecto { etapa = nombre; entrada = p.entrada; motivo; liquido = None });
+              Fallo { etapa = nombre; motivo }))
   | None ->
-      f.observar (Por_liquido nombre);
       let e = estado f p.tarea in
       e.llamadas <- e.llamadas + 1;
       let n = f.politica.contrastar_cada in
       Al_liquido { contrastar = n > 0 && e.llamadas mod n = 0; defecto = None }
 
 let aprender f p ?contraste ?defecto ?(ejemplos = false) salida =
+  let etapa = Tarea.to_string p.tarea in
+  f.observar
+    (match defecto with
+    | Some motivo -> Cristal.Defecto { etapa; entrada = p.entrada; motivo; liquido = Some salida }
+    | None -> Cristal.Por_liquido { etapa; entrada = p.entrada; salida });
   let m =
     { Cantera.tarea = p.tarea; plantilla = p.plantilla; entrada = p.entrada;
       salida = Some salida; contraste; defecto; ejemplos }

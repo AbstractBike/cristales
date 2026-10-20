@@ -15,7 +15,7 @@ let hoy () =
   { Fecha_es.anyo = t.tm_year + 1900; mes = t.tm_mon + 1; dia = t.tm_mday }
 
 let fecha_es =
-  Cristal.cristal "fecha-es" (fun texto ->
+  Cristal.cristal "fecha-es" Cristal.texto (fun texto ->
       Result.map Fecha_es.iso (Fecha_es.aplicar ~hoy:(hoy ()) (String.trim texto)))
 
 let vitrina =

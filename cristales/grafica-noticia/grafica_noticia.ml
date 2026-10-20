@@ -125,4 +125,4 @@ let aplicar entrada : (string, string) result =
                 ("modelos", lista (List.map (fun g -> g.modelo.Catalogo.clave) lr.modelos));
                 ("nuevos", lista (nuevos t (leer t))) ]))
 
-let cristal = Cristal.cristal "grafica-noticia" aplicar
+let cristal = Cristal.cristal "grafica-noticia" Cristal.texto aplicar

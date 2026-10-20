@@ -1,0 +1,4 @@
+(executable
+ (name cristales)
+ (public_name cristales)
+ (libraries cristal registro))

@@ -95,7 +95,7 @@ let politica =
   { Forja.Madurez.minimo = 3; contrastar_cada = 2; contrastes = 1; estabilidad = 1.0 }
 
 let mayus =
-  Cristal.cristal "mayus" (fun s ->
+  Cristal.cristal "mayus" Cristal.texto (fun s ->
       if String.exists (function '0' .. '9' -> true | _ -> false) s then Error "dígitos"
       else Ok (String.uppercase_ascii s))
 
@@ -200,7 +200,7 @@ let () =
       comprueba "la tarea de herramienta madura" (List.length !maduras = 1));
   let tarea_h = List.hd !maduras in
   let cristal_h =
-    Cristal.cristal "mayus-h" (fun s ->
+    Cristal.cristal "mayus-h" Cristal.texto (fun s ->
         if s = "roto" then Ok "esto no es json"
         else if String.exists (function '0' .. '9' -> true | _ -> false) s then Error "dígitos"
         else Ok (json (String.uppercase_ascii s)))
@@ -255,7 +255,7 @@ let () =
   in
   let ab t = Printf.sprintf {|{"a":"a:%s","b":"b:%s"}|} t t in
   let solo_a =
-    Cristal.cristal "solo-a" (fun s ->
+    Cristal.cristal "solo-a" Cristal.texto (fun s ->
         if s = "todo" then Ok (ab "TODO")
         else Ok (Printf.sprintf {|{"a":"a:%s"}|} (String.uppercase_ascii s)))
   in

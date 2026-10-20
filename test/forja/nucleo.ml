@@ -60,7 +60,7 @@ let () =
     (List.map (fun (m : Forja.Cantera.muestra) -> m.entrada) (cantera.muestras (tarea "mayus"))
     = [ "a"; "b"; "c"; "d"; "e"; "f" ]);
   comprueba "eventos líquidos"
-    (List.for_all (function Cristal.Por_liquido "mayus" -> true | _ -> false) !eventos);
+    (List.for_all (function Cristal.Por_liquido { etapa = "mayus"; _ } -> true | _ -> false) !eventos);
   (* La madurez sobrevive a un reinicio: otra forja sobre la misma cantera
      recupera el informe. *)
   let g = Forja.crear ~politica ~vitrina:Forja.Vitrina.vacia ~cantera () in
@@ -84,7 +84,7 @@ let () =
 (* Vitrina: mixta y cristalina. *)
 let () =
   let mayus =
-    Cristal.cristal "mayus" (fun s ->
+    Cristal.cristal "mayus" Cristal.texto (fun s ->
         if String.exists (function '0' .. '9' -> true | _ -> false) s then Error "dígitos"
         else Ok (String.uppercase_ascii s))
   in

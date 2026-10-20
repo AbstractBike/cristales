@@ -1,0 +1,6 @@
+(test
+ (name libreria)
+ (libraries cristal registro))
+
+(cram
+ (deps %{bin:cristales} registro.jsonl))

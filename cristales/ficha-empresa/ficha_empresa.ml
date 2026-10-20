@@ -395,7 +395,7 @@ let tamanyo e =
 let campos e = List.concat [ politica e; web e; sede e; tamanyo e ]
 
 let cristal =
-  Cristal.cristal "ficha-empresa" (fun s ->
+  Cristal.cristal "ficha-empresa" Cristal.texto (fun s ->
       match leer s with
       | None -> Error "fuera de dominio: no hay <evidence> con Empresa:"
       | Some e -> (

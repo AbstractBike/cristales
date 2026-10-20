@@ -101,4 +101,4 @@ let aplicar entrada : (string, string) result =
                 ("modelos", lista modelos);
                 ("nuevos", lista lt.desconocidos) ]))
 
-let cristal = Cristal.cristal "nvme-noticia" aplicar
+let cristal = Cristal.cristal "nvme-noticia" Cristal.texto aplicar

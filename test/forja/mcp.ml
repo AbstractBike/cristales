@@ -13,7 +13,7 @@ let comprueba nombre cond =
 let tarea n = Result.get_ok (Forja.Tarea.explicita n)
 
 let mayus =
-  Cristal.cristal "mayus" (fun s ->
+  Cristal.cristal "mayus" Cristal.texto (fun s ->
       if s = "" then Error "entrada vacía" else Ok (String.uppercase_ascii s))
 
 let vitrina = Forja.Vitrina.(vacia |> con (tarea "mayus") `Mixta mayus ~descripcion:"Mayúsculas.")

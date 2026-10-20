@@ -323,4 +323,4 @@ let aplicar entrada : (string, string) result =
     | Defecto m -> Error m
     | Decide t -> Ok (Yojson.Safe.to_string (json a l t))
 
-let cristal = Cristal.cristal "nvme-anuncio" aplicar
+let cristal = Cristal.cristal "nvme-anuncio" Cristal.texto aplicar

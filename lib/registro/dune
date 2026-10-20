@@ -1,0 +1,4 @@
+(library
+ (name registro)
+ (public_name cristales.registro)
+ (libraries cristal yojson))

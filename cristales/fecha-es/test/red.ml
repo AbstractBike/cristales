@@ -89,12 +89,22 @@ let () =
     { anyo = 2026; mes = 10; dia = 13 }
   in
   let medidor = Cristal.Medidor.crear () in
+  let defectos = ref [] in
+  let observar ev =
+    Cristal.Medidor.observar medidor ev;
+    match ev with
+    | Cristal.Defecto { entrada; _ } -> defectos := entrada :: !defectos
+    | _ -> ()
+  in
   let p = Cristal.(etapa (mixta (Fecha_es.cristal ~hoy) llm)) in
   List.iter
     (fun t ->
-      ignore (Cristal.ejecutar ~observar:(Cristal.Medidor.observar medidor) p t))
+      ignore (Cristal.ejecutar ~observar p t))
     [ "hoy"; "3/3/2024"; "el próximo martes"; "ayer" ];
   if !llm_llamadas <> 1 then falla "mixta: %d llamadas al LLM, se esperaba 1" !llm_llamadas;
+  (match !defectos with
+  | [ "el próximo martes" ] -> ()
+  | _ -> falla "mixta: el defecto debe registrarse con su entrada");
   if Cristal.Medidor.grado medidor "fecha-es" <> Some 0.75 then
     falla "mixta: grado de cristalización distinto de 0.75";
   let solida = Cristal.(etapa (solidificar (mixta (Fecha_es.cristal ~hoy) llm))) in

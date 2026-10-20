@@ -1,0 +1,10 @@
+{"v":1,"etapa":"idioma","evento":"cristal","entrada":"hola, busco piso","salida":"es"}
+{"v":1,"etapa":"idioma","evento":"cristal","entrada":"hi there","salida":"en"}
+{"v":1,"etapa":"tipo","evento":"cristal","entrada":"hola, busco piso","salida":"alta"}
+{"v":1,"etapa":"tipo","evento":"defecto","entrada":"hi there","motivo":"sin palabras clave","liquido":"consulta","modelo":"claude-haiku-4-5","ts":"2026-10-11T09:00:00Z"}
+{"v":1,"etapa":"tipo","evento":"defecto","entrada":"hi there","motivo":"sin palabras clave","liquido":"consulta"}
+
+{"v":1,"etapa":"regimen","evento":"comparado","entrada":"rsi=71 ema20>ema50","liquido":"TRENDING_BULL","cristal":"TRENDING_BULL"}
+{"v":1,"etapa":"regimen","evento":"comparado","entrada":"rsi=50 atr=alto","liquido":"HIGH_VOLATILITY","cristal":"RANGING"}
+{"v":1,"etapa":"regimen","evento":"comparado","entrada":"rsi=? | sin datos","liquido":"RANGING","motivo":"faltan indicadores"}
+{"v":1,"etapa":"responder","evento":"liquido","entrada":"hola, busco piso","salida":"¡Hola! Cuéntame qué buscas."}

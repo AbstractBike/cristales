@@ -802,4 +802,4 @@ let aplicar entrada : (string, string) result =
   if String.trim a.titulo = "" then Error "sin título"
   else match decidir a with Defecto m, _ -> Error m | Decide t, m -> Ok (Yojson.Safe.to_string (json a t m))
 
-let cristal = Cristal.cristal "memoria-anuncio" aplicar
+let cristal = Cristal.cristal "memoria-anuncio" Cristal.texto aplicar

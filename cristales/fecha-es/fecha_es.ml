@@ -128,4 +128,5 @@ let aplicar ~hoy texto =
   | Some f when not (valida f) -> Error ("fecha imposible: " ^ texto)
   | Some f -> Ok f
 
-let cristal ~hoy = Cristal.cristal "fecha-es" (aplicar ~hoy)
+let forma = { Cristal.entrada = Fun.id; salida = iso }
+let cristal ~hoy = Cristal.cristal "fecha-es" forma (aplicar ~hoy)

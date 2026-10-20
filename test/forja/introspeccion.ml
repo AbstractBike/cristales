@@ -16,7 +16,7 @@ let contiene s sub =
   ir 0
 
 let tarea n = Result.get_ok (Forja.Tarea.explicita n)
-let mayus = Cristal.cristal "mayus" (fun s -> if s = "" then Error "vacía" else Ok (String.uppercase_ascii s))
+let mayus = Cristal.cristal "mayus" Cristal.texto (fun s -> if s = "" then Error "vacía" else Ok (String.uppercase_ascii s))
 
 let forja =
   let vitrina = Forja.Vitrina.(vacia |> con (tarea "mayus") `Cristalina mayus ~descripcion:"Mayúsculas.") in

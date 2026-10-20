@@ -17,6 +17,13 @@ al modelo para ejecutarse.
 **Mixto.** Cristal con respaldo líquido. El cristal intenta primero; si declara
 un defecto, la entrada pasa al LLM y el caso queda registrado.
 
+**Sombra.** Cristal a prueba. Responde el LLM, como en líquido, pero el cristal
+corre a su lado y se registra si coinciden. No arriesga nada y mide lo que
+importa antes de confiar: el *acuerdo* entre cristal y líquido.
+
+El orden es líquido → sombra → mixto → cristal. Cada paso se da con datos del
+registro, no por fe.
+
 ## Ciclo de vida
 
 **Semilla.** Lo mínimo que hace falta para que crezca un cristal: la
@@ -52,6 +59,9 @@ líquida, se recogen ejemplos y se cristaliza otra vez.
 pipeline) que resuelve el cristal sin llamar al LLM. Es la métrica que manda:
 una pipeline madura tiende a 1.
 
+**Registro.** Cada entrada de cada etapa, con lo que resolvió el cristal o el
+LLM. Sin registro no hay semillas. Formato en [`registro.md`](registro.md).
+
 **Procedencia.** Qué modelo, qué prompt y qué semilla produjeron el cristal.
 Es la cristalografía: permite reproducir la nucleación y entender por qué el
 cristal es como es.
@@ -70,6 +80,23 @@ de verdad lo necesita.
 
 Regla práctica: si al pedirle el resultado al LLM dos veces esperas la misma
 respuesta, esa etapa debería ser un cristal.
+
+## Memoizar no es cristalizar
+
+Guardar la respuesta del LLM bajo la entrada (o bajo el hash del prompt) es
+**memoizar**: pescado en la nevera. Ahorra la segunda llamada con la *misma*
+entrada, pero no generaliza: la entrada siguiente, distinta en una coma, vuelve
+al LLM. Además no se puede auditar, porque es una tabla de respuestas y no un
+método.
+
+Un cristal resuelve la *clase*. Una caché delante de un LLM es una
+optimización legítima de una etapa líquida, pero no la hace mixta. Y una
+caché no se llama cristal, para no confundir el grado de cristalización con la
+tasa de aciertos de la caché.
+
+Tampoco es cristal lo que el LLM decide *dentro* del conjunto cerrado: si se le
+pide "el valor más cercano de esta lista" y su respuesta no está en la lista,
+eso es un defecto, no un valor nuevo para la lista.
 
 ## Pescado y caña
 

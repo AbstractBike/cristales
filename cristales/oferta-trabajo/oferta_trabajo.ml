@@ -484,7 +484,7 @@ let campos o =
   List.concat [ salario o fs; anyos o fs; easy_apply o; seniority o; modalidad o fs ws; contrato o; agencia o ]
 
 let cristal =
-  Cristal.cristal "oferta-trabajo" (fun s ->
+  Cristal.cristal "oferta-trabajo" Cristal.texto (fun s ->
       match leer s with
       | None -> Error "fuera de dominio: no hay <posting>"
       | Some o -> Ok (Yojson.Safe.to_string (`Assoc (campos o))))
