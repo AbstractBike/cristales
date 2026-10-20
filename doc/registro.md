@@ -5,9 +5,9 @@ cristalizarse (paso 0 de [`pipelines.md`](pipelines.md)). Es también el
 contrato entre las pipelines, escritas en cualquier lenguaje, y las
 herramientas de este repositorio.
 
-Formato: **JSON Lines**, un evento por entrada y etapa. En OCaml lo escribe
-`Registro.escribir` pasado como `~observar` a `Cristal.ejecutar`; en Go,
-Kotlin o Scala basta con emitir las mismas líneas.
+Un evento por entrada y etapa: una fila de la tabla `cristal_registro` de
+GreptimeDB (abajo) o, fuera de la flota, una línea de **JSON Lines**. Los
+campos son los mismos en los dos.
 
 ## Campos
 
@@ -37,6 +37,51 @@ que los añade quien escribe el registro.
 {"v":1,"etapa":"fecha-es","evento":"defecto","entrada":"el próximo martes","motivo":"fuera de dominio: el próximo martes","liquido":"2026-10-13","modelo":"claude-haiku-4-5","ts":"2026-10-11T09:00:00Z"}
 ```
 
+## Dónde vive: GreptimeDB
+
+La única base de la flota es GreptimeDB, y el registro es una tabla suya con
+las columnas llamadas como los campos (más `ts`):
+
+```sql
+CREATE TABLE IF NOT EXISTS cristal_registro (
+  ts TIMESTAMP(3) NOT NULL DEFAULT current_timestamp(),
+  etapa STRING NOT NULL,
+  evento STRING NOT NULL,
+  entrada STRING NOT NULL,
+  salida STRING NULL,
+  motivo STRING NULL,
+  liquido STRING NULL,
+  cristal STRING NULL,
+  modelo STRING NULL,
+  v INT NOT NULL,
+  TIME INDEX (ts),
+  PRIMARY KEY (etapa, evento)
+) WITH (append_mode = 'true');
+```
+
+`append_mode` porque dos eventos de la misma etapa en el mismo milisegundo son
+dos filas, no una que pisa a la otra. Cada app la tiene en su propia base
+(`trabajo`, `coches`, `buscarcasa`…).
+
+Quién escribe:
+
+- **buzon-kt** (`buzon.cristal`): todo `Agent` de los `*.email` deja cada
+  llamada como `liquido`, con el mensaje que vio el modelo y el JSON que
+  devolvió. Crea la tabla la primera vez; `CRISTALES_REGISTRO=off` lo apaga.
+- **OCaml**: `Registro.escribir` como `~observar` da JSON Lines; para
+  GreptimeDB, el mismo evento va en un `INSERT` a esta tabla.
+
+Leerlo no pide convertir nada: `cristales` lee la respuesta de `/v1/sql` tal
+cual.
+
+```sh
+curl -s "$GREPTIME_URL/v1/sql?db=coches" \
+  --data-urlencode "sql=SELECT * FROM cristal_registro WHERE ts > now() - INTERVAL '7 days'" \
+  > registro.json
+cristales grado registro.json
+cristales semillas registro.json SearchAgent
+```
+
 ## Reglas
 
 - **Se registra la entrada, no su hash.** Un hash sirve de clave de caché,
@@ -52,9 +97,11 @@ que los añade quien escribe el registro.
 ## Herramientas
 
 ```sh
-cristales grado    registro.jsonl          # grado y acuerdo por etapa
-cristales semillas registro.jsonl ETAPA    # filas candidatas para SEMILLA.md
+cristales grado    REGISTRO          # grado y acuerdo por etapa
+cristales semillas REGISTRO ETAPA    # filas candidatas para SEMILLA.md
 ```
+
+`REGISTRO` es la respuesta de GreptimeDB o un fichero JSON Lines.
 
 `semillas` saca los defectos y las discrepancias de sombra, sin repetir
 entrada, con lo que dijo el LLM como salida propuesta. No van a la semilla sin

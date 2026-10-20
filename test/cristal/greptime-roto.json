@@ -1,0 +1,17 @@
+{"output":[{"records":{"schema":{"column_schemas":[
+  {"name":"ts","data_type":"TimestampMillisecond"},
+  {"name":"etapa","data_type":"String"},
+  {"name":"evento","data_type":"String"},
+  {"name":"entrada","data_type":"String"},
+  {"name":"salida","data_type":"String"},
+  {"name":"motivo","data_type":"String"},
+  {"name":"liquido","data_type":"String"},
+  {"name":"cristal","data_type":"String"},
+  {"name":"modelo","data_type":"String"},
+  {"name":"v","data_type":"Int32"}
+]},"rows":[
+  [1791709200000,"SearchAgent","liquido","un leon con bola, unos 12 mil","{\"priceMax\":12000}",null,null,null,"claude-haiku-4-5",1],
+  [1791709260000,"SearchAgent","liquido","busco un corolla hibrido","{\"models\":[\"Toyota Corolla\"]}",null,null,null,"claude-haiku-4-5",1],
+  [1791709320000,"regime","comparado","BTCUSDT 1h",null,null,"RANGING","TRENDING_BULL",null,1],
+  [1791709380000,"regime","comparado","ETHUSDT 1h",null,null,"RANGING",null,null,1]
+]},"total_rows":4}],"execution_time_ms":3}

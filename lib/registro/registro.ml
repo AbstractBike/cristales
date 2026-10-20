@@ -26,12 +26,14 @@ let a_json (ev : Cristal.evento) =
   in
   Yojson.Safe.to_string (`Assoc (("v", `Int version) :: campos))
 
-let de_json linea : (Cristal.evento, string) result =
-  let ( let* ) = Result.bind in
-  let* j =
-    try Ok (Yojson.Safe.from_string linea)
-    with Yojson.Json_error e -> Error ("JSON inválido: " ^ e)
-  in
+let ( let* ) = Result.bind
+
+let json texto =
+  try Ok (Yojson.Safe.from_string texto)
+  with Yojson.Json_error e -> Error ("JSON inválido: " ^ e)
+
+(* Un evento a partir de un objeto con los campos del contrato. *)
+let de_objeto j : (Cristal.evento, string) result =
   let campo k =
     match j with `Assoc l -> List.assoc_opt k l | _ -> None
   in
@@ -76,13 +78,46 @@ let de_json linea : (Cristal.evento, string) result =
       Ok (Cristal.Comparado { etapa; entrada; liquido; cristal })
   | otro -> Error (Printf.sprintf "evento %S desconocido" otro)
 
+let de_json linea = Result.bind (json linea) de_objeto
+
+(* Respuesta de GreptimeDB a [POST /v1/sql]: las columnas en
+   [output[0].records.schema.column_schemas] y las filas, posicionales, en
+   [output[0].records.rows]. Cada fila se empareja con los nombres y se lee
+   como un objeto del contrato; una columna a null es un campo ausente. *)
+let de_greptime cuerpo =
+  let* j = json cuerpo in
+  let open Yojson.Safe.Util in
+  let* columnas, filas =
+    try
+      let records = j |> member "output" |> index 0 |> member "records" in
+      Ok
+        ( records |> member "schema" |> member "column_schemas" |> to_list
+          |> List.map (fun c -> c |> member "name" |> to_string),
+          records |> member "rows" |> to_list |> List.map to_list )
+    with Type_error (m, _) | Undefined (m, _) ->
+      Error ("no es una respuesta de GreptimeDB: " ^ m)
+  in
+  List.mapi (fun i fila -> (i + 1, fila)) filas
+  |> List.fold_left
+       (fun acc (n, fila) ->
+         let* evs = acc in
+         if List.length fila <> List.length columnas then
+           Error (Printf.sprintf "fila %d: %d valores para %d columnas" n
+                    (List.length fila) (List.length columnas))
+         else
+           match de_objeto (`Assoc (List.combine columnas fila)) with
+           | Ok ev -> Ok (ev :: evs)
+           | Error e -> Error (Printf.sprintf "fila %d: %s" n e))
+       (Ok [])
+  |> Result.map List.rev
+
 let escribir oc ev =
   output_string oc (a_json ev);
   output_char oc '\n';
   flush oc
 
-let leer fichero =
-  In_channel.with_open_text fichero In_channel.input_lines
+let de_jsonl fichero texto =
+  String.split_on_char '\n' texto
   |> List.mapi (fun i l -> (i + 1, l))
   |> List.filter (fun (_, l) -> String.trim l <> "")
   |> List.fold_left
@@ -93,3 +128,10 @@ let leer fichero =
              | Error e -> Error (Printf.sprintf "%s:%d: %s" fichero n e)))
        (Ok [])
   |> Result.map List.rev
+
+let leer fichero =
+  let texto = In_channel.with_open_text fichero In_channel.input_all in
+  match json texto with
+  | Ok (`Assoc campos) when List.mem_assoc "output" campos ->
+      de_greptime texto |> Result.map_error (Printf.sprintf "%s: %s" fichero)
+  | _ -> de_jsonl fichero texto

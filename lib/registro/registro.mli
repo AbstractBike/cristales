@@ -16,6 +16,12 @@ val de_json : string -> (Cristal.evento, string) result
 val escribir : out_channel -> Cristal.evento -> unit
 (** Para pasar como [~observar]: escribe la línea y vacía el canal. *)
 
+val de_greptime : string -> (Cristal.evento list, string) result
+(** Lee la respuesta de GreptimeDB a un [SELECT] sobre la tabla del registro
+    ([cristal_registro], ver [doc/registro.md]): sus columnas se llaman como los
+    campos del contrato, y una columna a [null] es un campo ausente. *)
+
 val leer : string -> (Cristal.evento list, string) result
-(** Lee un fichero de registro. Ignora líneas vacías; el error dice en qué
-    línea se rompió. *)
+(** Lee un fichero de registro: JSON Lines, o la respuesta de GreptimeDB tal
+    cual la devuelve [/v1/sql]. Ignora líneas vacías; el error dice en qué
+    línea o fila se rompió. *)

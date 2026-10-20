@@ -32,3 +32,18 @@ Un registro roto dice dónde:
   $ cristales grado roto.jsonl
   roto.jsonl:1: falta el campo de texto "entrada"
   [1]
+
+El registro vive en GreptimeDB (tabla cristal_registro); la respuesta de
+/v1/sql se lee tal cual, sin convertirla. Una fila sin cristal ni motivo es
+un comparado roto, y se dice cuál:
+
+  $ cristales grado greptime-roto.json
+  greptime-roto.json: fila 4: "comparado" necesita "cristal" o "motivo"
+  [1]
+
+  $ cristales grado greptime.json
+  | Etapa | Entradas | Grado | Acuerdo en sombra |
+  |---|---:|---:|---:|
+  | SearchAgent | 2 | 0.0% | — |
+  | regime | 1 | 0.0% | 0.0% |
+  | **pipeline** | 3 | 0.0% | |

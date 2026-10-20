@@ -78,10 +78,10 @@ bien.
 | [`doc/agencia.md`](doc/agencia.md) | La agencia: agentes que saben a qué modelo pedir cada cosa, con el histórico de cada encargo (MCP) |
 | [`doc/llaves-de-miel.md`](doc/llaves-de-miel.md) | Llaves de miel: claves reales e inertes que avisan, vía el proveedor, si el repo o la sesión de IA donde viven se filtra |
 | [`doc/seguimiento-de-costes.md`](doc/seguimiento-de-costes.md) | Seguimiento de costes: cada commit de un LLM lleva en sus trailers el modelo, los tokens y el coste, sacados de la telemetría de su sesión |
-| [`doc/registro.md`](doc/registro.md) | El registro: contrato entre pipelines y herramientas |
+| [`doc/registro.md`](doc/registro.md) | El registro: contrato entre pipelines y herramientas, y su tabla en GreptimeDB |
 | [`prompts/cristalizar.md`](prompts/cristalizar.md) | El prompt de nucleación: pedir el método, no el resultado |
 | [`lib/`](lib/) | `cristal`, librería OCaml 5: etapas líquida/sombra/mixta/cristalina y su composición |
-| [`lib/registro/`](lib/registro/), [`bin/cristales/`](bin/cristales/) | `registro` (eventos de la pipeline a JSON y de vuelta) y `cristales grado` / `semillas`, que leen el registro |
+| [`lib/registro/`](lib/registro/), [`bin/cristales/`](bin/cristales/) | `registro` (eventos de la pipeline a JSON y de vuelta, también desde GreptimeDB) y `cristales grado` / `semillas`, que leen el registro |
 | [`lib/forja/`](lib/forja/), [`lib/forja-http/`](lib/forja-http/) | Núcleo de la forja y su proxy HTTP (Messages API, GreptimeDB) |
 | [`bin/forja/`](bin/forja/) | El binario `forja` y su vitrina de cristales |
 | [`mcp/`](mcp/) | `forja-mcp` en OCaml, TypeScript, Go, Rust, Kotlin y Python: contrato y prueba de conformidad |

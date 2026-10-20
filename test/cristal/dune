@@ -3,4 +3,4 @@
  (libraries cristal registro))
 
 (cram
- (deps %{bin:cristales} registro.jsonl))
+ (deps %{bin:cristales} registro.jsonl greptime.json greptime-roto.json))
