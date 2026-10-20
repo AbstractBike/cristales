@@ -104,7 +104,8 @@ combinación. Siguen los mismos pasos 1 y 3–5 de arriba para este documento.
 [`sellos/huellas-2026-10-12-llaves-de-miel.txt`](sellos/huellas-2026-10-12-llaves-de-miel.txt)
 recoge el commit público, el SHA-256 de `doc/llaves-de-miel.md` en ese commit
 y el de la divulgación; los dos ficheros están sellados (`.ots` al lado).
-Para completarlos cuando Bitcoin los confirme y comprobarlos:
+**Anclados en Bitcoin** (`ots upgrade`, 2026-10-20): bloques 971134 y 971140.
+`ots verify` necesita un nodo Bitcoin local. Para completarlos (ya hecho) y comprobarlos:
 
 ```bash
 nix shell nixpkgs#opentimestamps-client -c ots upgrade legal/sellos/huellas-2026-10-12-llaves-de-miel.txt.ots legal/divulgacion-llaves-de-miel.md.ots
