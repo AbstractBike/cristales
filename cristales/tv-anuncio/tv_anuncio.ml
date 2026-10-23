@@ -368,10 +368,41 @@ let dice todo frases =
   done;
   !r
 
-let averia ?(titulo = "") todo =
+(* En la descripción, «roto» sin más es la tele si nada lo ata a otra cosa: empieza una frase o una
+   línea («Roto por instalación»), lleva «por» detrás («rota por una caída») o va con su verbo («se
+   rompió», «está rota», «llegó rota»); y no tiene delante otro sustantivo («el botón está roto», «la
+   peana rota», «tapa rota»). *)
+let rotas = [ "roto"; "rota"; "rotos"; "rotas"; "rotto"; "rotta" ]
+let verbos_rota = [ "se rompio"; "se ha roto"; "se han roto"; "se rompe"; "esta rota"; "esta roto"; "estan rotas"; "llego rota"; "llego roto"; "vino rota"; "vino roto"; "se cayo"; "e rotto"; "e rotta" ]
+
+let otra_cosa =
+  [ "boton"; "botones"; "mando"; "mandos"; "tapa"; "pie"; "pies"; "peana"; "soporte"; "caja"; "pata"; "patas"; "base"; "cable"; "embalaje";
+    "marco"; "esquina"; "carcasa"; "mueble"; "enchufe"; "puerto"; "conector"; "pilas"; "tornillo"; "tornillos"; "anclaje"; "tecla"; "led"; "leds"; "placa"; "fuente" ]
+
+let rota_en_descripcion d =
+  let frases = String.split_on_char '\n' d |> List.concat_map (String.split_on_char '.') |> List.concat_map (String.split_on_char '!') in
+  List.exists
+    (fun f ->
+      let ws = T.palabras f in
+      let n = Array.length ws in
+      (* Lo de delante: ni otra cosa (la peana), ni una negación (no está rota). *)
+      let libre i = not ((i >= 1 && (List.mem ws.(i - 1) otra_cosa || List.mem ws.(i - 1) negaciones)) || (i >= 2 && (List.mem ws.(i - 2) otra_cosa || List.mem ws.(i - 2) negaciones))) in
+      let encaja i f =
+        let ps = Array.of_list (String.split_on_char ' ' f) in
+        let k = Array.length ps in
+        i + k <= n && Array.for_all Fun.id (Array.init k (fun j -> ws.(i + j) = ps.(j)))
+      in
+      List.exists
+        (fun i ->
+          (List.mem ws.(i) rotas && (i = 0 || (i + 1 < n && List.mem ws.(i + 1) [ "por"; "per"; "durch"; "beim"; "al"; "en" ])) && libre i)
+          || (List.exists (encaja i) verbos_rota && libre i))
+        (List.init n Fun.id))
+    frases
+
+let averia ?(titulo = "") ?(descripcion = "") todo =
   match List.find_map (fun (etiqueta, frases) -> if dice todo frases = G.Si then Some etiqueta else None) averias with
   | Some a -> Some a
-  | None -> if dice titulo rota_titulo = G.Si then Some "pantalla rota" else None
+  | None -> if dice titulo rota_titulo = G.Si || rota_en_descripcion descripcion then Some "pantalla rota" else None
 
 (* El estado que declara el portal, si la entrada lo trae en una línea «Estado: …» de la cabecera
    (Wallapop: «como nuevo», «en buen estado»; Kleinanzeigen: «Sehr gut», «Defekt»). *)
@@ -402,7 +433,7 @@ let declarado entrada =
 
 let estado ?declarado (a : Memoria_anuncio.anuncio) =
   let todo = a.titulo ^ "\n" ^ a.descripcion in
-  let av = averia ~titulo:a.titulo todo in
+  let av = averia ~titulo:a.titulo ~descripcion:a.descripcion todo in
   (* Lo que dice el texto de una avería manda; si no, lo que declara el portal; si no, lo que dice el texto. *)
   if dice todo para_piezas = G.Si then ("para-piezas", av)
   else if av <> None || dice todo averiada = G.Si then ("averiado", av)
