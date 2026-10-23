@@ -1,0 +1,10 @@
+(test
+ (name red)
+ (modules red)
+ (libraries tv_modelo cristal yojson))
+
+; Aplica el cristal a un texto, para depurar.
+(executable
+ (name probar)
+ (modules probar)
+ (libraries tv_modelo))

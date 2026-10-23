@@ -99,6 +99,9 @@ bien.
 | [`cristales/memoria-modelo/`](cristales/memoria-modelo/) | La memoria RAM que nombra un texto: los part numbers leídos con las reglas de cada fabricante (Samsung, SK hynix, Micron, Crucial, Kingston, Corsair, G.Skill; etiquetas de HPE, Lenovo, IBM) y las placas y servidores con la memoria que admiten |
 | [`cristales/memoria-anuncio/`](cristales/memoria-anuncio/) | Qué se vende en un anuncio de memoria: un módulo, un kit o un lote (cuántos y de cuánto), o un equipo, una placa o una CPU que la lleva; su formato, velocidad, estado y precio por módulo |
 | [`cristales/memoria-noticia/`](cristales/memoria-noticia/) | De qué va una noticia de hardware para quien sigue la memoria RAM |
+| [`cristales/tv-modelo/`](cristales/tv-modelo/) | Los televisores que nombra un texto o pide alguien, con su modelo canónico y su catálogo de series (LG, Samsung, Sony, TCL, Hisense, Philips, Panasonic, Xiaomi, 2017-2026): serie, año, pulgadas, tecnología, gama, Hz y precio nuevo |
+| [`cristales/tv-anuncio/`](cristales/tv-anuncio/) | Qué se vende en un anuncio de televisores: una tele (cuál, de cuántas pulgadas, en qué estado y con qué avería) o un monitor, un proyector, un accesorio, una pieza, un lote |
+| [`cristales/tv-noticia/`](cristales/tv-noticia/) | De qué va una noticia de imagen y sonido para quien sigue los televisores |
 
 ## Construir
 

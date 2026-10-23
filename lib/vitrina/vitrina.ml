@@ -90,6 +90,31 @@ let vitrina =
             RAM: si va de memoria (DRAM, módulos, HBM), de almacenamiento, de otro hardware o de otra cosa; su tipo \
             (precio, mercado, fábrica, lanzamiento, análisis, estándar JEDEC), su segmento (consumo, servidor, móvil, \
             HBM/IA), fabricantes, generaciones, formatos, productos y lo que aún no se vende (DDR6, LPDDR6, HBM5…)."
+    (* smarttv.email (2026-10-23): como nvme.email, en cada anuncio de televisores, cada alta y cada titular. *)
+    |> con (tarea "tv-modelo") `Mixta Tv_modelo.cristal
+         ~descripcion:
+           "Los televisores que nombra un texto o pide alguien (\"LG OLED77C6ELB\", \"Hisense 75U7SE\", \"Samsung \
+            GQ65S95BAT\", \"Sony BRAVIA 9 II 75\\\"\", \"una OLED de 77 o una mini-LED de 75, LG C6 o Hisense U7\"): \
+            cada uno con su modelo canónico (\"LG OLED77C6\", \"Samsung TQ77S95H\"), serie, año, pulgadas, tecnología \
+            (OLED, QD-OLED, mini-LED, RGB mini-LED, QLED, LED), gama, Hz, sistema y precio nuevo del catálogo (LG, \
+            Samsung, Sony, TCL, Hisense, Philips, Panasonic, Xiaomi, 2017-2026); y los tamaños, tecnologías, marcas, \
+            pulgadas mínimas y Hz que pide. No confunde 120 Hz, HDMI 2.1, 4K ni \"soporte hasta 75\\\"\" con un tamaño. \
+            Defecto si no nombra ni modelos, ni tamaños, ni tecnología, ni marca."
+    |> con (tarea "tv-anuncio") `Mixta Tv_anuncio.cristal
+         ~descripcion:
+           "Qué se vende en un anuncio de televisores (líneas Título:, Categoría:, Precio:, Estado:, Descripción:; \
+            o solo el título): una tele, un monitor, un proyector, un accesorio, una pieza, un lote o alguien que \
+            busca; de la tele, marca, modelo canónico, serie, año, pulgadas (de \"75\\\"\", \"75 Zoll\", \"189 cm\" o del \
+            código: 75U7SE, OLED77C6, TQ77S95H, KD-75X85L), tecnología, resolución, Hz, HDMI 2.1, sistema, gama y \
+            precio nuevo; su estado (precintado, nuevo, como nuevo, usado, averiado, para piezas) y avería (pantalla \
+            rota, rayas, manchas, retroiluminación, no enciende, quemado), garantía, factura, caja, envío, recogida, \
+            cambio y precio. Defecto si no sabe si es una tele o cuántas pulgadas tiene."
+    |> con (tarea "tv-noticia") `Mixta Tv_noticia.cristal
+         ~descripcion:
+           "De qué va una noticia de imagen y sonido (Título:, Resumen:; o solo el titular) para quien sigue los \
+            televisores: si va de teles, de imagen y sonido (barras de sonido, proyectores, streaming, Blu-ray, \
+            monitores) o de otra cosa; su tipo (lanzamiento, precio, oferta, análisis, software, mercado, rumor), \
+            marcas, las series del catálogo que nombra (\"LG OLED C6\", \"Sony BRAVIA 9 II\") y las que aún no tiene."
     (* La extracción de trabajo.email (2026-10-12; v2 2026-10-13), la tarea de su
        prompt: un cristal parcial, da los campos que sabe y la forja le pide al
        LLM el resto. t-cab6e50313a9 es la misma extracción con otra plantilla
