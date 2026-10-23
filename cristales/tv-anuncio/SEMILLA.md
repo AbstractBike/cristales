@@ -82,7 +82,7 @@ Abholung», «solo en mano», «kein Versand» dan `envio: false` y
 Muestras: Wallapop (API de búsqueda; Imagen: TVs y proyectores, subcategoría
 10206, y TVs, 10414, con `next_page`; ES, IT y PT) y Kleinanzeigen (Fernseher,
 c175; sus descripciones vienen cortadas a ~200 caracteres), 2026-10-23, en
-`test/anuncios.jsonl`. **Sin LLM, 1.083 de 1.180**: 666 de 711 de Wallapop y
+`test/anuncios.jsonl`. **Sin LLM, 1.084 de 1.181**: 667 de 712 de Wallapop y
 417 de 469 de Kleinanzeigen. De los 97 defectos, 84 son teles que no dicen
 sus pulgadas ni en el título ni en la descripción («Televisión Philips»,
 «Hisense Fernseher»), 11 varias pulgadas (tiendas con «55, 65, 75, 85 Zoll»,
@@ -112,7 +112,11 @@ sus pulgadas ni en el título ni en la descripción («Televisión Philips»,
 - `tipo`, `tecnologia`, `estado` y los demás enumerados son de sus
   conjuntos; una `tv` tiene siempre `pulgadas`, entre 13 y 120.
 - Con `modelo` hay `marca`; están todas las claves del contrato.
-- La red lee sin defecto al menos 1.080 de los 1.180 anuncios de la semilla.
+- La red lee sin defecto al menos 1.080 de los 1.181 anuncios de la semilla.
+- Una avería que dice el texto manda sobre «nueva»: «TV TCL 75P8L Nueva Rota.» es averiado, pantalla rota. En el título
+  basta la palabra («rota», «rotto», «partido», «kaputt», «cassé», «golpe»); en la descripción, la frase («pantalla rota»,
+  «panel roto», «unidades rotas», «se reinicia sola», «defectuosa», «no funciona»): un «botón roto» o «la peana rota» de la
+  descripción no son la pantalla.
 
 ## Fuera de dominio (defecto)
 

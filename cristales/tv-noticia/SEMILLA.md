@@ -1,8 +1,12 @@
 # Semilla: tv-noticia
 
 De qué va una noticia de imagen y sonido para quien sigue los televisores: si
-va de teles, del resto de la imagen y el sonido (barras de sonido, altavoces,
-auriculares, proyectores, Blu-ray, streaming, monitores, HDR) o de otra cosa;
+va de teles, de la imagen y el sonido para la tele (barras de sonido,
+receptores AV y cine en casa, proyectores, reproductores: Blu-ray, Apple TV,
+Fire TV, Chromecast, Shield; HDMI, HDR, Dolby Vision) o de otra cosa: los
+auriculares, los altavoces sueltos, los monitores, los discos y los servicios
+de streaming (Netflix, Disney+, DAZN…) y lo que se ve en ellos son «otro», para
+que no se cuelen en las novedades de teles;
 qué tipo de noticia es, qué marcas y modelos nombra y si nombra alguna serie
 que aún no estaba en el catálogo.
 
@@ -32,7 +36,7 @@ Muestras: RSS de FlatpanelsHD (noticias y análisis), HDTVTest (YouTube),
 AVForums, What Hi-Fi, TechRadar (televisores), Digital Trends (home theater),
 Display Daily, Xataka, Xataka Home, AVPasión, 4kfilme, areaDVD, HDblog y Les
 Numériques, 2026-10-23, en `test/titulares.jsonl`. **Sin LLM, 578 de 623**:
-160 de teles, 248 de imagen y sonido, 170 de otra cosa; 45 defectos, casi
+161 de teles, 82 de imagen y sonido, 335 de otra cosa; 45 defectos, casi
 todos análisis antiguos de FlatpanelsHD con el modelo a secas («Review:
 Panasonic VT60», «Review: LG UF8500») y noticias de marcas de teles que no
 son de teles («Xiaomi 18 Pro», «Samsung Gear VR»).
@@ -51,7 +55,10 @@ son de teles («Xiaomi 18 Pro», «Samsung Gear VR»).
 | `SkyShowtime app comes to Philips TVs with Titan OS` | tv, software | |
 | `Sonos Beam Ultra review: … Dolby Atmos soundbars` | imagen-sonido, analisis | |
 | `New Apple TV 4K (4th Gen) unveiled with A19 chip` | imagen-sonido, lanzamiento | |
-| `OLED monitor prices set to fall further` | imagen-sonido, precio | |
+| `OLED monitor prices set to fall further` | otro, otro | |
+| `Grado unveils Signature S150 headphones` | otro, otro | |
+| `DAZN tira el precio de su plan fútbol …` | otro, otro | |
+| `Panasonic is launching wild new 4K Blu-ray player in Japan …` | imagen-sonido, lanzamiento | |
 | `Adiós al juego ilimitado: Xbox Cloud Gaming …` | otro, otro | |
 
 ## Invariantes
