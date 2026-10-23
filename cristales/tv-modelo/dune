@@ -1,0 +1,8 @@
+; Los televisores que nombra un texto: el catálogo de series (Catalogo), la
+; lectura (Texto) y el cristal. Lo usan tv-anuncio y tv-noticia. El plegado y
+; las listas de palabras son los de grafica-modelo.
+
+(library
+ (name tv_modelo)
+ (public_name cristales.tv-modelo)
+ (libraries cristal grafica_modelo yojson))

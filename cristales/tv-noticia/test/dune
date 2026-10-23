@@ -1,0 +1,11 @@
+(test
+ (name red)
+ (modules red)
+ (deps titulares.jsonl)
+ (libraries tv_noticia cristal yojson))
+
+; Mide el cristal contra los titulares de la semilla (titulares.jsonl).
+(executable
+ (name medir)
+ (modules medir)
+ (libraries tv_noticia yojson))

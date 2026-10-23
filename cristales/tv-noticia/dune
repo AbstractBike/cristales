@@ -1,0 +1,7 @@
+; De qué va una noticia de imagen y sonido: las teles las lee tv-modelo; la
+; entrada, de grafica-noticia; el plegado, de grafica-modelo.
+
+(library
+ (name tv_noticia)
+ (public_name cristales.tv-noticia)
+ (libraries cristal tv_modelo grafica_modelo grafica_noticia yojson))

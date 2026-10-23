@@ -1,0 +1,7 @@
+; Qué se vende en un anuncio de televisores: la tele la lee tv-modelo; la
+; entrada, de memoria-anuncio; el plegado, de grafica-modelo.
+
+(library
+ (name tv_anuncio)
+ (public_name cristales.tv-anuncio)
+ (libraries cristal tv_modelo memoria_anuncio grafica_modelo yojson))

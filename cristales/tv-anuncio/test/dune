@@ -1,0 +1,12 @@
+(test
+ (name red)
+ (modules red)
+ (deps anuncios.jsonl)
+ (libraries tv_anuncio cristal yojson))
+
+; Mide el cristal contra los anuncios de la semilla (anuncios.jsonl): cuántos
+; lee sin defecto y qué.
+(executable
+ (name medir)
+ (modules medir)
+ (libraries tv_anuncio yojson))
