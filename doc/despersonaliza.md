@@ -14,8 +14,9 @@ haya hecho nada.
 
 **Despersonalizar** es darle al agente un entorno que no diga nada de nadie:
 
-1. **Un usuario genérico.** El agente trabaja como `user`, en `/home/user`,
-   en una máquina que se llama como su función, no como su dueño.
+1. **Un usuario genérico.** El agente trabaja como `logical`, en
+   `/home/logical`, en una máquina que se llama como su función, no como su
+   dueño.
 2. **Una arquitectura de carpetas lógica, simple y nada exótica.** La que
    cualquiera esperaría, y la que el modelo ya conoce de su entrenamiento.
 3. **Lo no importante, en carpetas ocultas.** Todo lo que el agente no
@@ -24,7 +25,7 @@ haya hecho nada.
 ```
   entorno personal                          entorno despersonalizado
   ────────────────                          ────────────────────────
-  /home/silvia/                             /home/user/
+  /home/silvia/                             /home/logical/
   ├── Proyectos-2026/                       ├── src/
   │   ├── cliente-acme/  ← para quién       │   ├── web/
   │   └── tesis-final-v3/                   │   └── api/
@@ -60,9 +61,13 @@ haya hecho nada.
 
 ## El usuario genérico
 
-- Se llama **`user`** (o el nombre de su función: `agent`, `ci`), su casa es
-  **`/home/user`** y su grupo, el suyo. Ni el nombre del dueño, ni un apodo,
-  ni un nombre que solo use él.
+- Se llama **`logical`**, su casa es **`/home/logical`** y su grupo, el
+  suyo. Ni el nombre del dueño, ni un apodo, ni un nombre que solo use él.
+- **El nombre trabaja.** `logical` no dice nada de nadie, pero sí le dice
+  algo al modelo: cada ruta, cada prompt de shell y cada `whoami` le
+  recuerdan, de pasada, que ahí se razona con lógica. Es mejor que `user`,
+  que es igual de genérico y no aporta nada. El mismo nombre sirve para el
+  árbol compartido de la flota (`/logical-node`).
 - El **nombre de la máquina** dice lo que hace o dónde está en la flota
   (`build-1`, `web-2`), no de quién es.
 - La **identidad de git** del agente es la de la máquina o la del proyecto,
@@ -76,7 +81,7 @@ Pocas carpetas, nombres en inglés corriente, un nivel de profundidad para
 lo que importa:
 
 ```
-/home/user/
+/home/logical/
 ├── src/            un checkout por repositorio: src/<repo>
 ├── work/           área efímera: copias, worktrees, experimentos (purgable)
 ├── docs/           lo que se lee o se entrega
@@ -122,7 +127,7 @@ agente no tiene nada que hacer con ellas.
 ## Que sea declarativo
 
 El usuario, sus grupos y su árbol se declaran en el sistema (en NixOS,
-`users.users.user` y reglas de `systemd.tmpfiles`), igual en todos los nodos;
+`users.users.logical` y reglas de `systemd.tmpfiles`), igual en todos los nodos;
 no se crean a mano en una sesión. Mover lo que ya existe al árbol nuevo es
 una migración con su plan, no un `mv` desde el agente.
 
@@ -135,10 +140,9 @@ una migración con su plan, no un `mv` desde el agente.
 - **Oculto no es protegido.** Un punto delante del nombre es una cuestión de
   atención, no de permisos: `ls -a` lo enseña. Lo que el agente no debe
   leer se protege con permisos o no se monta, no con un punto.
-- **Las rutas de la flota también son entorno.** Un árbol compartido propio
-  (`/nodo-<algo>/…`) con nombres que solo usa uno es tan delator como un
-  `/home/<nombre>`; se despersonaliza igual o se deja fuera del alcance del
-  agente.
+- **Las rutas de la flota también son entorno.** Un árbol compartido con
+  nombres que solo entiende uno es tan delator como un `/home/<nombre>`; el
+  árbol de la flota se nombra con el mismo criterio que el usuario.
 - **Romper lo que ya funciona cuesta.** Cambiar de usuario y de árbol en una
   flota viva toca servicios, permisos, rutas absolutas en configuraciones y
   hábitos. Se hace por pasos, nodo a nodo, empezando por el menos crítico.
