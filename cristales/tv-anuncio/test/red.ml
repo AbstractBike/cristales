@@ -4,7 +4,7 @@
 (* Red cristalina de tv-anuncio: anuncios reales de la semilla (Wallapop ES,
    IT, PT y Kleinanzeigen Fernseher, 2026-10-23) con lo que son, la tele que
    venden, su estado y lo que dicen de sí mismos; las invariantes de la salida
-   sobre los 1.181 anuncios de anuncios.jsonl, y el mínimo que tiene que leer
+   sobre los 1.182 anuncios de anuncios.jsonl, y el mínimo que tiene que leer
    sin LLM. *)
 
 let fallos = ref 0
@@ -120,6 +120,16 @@ let () =
   dice ~desc:"Televisor Xiaomi TV F Pro con pantalla de 75 pulgadas. 5 unidades rotas 100€" "4 Xiaomi TV y 1 sony v" "averia" "pantalla rota";
   dice ~desc:"Tiene el botón roto y renicia sola la vendo así." "TV Samsung 55 crystal UHD" "estado" "averiado";
   dice ~desc:"El televisor enciende y se puede ver. Muy de vez en cuando se reinicia sola." "Xiaomi Mi TV 4S 55 4K UHD" "estado" "averiado";
+  (* «Roto» en la descripción, sin otra cosa delante (correo de producción del 2026-10-23, 225 €) *)
+  es ~cat:"TVs" ~precio:"225" ~desc:"Televisor TCL modelo 75P8L.\nRoto por instalacion \n- Pantalla grande de 75 pulgadas.\n- Diseño moderno en color negro y blanco." "TV TCL 75P8L" "tv TCL 75P8L 75 led averiado";
+  dice ~desc:"Televisor TCL modelo 75P8L.\nRoto por instalacion" "TV TCL 75P8L" "averia" "pantalla rota";
+  dice ~desc:"Se vende así. Rota por una caída al moverla." "TV Samsung 65 pulgadas" "averia" "pantalla rota";
+  dice ~desc:"Funcionaba bien pero se rompió al mudarnos." "TV LG 55 pulgadas" "estado" "averiado";
+  dice ~desc:"La tele está rota, para quien la sepa reparar." "TV Hisense 50 pulgadas" "estado" "averiado";
+  dice ~desc:"Llegó rota del envío y me devolvieron el dinero." "TV Xiaomi 55 pulgadas" "estado" "averiado";
+  dice ~desc:"Funciona perfecta. El botón está roto pero se enciende con el mando." "TV LG 43 pulgadas" "estado" "usado";
+  dice ~desc:"Va perfecta. La peana rota, la cuelgo en la pared." "TV Samsung 40 pulgadas" "estado" "usado";
+  dice ~desc:"Pantalla perfecta, no está rota ni tiene golpes." "TV Sony 55 pulgadas" "estado" "usado";
   (* Lo roto que no es la tele, en la descripción, no es una avería *)
   dice ~desc:"Incluye mando original aunque tiene la tapa de las pilas rota. Funcionando perfectamente." "Televisor Sony Bravia 19 pulgadas" "estado" "usado";
   dice ~desc:"Funciona perfecta y no tiene golpes, rasguños o nada parecido." "TV LG 65 Pulgadas 4K" "estado" "usado";
@@ -207,6 +217,6 @@ let () =
        | Error _ -> ()
      done
    with End_of_file -> ());
-  (* 1.084 de 1.181 el 2026-10-23: la red no deja que baje. *)
-  if !leidos < 1080 then falla "la semilla: %d de %d sin defecto (eran 1.084)" !leidos !total;
+  (* 1.085 de 1.182 el 2026-10-23: la red no deja que baje. *)
+  if !leidos < 1080 then falla "la semilla: %d de %d sin defecto (eran 1.085)" !leidos !total;
   if !fallos > 0 then (Printf.eprintf "%d fallos\n" !fallos; exit 1)
