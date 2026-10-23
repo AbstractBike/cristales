@@ -77,6 +77,7 @@ bien.
 | [`doc/forja.md`](doc/forja.md) | La forja: proxy de LLM que cristaliza las tareas que atiende, y su variante MCP |
 | [`doc/agencia.md`](doc/agencia.md) | La agencia: agentes que saben a qué modelo pedir cada cosa, con el histórico de cada encargo (MCP) |
 | [`doc/llaves-de-miel.md`](doc/llaves-de-miel.md) | Llaves de miel: claves reales e inertes que avisan, vía el proveedor, si el repo o la sesión de IA donde viven se filtra |
+| [`doc/proposito-sobre-personalidad.md`](doc/proposito-sobre-personalidad.md) | Propósito sobre personalidad: usuario, máquina y carpetas nombrados por el propósito del agente (`logical`, `winner`), nada personal, y lo que no sirve al propósito en carpetas ocultas |
 | [`doc/seguimiento-de-costes.md`](doc/seguimiento-de-costes.md) | Seguimiento de costes: cada commit de un LLM lleva en sus trailers el modelo, los tokens y el coste, sacados de la telemetría de su sesión |
 | [`doc/registro.md`](doc/registro.md) | El registro: contrato entre pipelines y herramientas, y su tabla en GreptimeDB |
 | [`prompts/cristalizar.md`](prompts/cristalizar.md) | El prompt de nucleación: pedir el método, no el resultado |
