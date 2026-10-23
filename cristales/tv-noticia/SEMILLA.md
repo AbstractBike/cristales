@@ -1,8 +1,12 @@
 # Semilla: tv-noticia
 
 De qué va una noticia de imagen y sonido para quien sigue los televisores: si
-va de teles, del resto de la imagen y el sonido (barras de sonido, altavoces,
-auriculares, proyectores, Blu-ray, streaming, monitores, HDR) o de otra cosa;
+va de teles, de la imagen y el sonido para la tele (barras de sonido,
+receptores AV y cine en casa, proyectores, reproductores: Blu-ray, Apple TV,
+Fire TV, Chromecast, Shield; HDMI, HDR, Dolby Vision) o de otra cosa: los
+auriculares, los altavoces sueltos, los monitores, los discos y los servicios
+de streaming (Netflix, Disney+, DAZN…) y lo que se ve en ellos son «otro», para
+que no se cuelen en las novedades de teles;
 qué tipo de noticia es, qué marcas y modelos nombra y si nombra alguna serie
 que aún no estaba en el catálogo.
 
