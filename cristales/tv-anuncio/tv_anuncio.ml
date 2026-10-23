@@ -98,7 +98,9 @@ let para_piezas =
 
 let averias =
   [ ( "pantalla rota",
-      [ "pantalla rota"; "pantalla partida"; "pantalla rajada"; "panel roto"; "cristal roto"; "pantalla golpeada"; "golpe en pantalla"; "golpeado"; "golpeada";
+      [ "pantalla rota"; "pantalla partida"; "pantalla rajada"; "panel roto"; "cristal roto"; "pantalla esta rota"; "panel esta roto"; "panel interno roto"; "unidades rotas";
+        "pantalla danada"; "panel danado"; "display beschadigt"; "bildschirm beschadigt"; "schermo rotto"; "schermo danneggiato"; "ecra danificado";
+        "ecran endommage"; "pantalla quebrada"; "pantalla golpeada"; "golpe en pantalla"; "golpeado"; "golpeada";
         "golpe en la pantalla"; "display gebrochen"; "display kaputt"; "display defekt"; "panel defekt"; "panel kaputt"; "panelschaden";
         "panel schaden"; "displayschaden"; "bildschirm kaputt"; "bildschirm defekt"; "bildschirm gebrochen"; "glasbruch"; "gebrochen";
         "riss"; "broken screen"; "cracked screen"; "screen broken"; "cracked"; "schermo rotto"; "ecra partido"; "ecran casse";
@@ -127,7 +129,14 @@ let averias =
 let averiada =
   [ "averiado"; "averiada"; "averia"; "defekt"; "defekte"; "defektes"; "defekter"; "kaputt"; "broken"; "faulty"; "defective"; "not working";
     "no funciona"; "guasto"; "guasta"; "non funziona"; "avariada"; "avariado"; "nao funciona"; "en panne"; "hors service"; "para reparar";
-    "a reparar"; "reparatur"; "fallo"; "falla" ]
+    "a reparar"; "reparatur"; "fallo"; "falla"; "defectuosa"; "defectuoso"; "defectuosos"; "defectuosas"; "difettoso"; "difettosa";
+    "defeituoso"; "defeituosa"; "defectueux"; "defectueuse"; "ne fonctionne pas"; "funktioniert nicht"; "se reinicia"; "reinicia sola";
+    "renicia sola"; "se reinicia solo"; "se apaga sola"; "se apaga solo"; "startet neu" ]
+
+(* En el título basta la palabra: «TV TCL 75P8L Nueva Rota.», «Samsung TV kaputt», «Televisore rotto». *)
+let rota_titulo =
+  [ "rota"; "roto"; "rotas"; "rotos"; "rotto"; "rotta"; "rotti"; "rotte"; "partida"; "partido"; "rajada"; "rajado"; "quebrada"; "quebrado";
+    "kaputt"; "gebrochen"; "broken"; "cracked"; "casse"; "cassee"; "golpe"; "golpeada"; "golpeado"; "danada"; "danado"; "partita" ]
 
 let precintado =
   [ "precintado"; "precintada"; "precinto"; "sin abrir"; "sin desprecintar"; "sealed"; "versiegelt"; "ungeoffnet"; "ungeoffnete";
@@ -359,7 +368,10 @@ let dice todo frases =
   done;
   !r
 
-let averia todo = List.find_map (fun (etiqueta, frases) -> if dice todo frases = G.Si then Some etiqueta else None) averias
+let averia ?(titulo = "") todo =
+  match List.find_map (fun (etiqueta, frases) -> if dice todo frases = G.Si then Some etiqueta else None) averias with
+  | Some a -> Some a
+  | None -> if dice titulo rota_titulo = G.Si then Some "pantalla rota" else None
 
 (* El estado que declara el portal, si la entrada lo trae en una línea «Estado: …» de la cabecera
    (Wallapop: «como nuevo», «en buen estado»; Kleinanzeigen: «Sehr gut», «Defekt»). *)
@@ -390,7 +402,7 @@ let declarado entrada =
 
 let estado ?declarado (a : Memoria_anuncio.anuncio) =
   let todo = a.titulo ^ "\n" ^ a.descripcion in
-  let av = averia todo in
+  let av = averia ~titulo:a.titulo todo in
   (* Lo que dice el texto de una avería manda; si no, lo que declara el portal; si no, lo que dice el texto. *)
   if dice todo para_piezas = G.Si then ("para-piezas", av)
   else if av <> None || dice todo averiada = G.Si then ("averiado", av)

@@ -56,8 +56,19 @@ let () =
   es "Sonos Beam Ultra review: one of the best compact Dolby Atmos soundbars around" "imagen-sonido" "analisis";
   es "New Apple TV 4K (4th Gen) unveiled with A19 chip, Siri AI" "imagen-sonido" "lanzamiento";
   es "La mejor barra de sonido de Samsung en 2026 se pone a precio de locos: la HW-Q990H por 479 euros" "imagen-sonido" "analisis";
-  es "\"Nosferatu - Der Untote\" erscheint als 4K Ultra HD Blu-ray-Steelbook" "imagen-sonido" "lanzamiento";
-  es "OLED monitor prices set to fall further" "imagen-sonido" "precio";
+  (* Auriculares, altavoces sueltos, discos y servicios de streaming no son de la tele: fuera de tema. *)
+  es "\"Nosferatu - Der Untote\" erscheint als 4K Ultra HD Blu-ray-Steelbook" "otro" "otro";
+  es "OLED monitor prices set to fall further" "otro" "otro";
+  es "Grado unveils Signature S150 headphones" "otro" "otro";
+  es "Razer renueva sus icónicos auriculares de orejas de gato: así son los nuevos Kraken Kitty V3" "otro" "otro";
+  es "Nuevos Bose Ultra Open y Sport Open: los auriculares para escuchar música sin desconectar de tu entorno" "otro" "otro";
+  es "Bose acquires fellow headphone maker Skullcandy in time for Halloween" "otro" "otro";
+  es "DAZN tira el precio de su plan fútbol (por tiempo limitado) para ver el Clásico" "otro" "otro";
+  es "Pikachu is ready to electrify your playlist with this Pokémon-themed Beats speaker" "otro" "otro";
+  (* Lo de imagen y sonido para la tele sí: barras de sonido, AV, proyectores, reproductores. *)
+  es "Review: Samsung HW-Q990D soundbar" "imagen-sonido" "analisis";
+  es "Panasonic is launching wild new 4K Blu-ray player in Japan that also has a 10TB hard drive" "imagen-sonido" "lanzamiento";
+  es "Epson unveils new 4K laser projector" "imagen-sonido" "lanzamiento";
   es "Afectados por la Dana Adam, el Consejo de Ministros aprueba por decreto ley la incapacidad temporal por catástrofe" "otro" "otro";
   es "Adiós al juego ilimitado: Xbox Cloud Gaming empezará a cobrar por horas" "otro" "otro";
   dice "Best Android Smartphones for 2026" "tema" "otro";

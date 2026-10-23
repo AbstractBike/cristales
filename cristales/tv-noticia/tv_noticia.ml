@@ -19,7 +19,7 @@ module G = Grafica_modelo.Texto
 let tele =
   [ "tv"; "tvs"; "television"; "televisions"; "televisor"; "televisores"; "television"; "televisiones"; "tele"; "teles"; "fernseher";
     "fernsehen"; "fernsehgerat"; "televiseur"; "televiseurs"; "televisore"; "televisori"; "smart tv"; "smart tvs"; "oled tv"; "oled tvs";
-    "qd oled"; "mini led"; "miniled"; "qled"; "neo qled"; "rgb mini led"; "micro rgb"; "woled"; "mla"; "ambilight"; "bravia"; "webos";
+    "qd oled"; "mini led"; "miniled"; "qled"; "8k"; "neo qled"; "rgb mini led"; "micro rgb"; "woled"; "mla"; "ambilight"; "bravia"; "webos";
     "tizen"; "vidaa"; "titan os"; "tv lineup"; "tv range"; "viera" ]
 
 (* Lo que, con «TV» en el nombre, no es una tele: los reproductores y los servicios. *)
@@ -31,19 +31,31 @@ let no_tele =
 let oled = [ "oled"; "oleds" ]
 
 let imagen_sonido =
-  [ "soundbar"; "soundbars"; "barra de sonido"; "barras de sonido"; "altavoz"; "altavoces"; "speaker"; "speakers"; "lautsprecher"; "enceinte";
-    "enceintes"; "headphones"; "headphone"; "auriculares"; "kopfhorer"; "earbuds"; "earphones"; "casque"; "cuffie"; "amplifier"; "amplifiers";
-    "amp"; "amplificador"; "verstarker"; "turntable"; "turntables"; "tocadiscos"; "plattenspieler"; "hifi"; "hi fi"; "hi res"; "av receiver";
-    "receiver"; "receptor av"; "blu ray"; "blu rays"; "bluray"; "uhd blu ray"; "4k blu ray"; "4k uhd blu ray"; "steelbook"; "projector";
-    "projectors"; "proyector"; "proyectores"; "beamer"; "videoprojecteur"; "proiettore"; "apple tv"; "fire tv"; "chromecast"; "roku"; "shield";
-    "streaming"; "streamer"; "netflix"; "disney"; "prime video"; "hbo"; "max"; "dazn"; "skyshowtime"; "plex"; "youtube"; "spotify"; "tidal";
-    "deezer"; "qobuz"; "apple music"; "music"; "musica"; "musik"; "audio"; "sound"; "sonido"; "dolby"; "atmos"; "dolby vision"; "dolby atmos";
-    "dts"; "hdr"; "hdr10"; "imax"; "hdmi"; "hdmi 2 2"; "monitor"; "monitors"; "monitores"; "moniteur"; "display"; "displays"; "panel"; "panels";
-    "4k"; "8k"; "uhd"; "sonos"; "bose"; "denon"; "marantz"; "yamaha"; "naim"; "kef"; "bowers"; "b w"; "bluesound"; "cambridge audio"; "technics";
-    "home cinema"; "home theater"; "home theatre"; "heimkino"; "cine en casa"; "dac"; "vinyl"; "vinilo"; "cd player"; "kino"; "cine";
-    "pelicula"; "peliculas"; "film"; "filme"; "movie"; "movies"; "serie"; "series"; "trailer" ]
+  [ "soundbar"; "soundbars"; "sound bar"; "barra de sonido"; "barras de sonido"; "barre de son"; "barra audio"; "barra sonora"; "klangbar";
+    "av receiver"; "av receivers"; "receptor av"; "amplificador av"; "av verstarker"; "home cinema"; "home theater"; "home theatre"; "heimkino";
+    "cine en casa"; "home cinema system"; "projector"; "projectors"; "proyector"; "proyectores"; "beamer"; "videoprojecteur"; "proiettore";
+    "projetor"; "blu ray player"; "blu ray players"; "4k blu ray player"; "uhd blu ray player"; "bluray player"; "reproductor"; "reproductores";
+    "lettore"; "player blu ray"; "apple tv 4k"; "apple tv"; "fire tv stick"; "fire tv cube"; "chromecast"; "google tv streamer"; "roku";
+    "nvidia shield"; "shield tv"; "shield pro"; "player"; "players"; "atmos"; "dolby atmos"; "dts x"; "subwoofer"; "subwoofers"; "5 1"; "5 1 2";
+    "7 1"; "7 1 4"; "11 1 4"; "hdmi"; "hdmi 2 1"; "hdmi 2 2"; "hdr"; "hdr10"; "dolby vision"; "imax enhanced"; "earc" ]
 
 (* Lo que no es de imagen y sonido aunque lo parezca: los teléfonos, los ordenadores, los coches, los juegos. *)
+(* Auriculares, altavoces, tocadiscos y los servicios de streaming: no son de la tele (salvo una barra de sonido). *)
+let auriculares =
+  [ "headphones"; "headphone"; "headset"; "auriculares"; "cascos"; "kopfhorer"; "earbuds"; "earphones"; "casque"; "cuffie"; "fones";
+    "in ear"; "over ear" ]
+
+let sonido_suelto =
+  [ "audio"; "monitor"; "monitors"; "monitores"; "moniteur"; "laptops"; "lg display"; "samsung display"; "speaker"; "speakers"; "altavoz"; "altavoces"; "lautsprecher"; "enceinte"; "enceintes"; "turntable"; "tocadiscos";
+    "plattenspieler"; "netflix"; "disney"; "prime video"; "hbo"; "max"; "dazn"; "skyshowtime"; "movistar"; "spotify"; "tidal"; "deezer";
+    "apple music"; "youtube"; "crunchyroll"; "filmin"; "plataforma"; "streaming service" ]
+
+(* Los servicios de streaming y lo que se ve en ellos (películas, series, deportes): tampoco, aunque sea en 4K HDR o en el Apple TV. *)
+let servicios =
+  [ "netflix"; "disney"; "prime video"; "hbo"; "max"; "dazn"; "skyshowtime"; "movistar"; "apple tv plus"; "espn"; "plex"; "crunchyroll";
+    "filmin"; "peacock"; "paramount"; "formula 1"; "pelicula"; "peliculas"; "movie"; "movies"; "film"; "films"; "serie"; "series";
+    "temporada"; "season"; "restoration"; "restauracion"; "trailer"; "shows"; "rotten tomatoes" ]
+
 let fuera =
   [ "smartphone"; "smartphones"; "iphone"; "galaxy s"; "galaxy z"; "pixel"; "movil"; "moviles"; "telefono"; "handy"; "portatil"; "laptop";
     "macbook"; "ipad"; "tablet"; "coche"; "coches"; "car"; "cars"; "auto"; "electric car"; "ev"; "xbox"; "playstation"; "ps5"; "nintendo";
@@ -90,10 +102,12 @@ let tema t (ms : T.mencion list) =
   let es_tele = ms <> [] || (hay t tele && not (hay t no_tele && not (hay t [ "tvs"; "televisores"; "fernseher" ]))) in
   if hay t fuera && not es_tele then Some "otro"
   else if es_tele then Some "tv"
+  else if hay t servicios || hay t auriculares then Some "otro"
+  else if hay t imagen_sonido then Some "imagen-sonido"
+  else if hay t sonido_suelto then Some "otro"
   else if hay t oled && not (hay t [ "monitor"; "monitors"; "monitores"; "moniteur"; "panel"; "phone"; "smartphone"; "laptop" ]) then
     (* «OLED» sin más, con una marca de teles: una tele. *)
-    if marcas <> [] then Some "tv" else Some "imagen-sonido"
-  else if hay t imagen_sonido then Some "imagen-sonido"
+    if marcas <> [] then Some "tv" else Some "otro"
   else if List.exists (fun m -> List.mem m [ "lg"; "samsung"; "sony"; "tcl"; "hisense"; "philips"; "panasonic"; "xiaomi" ]) marcas then None
   else Some "otro"
 
